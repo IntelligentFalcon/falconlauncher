@@ -1,7 +1,5 @@
-# Tauri + React + Typescript
+# فالکن لانچر
 
-This template should help get you started developing with Tauri, React and Typescript in Vite.
+یک لانچر فارسی زبان برای کاربران ایرانی بازی ماینکرفت.
 
-## Recommended IDE Setup
-
-- [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+همچنان در دست توسعه
