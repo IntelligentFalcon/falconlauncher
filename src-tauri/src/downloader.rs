@@ -5,7 +5,7 @@ use std::env::vars_os;
 use tauri::async_runtime::{block_on, spawn};
 
 /// Returns the version_manifest.json file in a Value structure if the parse process was succeed.
-pub fn load_version_manifest() -> Some(Value) {
+pub fn load_version_manifest() -> Option<Value> {
     let url = "https://launchermeta.mojang.com/mc/game/version_manifest.json";
     let mut json: Option<Value> = None;
     block_on(async {
@@ -65,7 +65,7 @@ fn download_libraries(value: Value) {
                     //TODO: download library since it requires the same os that user have
                 }
             }
-            Err(..) => {
+            None => {
                 //TODO: download library since it doesnt have rules to disallow any os
             }
         }
