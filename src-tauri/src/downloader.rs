@@ -1,7 +1,8 @@
-use crate::structs;
-use crate::structs::AssetIndex;
+use crate::directory_manager::{get_assets_directory, get_libraries_directory};
+use crate::utils;
 use serde_json::Value;
-use std::env::vars_os;
+use std::fs::File;
+use std::io::Write;
 use tauri::async_runtime::{block_on, spawn};
 
 /// Returns the version_manifest.json file in a Value structure if the parse process was succeed.
@@ -28,8 +29,46 @@ fn load_version(url: String) {
     spawn(async {});
 }
 
-fn load_version_assets(asset_index: AssetIndex) {
-    // TODO: download assets from assetindex information.
+fn download_assets(value: Value) {
+    let id = value["id"].as_str().unwrap();
+    let url = value["url"].as_str().unwrap();
+    let total_size = value["totalSize"].as_u64().unwrap();
+    let size = value["size"].as_u64().unwrap();
+    let mut json: Option<Value> = None;
+    block_on(async {
+        download_file(
+            url.to_string(),
+            get_assets_directory()
+                .expect("Couldn't get minecraft directory")
+                .join("indexes")
+                .to_str()
+                .unwrap()
+                .to_string(),
+        )
+        .await;
+        let content = reqwest::get(url)
+            .await
+            .expect("Failed to download file.")
+            .text()
+            .await
+            .expect("Failed to read file.");
+        json =
+            Some(serde_json::from_str(content.as_str()).expect("JSON File isn't well formatted."));
+    });
+    let url_template = "https://resources.download.minecraft.net/{id}/{hash}";
+    match json {
+        Some(json) => {
+            for asset_object in json["objects"].as_array().unwrap() {
+                let hash = asset_object["hash"].as_str().unwrap();
+                let id = hash[0..2].to_string().clone();
+                let url = url_template
+                    .replace("{id}", id.as_str())
+                    .replace("{hash}", hash)
+                    .clone();
+            }
+        }
+        None => {}
+    }
 }
 
 pub fn download_version(id: String) {
@@ -37,7 +76,8 @@ pub fn download_version(id: String) {
     //TODO: Some tasks like downloading version libraries & assets and stuff should be done here.
 }
 
-fn download_libraries(value: Value) {
+async fn download_libraries(value: Value) {
+    let libraries_path = get_libraries_directory().expect("Getting library path failed");
     let libraries = value
         .get("libraries")
         .expect("Parsing libraries of version failed!")
@@ -49,7 +89,16 @@ fn download_libraries(value: Value) {
             .expect("Parsing library_name failed")
             .as_str()
             .expect("Parsing library_name failed");
-        let os = get_current_os();
+        let library_downloads = library
+            .get("downloads")
+            .expect("Parsing library_downloads failed");
+        let library_path = library_downloads
+            .get("path")
+            .expect("Parsing library path failed");
+        let library_url = library_downloads
+            .get("url")
+            .expect("Parsing library_url failed");
+        let os = utils::get_current_os();
         let rules = library.get("rules");
         match rules {
             Some(rules) => {
@@ -62,17 +111,29 @@ fn download_libraries(value: Value) {
                     .unwrap()
                     == os
                 {
-                    //TODO: download library since it requires the same os that user have
+                    let path = libraries_path.join(library_path.as_str().unwrap());
+                    download_file(
+                        library_url.as_str().unwrap().to_string(),
+                        path.to_str().unwrap().to_string(),
+                    )
+                    .await;
                 }
             }
             None => {
-                //TODO: download library since it doesnt have rules to disallow any os
+                let path = libraries_path.join(library_path.as_str().unwrap());
+                download_file(
+                    library_url.as_str().unwrap().to_string(),
+                    path.to_str().unwrap().to_string(),
+                )
+                .await;
             }
         }
     }
 }
 
-pub fn get_current_os() -> String {
-    structs::parse_os(sys_info::os_type().expect("Unsupported Operating System"))
+async fn download_file(url: String, dest: String) {
+    let mut resp = reqwest::get(url).await.expect("Downloading file failed.");
+    let mut out = File::create(dest).expect("Unable to create file.");
+    out.write_all(resp.chunk().await.unwrap().unwrap().as_ref())
+        .expect("Writing file failed.");
 }
-fn download_library(library_value: Value) {}
