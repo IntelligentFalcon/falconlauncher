@@ -5,10 +5,10 @@ use std::path::PathBuf;
 pub fn get_minecraft_directory() -> Option<PathBuf> {
     let os = get_current_os();
     match os.as_str() {
-        "osx" => var_os("HOME")
+        "osx" => var_os("$HOME")
             .map(|home| PathBuf::from(home).join("Library/Application Support/minecraft")),
         "linux" => var_os("APPDATA").map(|appdata| PathBuf::from(appdata).join(".minecraft")),
-        _ => var_os("APP_DATA").map(|home| PathBuf::from(home).join(".minecraft")),
+        _ => var_os("APPDATA").map(|home| PathBuf::from(home).join(".minecraft")),
     }
 }
 pub fn get_libraries_directory() -> Option<PathBuf> {

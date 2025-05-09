@@ -1,6 +1,10 @@
 use crate::downloader::load_version_manifest;
 use crate::structs;
 use serde_json::Value;
+use std::fs::File;
+use std::path::Path;
+use tauri::async_runtime::block_on;
+
 pub fn get_current_os() -> String {
     structs::parse_os(sys_info::os_type().expect("Unsupported Operating System"))
 }
@@ -10,7 +14,7 @@ pub fn load_versions() -> Vec<String> {
     match json {
         None => Vec::new(),
         Some(v) => {
-            let mut versions = v.get("versions").unwrap().as_array().unwrap();
+            let versions = v.get("versions").unwrap().as_array().unwrap();
             versions
                 .iter()
                 .filter(|ver| ver.get("type").unwrap() == "release")
@@ -18,4 +22,24 @@ pub fn load_versions() -> Vec<String> {
                 .collect()
         }
     }
+}
+/// Verifies if file exists and is not broken by the expected file size
+pub fn verify_file_existence(path_str: &String, expected_size: u64) -> bool {
+    let path = Path::new(&path_str);
+    if !path.exists() {
+        false
+    } else {
+        let file = File::open(path).unwrap();
+        let metadata = file.metadata().unwrap();
+        metadata.len() == expected_size
+    }
+}
+pub fn load_json_url(url: &String) -> Option<Value> {
+    let mut json: Option<Value> = None;
+    block_on(async {
+        let result = reqwest::get(url).await.expect("Failed to download file.");
+        let text = result.text().await.expect("Failed to read file.");
+        json = Some(serde_json::from_str(text.as_str()).expect("JSON File isn't well formatted."));
+    });
+    json
 }

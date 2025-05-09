@@ -1,1 +1,3 @@
-pub fn launch_game(version: String) {}
+pub fn launch_game(version: String) {
+
+}

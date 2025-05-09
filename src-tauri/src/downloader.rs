@@ -1,51 +1,41 @@
-use crate::directory_manager::{get_assets_directory, get_libraries_directory};
+use crate::directory_manager::{
+    get_assets_directory, get_libraries_directory, get_minecraft_directory, get_versions_directory,
+};
+use crate::structs::OperatingSystem::{Linux, Windows};
+use crate::structs::{library_from_value, LibraryRules, OperatingSystem};
 use crate::utils;
-use serde_json::Value;
+use crate::utils::{get_current_os, load_json_url, verify_file_existence};
+use serde_json::{Map, Value};
+use std::fmt::format;
 use std::fs::File;
 use std::io::Write;
 use tauri::async_runtime::{block_on, spawn};
+use OperatingSystem::MacOS;
 
 /// Returns the version_manifest.json file in a Value structure if the parse process was succeed.
 pub fn load_version_manifest() -> Option<Value> {
     let url = "https://launchermeta.mojang.com/mc/game/version_manifest.json";
-    let mut json: Option<Value> = None;
-    block_on(async {
-        let result = reqwest::get(url).await.expect("Failed to download file.");
-        let text = result.text().await.expect("Failed to read file.");
-        json = Some(serde_json::from_str(text.as_str()).expect("JSON File isn't well formatted."));
-    });
+    let mut json = load_json_url(&url.to_string());
     json
 }
 
-fn load_version(url: String) {
-    // TODO: load version json file.
-    let mut json = None;
-    block_on(async {
-        let result = reqwest::get(url).await.expect("Failed to download file.");
-        let text = result.text().await.expect("Failed to read file.");
-        json = Some(text);
-    });
-
-    spawn(async {});
-}
-
-fn download_assets(value: Value) {
+fn download_assets(value: &Value) {
     let id = value["id"].as_str().unwrap();
     let url = value["url"].as_str().unwrap();
     let total_size = value["totalSize"].as_u64().unwrap();
     let size = value["size"].as_u64().unwrap();
     let mut json: Option<Value> = None;
     block_on(async {
-        download_file(
-            url.to_string(),
-            get_assets_directory()
-                .expect("Couldn't get minecraft directory")
-                .join("indexes")
-                .to_str()
-                .unwrap()
-                .to_string(),
-        )
-        .await;
+        let asset_index_path = get_assets_directory()
+            .expect("Couldn't get minecraft directory")
+            .join("indexes")
+            .join(format!("{id}.json"))
+            .to_str()
+            .unwrap()
+            .to_string();
+        if !verify_file_existence(&asset_index_path, size) {
+            download_file(url.to_string(), asset_index_path);
+        }
         let content = reqwest::get(url)
             .await
             .expect("Failed to download file.")
@@ -57,14 +47,25 @@ fn download_assets(value: Value) {
     });
     let url_template = "https://resources.download.minecraft.net/{id}/{hash}";
     match json {
-        Some(json) => {
-            for asset_object in json["objects"].as_array().unwrap() {
+        Some(val) => {
+            for (name, asset_object) in val["objects"].as_object().unwrap() {
                 let hash = asset_object["hash"].as_str().unwrap();
                 let id = hash[0..2].to_string().clone();
+                let size = asset_object["size"].as_u64().unwrap();
                 let url = url_template
                     .replace("{id}", id.as_str())
                     .replace("{hash}", hash)
                     .clone();
+                let path = get_assets_directory()
+                    .unwrap()
+                    .join("objects")
+                    .join(id.as_str())
+                    .join(hash);
+                if !verify_file_existence(&path.to_str().unwrap().to_string(), size) {
+                    download_file_async(url, path.to_str().unwrap().to_string());
+                } else {
+                    println!("found some of assets ok!") // DEBUG: will be removed later
+                }
             }
         }
         None => {}
@@ -72,68 +73,151 @@ fn download_assets(value: Value) {
 }
 
 pub fn download_version(id: String) {
+    println!("Downloading version {} process started.", id);
     let manifest = load_version_manifest();
-    //TODO: Some tasks like downloading version libraries & assets and stuff should be done here.
+    println!("Loaded version manifest");
+    match manifest {
+        None => {}
+        Some(val) => {
+            let version = val["versions"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|v| v["id"].as_str().unwrap() == id)
+                .expect("Couldn't find version in manifest.");
+            let version_url = version["url"].as_str().unwrap();
+            download_file_async(
+                version_url.to_string(),
+                get_versions_directory()
+                    .unwrap()
+                    .join(&id)
+                    .join(format!("{id}.json"))
+                    .to_str()
+                    .unwrap()
+                    .to_string(),
+            );
+            let json = load_json_url(&version_url.to_string()).expect("Couldn't find the version");
+            download_assets(&json["assetIndex"]);
+            println!("Downloaded assets");
+            download_libraries(&json["libraries"]);
+            println!("Downloaded libraries");
+            download_client(&json["downloads"]["client"], &id);
+            println!("Downloaded client!");
+        }
+    }
+}
+fn download_client(value: &Value, version: &String) {
+    let size = value["size"].as_u64().unwrap();
+    let url = value["url"].as_str().unwrap();
+    let path = get_versions_directory()
+        .unwrap()
+        .join(&version)
+        .join(format!("{}.jar", version));
+    if !verify_file_existence(&path.to_str().unwrap().to_string(), size) {
+        download_file_async(url.to_string(), path.to_str().unwrap().to_string());
+    }
 }
 
-async fn download_libraries(value: Value) {
+fn download_libraries(libraries: &Value) {
     let libraries_path = get_libraries_directory().expect("Getting library path failed");
-    let libraries = value
-        .get("libraries")
-        .expect("Parsing libraries of version failed!")
-        .as_array()
-        .expect("Transforming libraries data to array failed");
-    for library in libraries {
-        let library_name = library
-            .get("name")
-            .expect("Parsing library_name failed")
-            .as_str()
-            .expect("Parsing library_name failed");
-        let library_downloads = library
-            .get("downloads")
-            .expect("Parsing library_downloads failed");
-        let library_path = library_downloads
-            .get("path")
-            .expect("Parsing library path failed");
-        let library_url = library_downloads
-            .get("url")
-            .expect("Parsing library_url failed");
-        let os = utils::get_current_os();
-        let rules = library.get("rules");
-        match rules {
-            Some(rules) => {
-                if rules
-                    .get("os")
-                    .unwrap()
-                    .get("name")
-                    .unwrap()
-                    .as_str()
-                    .unwrap()
-                    == os
-                {
-                    let path = libraries_path.join(library_path.as_str().unwrap());
-                    download_file(
-                        library_url.as_str().unwrap().to_string(),
-                        path.to_str().unwrap().to_string(),
-                    )
-                    .await;
-                }
-            }
-            None => {
-                let path = libraries_path.join(library_path.as_str().unwrap());
-                download_file(
-                    library_url.as_str().unwrap().to_string(),
+    for library in libraries.as_array().unwrap() {
+        if library.get("downloads").unwrap().get("artifact").is_none() {
+            download_classifiers(library.get("downloads").unwrap().get("classifiers"));
+            continue;
+        }
+        let library_info = library_from_value(library);
+        let os = get_current_os();
+        let rules = fetch_rules(library.get("rules"));
+        download_classifiers(library.get("downloads").unwrap().get("classifiers"));
+        if rules.allowed_oses.contains(&os) && !rules.disallowed_oses.contains(&os) {
+            let path = libraries_path.join(&library_info.path.as_str());
+            if !verify_file_existence(&path.to_str().unwrap().to_string(), library_info.size) {
+                download_file_async(
+                    library_info.url.as_str().to_string(),
                     path.to_str().unwrap().to_string(),
-                )
-                .await;
+                );
             }
         }
     }
 }
-
+fn download_classifiers(classifiers: Option<&Value>) {
+    if classifiers.is_none() {
+        return;
+    }
+    let os = get_current_os();
+    let natives = classifiers.unwrap().get(format!("natives-{os}"));
+    match natives {
+        None => {}
+        Some(val) => {
+            let path = val["path"].as_str().unwrap();
+            let full_path = get_libraries_directory().unwrap().join(path);
+            let size = val["size"].as_u64().unwrap();
+            let url = val["url"].as_str().unwrap();
+            if !verify_file_existence(&full_path.to_str().unwrap().to_string(), size) {
+                download_file_async(url.to_string(), full_path.to_str().unwrap().to_string());
+            }
+        }
+    }
+}
+/// Fetches the rules of library which is optional
+fn fetch_rules(value: Option<&Value>) -> LibraryRules {
+    if value.is_none() || value.unwrap().is_null() {
+        return LibraryRules {
+            allowed_oses: vec![
+                "osx".to_string(),
+                "windows".to_string(),
+                "linux".to_string(),
+            ],
+            disallowed_oses: vec![],
+        };
+    }
+    let value = value.unwrap();
+    let rules = value.as_array().unwrap();
+    let mut allowed = vec![];
+    let mut disallowed = vec![];
+    for rule in rules {
+        let rule_action = rule["action"].as_str().unwrap();
+        let rule_os = &rule["os"]["name"];
+        if rule_action == "allow" {
+            if rule_os.is_null() {
+                allowed.push("osx".to_string());
+                allowed.push("windows".to_string());
+                allowed.push("linux".to_string());
+            } else {
+                allowed.push(rule_os.as_str().unwrap().to_string());
+            }
+        } else if rule_action == "disallow" {
+            if rule_os.is_null() {
+                disallowed.push("osx".to_string());
+                disallowed.push("windows".to_string());
+                disallowed.push("linux".to_string());
+            } else {
+                disallowed.push(rule_os.as_str().unwrap().to_string());
+            }
+        }
+    }
+    LibraryRules {
+        allowed_oses: allowed,
+        disallowed_oses: disallowed,
+    }
+}
+/// Basically download_file function without needing await.
+/// uses the block_on function that causes the program to stop until the download is finished.
+/// Use download_file_async_thread if you want program continue while downloading.
+fn download_file_async(url: String, dest: String) {
+    block_on(async {
+        download_file(url, dest).await;
+    })
+}
+fn download_file_async_thread(url: String, dest: String) {
+    spawn(async {
+        download_file(url, dest).await;
+    });
+}
 async fn download_file(url: String, dest: String) {
     let mut resp = reqwest::get(url).await.expect("Downloading file failed.");
-    let mut out = File::create(dest).expect("Unable to create file.");
+    let mut out =
+        File::create(&dest).expect(format!("Unable to create file. at {}", dest.as_str()).as_str());
     out.write_all(resp.chunk().await.unwrap().unwrap().as_ref())
         .expect("Writing file failed.");
 }
