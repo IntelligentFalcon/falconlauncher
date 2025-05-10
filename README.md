@@ -11,5 +11,5 @@
 * پشتیبانی صحیح از زبان فارسی ❌
 
 ### Credits
-Mmd4J
-MrRsd01
+* Mmd4J
+* MrRsd01
