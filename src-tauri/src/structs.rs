@@ -57,7 +57,6 @@ pub fn library_from_value(value: &Value) -> LibraryInfo {
         .expect("Parsing library_size failed")
         .as_u64()
         .expect("Parsing library_size failed");
-    println!("{library_name} was found");
     LibraryInfo {
         name: library_name.to_string(),
         size: library_size,

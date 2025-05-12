@@ -8,7 +8,8 @@ export default function FalconClient() {
     const [isDownloading, setIsDownloading] = useState(false);
     const [statusMessage, setStatusMessage] = useState('Ready to play');
     const [versions, setVersions] = useState([]);
-
+    const [selectedVersion, setSelectedVersion] = useState("");
+    const [username, setUsername] = useState("");
     useEffect(() => {
         invoke("get_versions")
             .then((v) => setVersions(v))
@@ -18,6 +19,11 @@ export default function FalconClient() {
     const handlePlay = () => {
         setIsDownloading(true);
         setStatusMessage('Launching game...');
+        invoke("play_button_handler", {
+            selected_version: selectedVersion,
+            username: username
+        }).catch((e) => console.error("Failed to launch game:", e));
+        console.info(selectedVersion);
 
         // Simulate download progress
         let progress = 0;
@@ -56,6 +62,9 @@ export default function FalconClient() {
                         type="text"
                         placeholder="Username/Email"
                         className="w-full mb-2 p-2 bg-gray-900 border border-indigo-500 rounded text-gray-200 focus:outline-none"
+                        onInput={event => {
+                            setUsername(event.target.value);
+                        }}
                     />
                     <input
                         type="password"
@@ -67,10 +76,11 @@ export default function FalconClient() {
                 {/* Version selection */}
                 <div className="px-6 pb-4">
                     <label className="block text-sm font-semibold mb-2">Game Version</label>
-                    <select className="w-full p-2 bg-gray-900 border border-gray-700 rounded text-gray-200">
-                        {versions.map((version) => (
-                            <option key={version}>{version}</option>
-                        ))}
+                    <select className="w-full p-2 bg-gray-900 border border-gray-700 rounded text-gray-200"
+                            onInput={event => {
+                                setSelectedVersion(event.target.value)
+                            }}>
+                        {versions.map((version) => (<option key={version}>{version}</option>))}
                     </select>
                 </div>
 
@@ -153,11 +163,9 @@ function HomeTab() {
 
         <div className="grid grid-cols-2 gap-6">
             {[{title: 'Performance', description: 'Optimized for speed and smooth gameplay'}, {
-                title: 'Mods',
-                description: 'Easy installation and management of mods'
+                title: 'Mods', description: 'Easy installation and management of mods'
             }, {title: 'Customization', description: 'Personalize your Minecraft experience'}, {
-                title: 'Security',
-                description: 'Safe and secure gaming environment'
+                title: 'Security', description: 'Safe and secure gaming environment'
             }].map((feature, index) => (<div key={index} className="bg-gray-800 p-6 rounded-lg">
                 <h3 className="text-xl font-bold text-indigo-400 mb-2">{feature.title}</h3>
                 <p className="text-gray-300">{feature.description}</p>
@@ -168,17 +176,11 @@ function HomeTab() {
 
 function ModsTab() {
     const mods = [{
-        name: 'Optifine',
-        description: 'Optimize performance and add features',
-        version: '1.20.4'
+        name: 'Optifine', description: 'Optimize performance and add features', version: '1.20.4'
     }, {name: 'JEI (Just Enough Items)', description: 'View all items and recipes', version: '1.20.4'}, {
-        name: 'Sodium',
-        description: 'Performance optimization',
-        version: '1.20.4'
+        name: 'Sodium', description: 'Performance optimization', version: '1.20.4'
     }, {name: 'Fabric API', description: 'Core API for Fabric mods', version: '1.20.4'}, {
-        name: 'Litematica',
-        description: 'Schematic mod for building',
-        version: '1.20.4'
+        name: 'Litematica', description: 'Schematic mod for building', version: '1.20.4'
     },];
 
     return (<div className="p-6">

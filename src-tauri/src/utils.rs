@@ -43,3 +43,14 @@ pub fn load_json_url(url: &String) -> Option<Value> {
     });
     json
 }
+
+pub fn vec_to_string(vec: Vec<String>, separator: String) -> String {
+    let mut builder = "".to_string();
+    for s in vec {
+        builder.push_str(&s);
+        builder.push_str(&separator);
+    }
+    builder.remove(builder.len() - 1);
+    builder
+}
+

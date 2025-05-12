@@ -3,9 +3,11 @@
 
 use crate::directory_manager::get_minecraft_directory;
 use crate::downloader::download_version;
+use crate::game_launcher::launch_game;
 
 mod directory_manager;
 mod downloader;
+mod game_launcher;
 mod structs;
 mod utils;
 fn main() {
@@ -20,4 +22,9 @@ fn test_download() {
 #[test]
 fn test_envs() {
     get_minecraft_directory().expect("Minecraft dir was not found");
+}
+
+#[test]
+fn test_launch() {
+    launch_game("1.8.9".to_string(), "TestPlayer");
 }

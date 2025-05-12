@@ -33,6 +33,12 @@ pub fn get_version_directory(version: &String) -> Option<PathBuf> {
         Some(buf) => Some(buf.join(version)),
     }
 }
+pub fn get_natives_folder(version: &String) -> Option<PathBuf> {
+    match get_version_directory(version) {
+        None => None,
+        Some(v) => Some(v.join("natives"))
+    }
+}
 pub fn get_assets_directory() -> Option<PathBuf> {
     let minecraft_dir = get_minecraft_directory();
     match minecraft_dir {
