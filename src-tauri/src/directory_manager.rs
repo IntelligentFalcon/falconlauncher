@@ -36,7 +36,7 @@ pub fn get_version_directory(version: &String) -> Option<PathBuf> {
 pub fn get_natives_folder(version: &String) -> Option<PathBuf> {
     match get_version_directory(version) {
         None => None,
-        Some(v) => Some(v.join("natives"))
+        Some(v) => Some(v.join("natives")),
     }
 }
 pub fn get_assets_directory() -> Option<PathBuf> {
@@ -44,5 +44,12 @@ pub fn get_assets_directory() -> Option<PathBuf> {
     match minecraft_dir {
         None => None,
         Some(buf) => Some(buf.join("assets")),
+    }
+}
+pub fn get_falcon_launcher_directory() -> Option<PathBuf> {
+    let minecraft_directory = get_minecraft_directory();
+    match minecraft_directory {
+        None => None,
+        Some(val) => Some(val.join("falconlauncher"))
     }
 }

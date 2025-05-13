@@ -9,12 +9,21 @@ use serde_json::Value;
 use std::fmt::format;
 use std::fs::File;
 use std::process::Command;
+use tauri::{AppHandle, Emitter};
 
 //TODO: minecraftArg key has changed in newer versions
 //TODO: Customization
-pub fn launch_game(version: String, username: &str) {
+pub async fn launch_game(app_handle: AppHandle, version: String, username: &str) {
     let uid = uuid::Uuid::new_v4();
-    download_version(version.clone());
+    app_handle
+        .emit("progress", "Downloading version...")
+        .unwrap();
+
+    download_version(version.clone(), &app_handle).await;
+
+    app_handle
+        .emit("progress", "Reading version metadata...")
+        .unwrap();
     let version_directory = get_version_directory(&version).unwrap();
     println!("Version: {}", version);
     let version_json_path = version_directory
@@ -57,6 +66,8 @@ pub fn launch_game(version: String, username: &str) {
         .to_str()
         .unwrap()
         .to_string();
+    app_handle.emit("progress", "Launching game...").unwrap();
+    app_handle.emit("progressBar", 100).unwrap();
 
     if json.get("minecraftArguments").is_none() {
         let typ = json.get("type").unwrap().as_str().unwrap();

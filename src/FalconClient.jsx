@@ -1,42 +1,47 @@
 import {useEffect, useState} from 'react';
 import {Settings, Package, Home, Newspaper, Play, X, Minus, ChevronRight} from 'lucide-react';
 import {invoke} from "@tauri-apps/api/core";
+import {listen} from '@tauri-apps/api/event';
+
 
 export default function FalconClient() {
     const [activeTab, setActiveTab] = useState('home');
     const [downloadProgress, setDownloadProgress] = useState(0);
     const [isDownloading, setIsDownloading] = useState(false);
-    const [statusMessage, setStatusMessage] = useState('Ready to play');
     const [versions, setVersions] = useState([]);
     const [selectedVersion, setSelectedVersion] = useState("");
     const [username, setUsername] = useState("");
+    const [statusMessage, setStatusMessage] = useState('Ready to play');
     useEffect(() => {
         invoke("get_versions")
             .then((v) => setVersions(v))
             .catch((e) => console.error("Failed to fetch versions:", e));
     }, []);
 
-    const handlePlay = () => {
+
+    const handlePlay = async () => {
+        if (selectedVersion === "") {
+            setSelectedVersion(versions.findLast());
+        }
+        const unlisten = await listen('progress', (event) => {
+            console.log('Progress:', event.payload);
+            setStatusMessage(event.payload);
+        });
+        const unlistenbar = await listen('progressBar', (event) => {
+            console.log('Progress:', event.payload);
+            setDownloadProgress(event.payload);
+        });
         setIsDownloading(true);
-        setStatusMessage('Launching game...');
+
         invoke("play_button_handler", {
-            selected_version: selectedVersion,
-            username: username
+            selectedVersion: selectedVersion, username: username
         }).catch((e) => console.error("Failed to launch game:", e));
-        console.info(selectedVersion);
-
         // Simulate download progress
-        let progress = 0;
-        const interval = setInterval(() => {
-            progress += 5;
-            setDownloadProgress(progress);
-
-            if (progress >= 100) {
-                clearInterval(interval);
-                setIsDownloading(false);
-                setStatusMessage('Game launched successfully!');
-            }
-        }, 100);
+        if (downloadProgress >= 100) {
+            setIsDownloading(false);
+        }
+        unlistenbar();
+        unlisten();
     };
 
     return (<div className="flex flex-col w-full h-screen bg-gray-900 text-gray-200 overflow-hidden">
@@ -114,9 +119,9 @@ export default function FalconClient() {
 
                 {/* Play button and status */}
                 <div className="p-6 border-t border-gray-700">
-                    <button
-                        className="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded flex items-center justify-center"
-                        onClick={handlePlay}
+                    <button disabled={isDownloading}
+                            className="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded flex items-center justify-center"
+                            onClick={handlePlay}
                     >
                         <Play size={18} className="mr-2"/>
                         PLAY

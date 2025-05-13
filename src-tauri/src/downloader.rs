@@ -12,42 +12,38 @@ use std::fs::{create_dir_all, exists, File};
 use std::io::Write;
 use std::path::PathBuf;
 use tauri::async_runtime::{block_on, spawn};
+use tauri::{AppHandle, Emitter};
 use zip_extract::extract;
-use OperatingSystem::MacOS;
 
 /// Returns the version_manifest.json file in a Value structure if the parse process was succeed.
-pub fn load_version_manifest() -> Option<Value> {
+pub async fn load_version_manifest() -> Option<Value> {
     let url = "https://launchermeta.mojang.com/mc/game/version_manifest.json";
-    let mut json = load_json_url(&url.to_string());
-    json
+    load_json_url(&url.to_string()).await
 }
 
-fn download_assets(value: &Value) {
+async fn download_assets(value: &Value) {
     let id = value["id"].as_str().unwrap();
     let url = value["url"].as_str().unwrap();
     let total_size = value["totalSize"].as_u64().unwrap();
     let size = value["size"].as_u64().unwrap();
     let mut json: Option<Value> = None;
-    block_on(async {
-        let asset_index_path = get_assets_directory()
-            .expect("Couldn't get minecraft directory")
-            .join("indexes")
-            .join(format!("{id}.json"))
-            .to_str()
-            .unwrap()
-            .to_string();
-        if !verify_file_existence(&asset_index_path, size) {
-            download_file(url.to_string(), asset_index_path).await;
-        }
-        let content = reqwest::get(url)
-            .await
-            .expect("Failed to download file.")
-            .text()
-            .await
-            .expect("Failed to read file.");
-        json =
-            Some(serde_json::from_str(content.as_str()).expect("JSON File isn't well formatted."));
-    });
+    let asset_index_path = get_assets_directory()
+        .expect("Couldn't get minecraft directory")
+        .join("indexes")
+        .join(format!("{id}.json"))
+        .to_str()
+        .unwrap()
+        .to_string();
+    if !verify_file_existence(&asset_index_path, size) {
+        download_file(url.to_string(), asset_index_path).await;
+    }
+    let content = reqwest::get(url)
+        .await
+        .expect("Failed to download file.")
+        .text()
+        .await
+        .expect("Failed to read file.");
+    json = Some(serde_json::from_str(content.as_str()).expect("JSON File isn't well formatted."));
     let url_template = "https://resources.download.minecraft.net/{id}/{hash}";
     match json {
         Some(val) => {
@@ -65,7 +61,7 @@ fn download_assets(value: &Value) {
                     .join(id.as_str())
                     .join(hash);
                 if !verify_file_existence(&path.to_str().unwrap().to_string(), size) {
-                    download_file_async(url, path.to_str().unwrap().to_string());
+                    download_file(url, path.to_str().unwrap().to_string()).await;
                 }
             }
         }
@@ -73,11 +69,10 @@ fn download_assets(value: &Value) {
     }
 }
 
-pub fn download_version(id: String) {
+pub async fn download_version(id: String, app_handle: &AppHandle) {
     println!("Downloading version {} process started.", id);
-    let manifest = load_version_manifest();
+    let manifest = load_version_manifest().await;
     println!("Loaded version manifest");
-
     match manifest {
         None => {}
         Some(val) => {
@@ -88,7 +83,8 @@ pub fn download_version(id: String) {
                 .find(|v| v["id"].as_str().unwrap() == id)
                 .expect("Couldn't find version in manifest.");
             let version_url = version["url"].as_str().unwrap();
-            download_file_async(
+
+            download_file(
                 version_url.to_string(),
                 get_version_directory(&id)
                     .unwrap()
@@ -96,18 +92,26 @@ pub fn download_version(id: String) {
                     .to_str()
                     .unwrap()
                     .to_string(),
-            );
-            let json = load_json_url(&version_url.to_string()).expect("Couldn't find the version");
-            download_assets(&json["assetIndex"]);
+            )
+            .await;
+            app_handle.emit("progressBar", 10).unwrap();
+
+            let json = load_json_url(&version_url.to_string())
+                .await
+                .expect("Couldn't find the version");
+            download_assets(&json["assetIndex"]).await;
+            app_handle.emit("progressBar", 50).unwrap();
             println!("Downloaded assets");
-            download_libraries(&json["libraries"], &id);
+            download_libraries(&json["libraries"], &id).await;
+            app_handle.emit("progressBar", 80).unwrap();
             println!("Downloaded libraries");
-            download_client(&json["downloads"]["client"], &id);
+            download_client(&json["downloads"]["client"], &id).await;
             println!("Downloaded client!");
+            app_handle.emit("progressBar", 90).unwrap();
         }
     }
 }
-fn download_client(value: &Value, version: &String) {
+async fn download_client(value: &Value, version: &String) {
     let size = value["size"].as_u64().unwrap();
     let url = value["url"].as_str().unwrap();
     let path = get_versions_directory()
@@ -115,18 +119,19 @@ fn download_client(value: &Value, version: &String) {
         .join(&version)
         .join(format!("{}.jar", version));
     if !verify_file_existence(&path.to_str().unwrap().to_string(), size) {
-        download_file_async(url.to_string(), path.to_str().unwrap().to_string());
+        download_file(url.to_string(), path.to_str().unwrap().to_string()).await;
     }
 }
 
-fn download_libraries(libraries: &Value, version: &String) {
+async fn download_libraries(libraries: &Value, version: &String) {
     let libraries_path = get_libraries_directory().expect("Getting library path failed");
     for library in libraries.as_array().unwrap() {
         if library.get("downloads").unwrap().get("artifact").is_none() {
             download_classifiers(
                 library.get("downloads").unwrap().get("classifiers"),
                 version,
-            );
+            )
+            .await;
             continue;
         }
         let library_info = library_from_value(library);
@@ -135,19 +140,21 @@ fn download_libraries(libraries: &Value, version: &String) {
         download_classifiers(
             library.get("downloads").unwrap().get("classifiers"),
             version,
-        );
+        )
+        .await;
         if rules.allowed_oses.contains(&os) && !rules.disallowed_oses.contains(&os) {
             let path = libraries_path.join(&library_info.path.as_str());
             if !verify_file_existence(&path.to_str().unwrap().to_string(), library_info.size) {
-                download_file_async(
+                download_file(
                     library_info.url.as_str().to_string(),
                     path.to_str().unwrap().to_string(),
-                );
+                )
+                .await;
             }
         }
     }
 }
-fn download_classifiers(classifiers: Option<&Value>, version: &String) {
+async fn download_classifiers(classifiers: Option<&Value>, version: &String) {
     if classifiers.is_none() {
         return;
     }
@@ -161,7 +168,7 @@ fn download_classifiers(classifiers: Option<&Value>, version: &String) {
             let size = val["size"].as_u64().unwrap();
             let url = val["url"].as_str().unwrap();
             if !verify_file_existence(&full_path.to_str().unwrap().to_string(), size) {
-                download_file_async(url.to_string(), full_path.to_str().unwrap().to_string());
+                download_file(url.to_string(), full_path.to_str().unwrap().to_string()).await;
             }
             let file = File::open(full_path.to_str().unwrap().to_string());
             let natives_path = get_natives_folder(version).unwrap();
@@ -223,7 +230,7 @@ fn download_file_async(url: String, dest: String) {
     })
 }
 fn download_file_async_thread(url: String, dest: String) {
-    spawn(async {
+    block_on(async {
         download_file(url, dest).await;
     });
 }

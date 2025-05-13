@@ -14,17 +14,8 @@ fn main() {
     falcon_lib::run()
 }
 
-#[test]
-fn test_download() {
-    download_version("1.8.9".parse().unwrap())
-}
 
 #[test]
 fn test_envs() {
     get_minecraft_directory().expect("Minecraft dir was not found");
-}
-
-#[test]
-fn test_launch() {
-    launch_game("1.8.9".to_string(), "TestPlayer");
 }
