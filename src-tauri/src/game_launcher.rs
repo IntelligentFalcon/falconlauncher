@@ -79,6 +79,7 @@ pub async fn launch_game(app_handle: AppHandle, version: String, username: &str)
             .as_array()
             .unwrap()
             .iter()
+            .filter(|v| v.is_string())
             .map(|v| {
                 v.as_str()
                     .unwrap()
