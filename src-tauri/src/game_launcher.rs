@@ -68,7 +68,6 @@ pub async fn launch_game(app_handle: AppHandle, version: String, username: &str)
         .to_string();
     app_handle.emit("progress", "Launching game...").unwrap();
     app_handle.emit("progressBar", 100).unwrap();
-
     if json.get("minecraftArguments").is_none() {
         let typ = json.get("type").unwrap().as_str().unwrap();
         let run_args = json
@@ -106,7 +105,9 @@ pub async fn launch_game(app_handle: AppHandle, version: String, username: &str)
             .arg("-cp")
             .arg(format!("{class_path};{libraries_str}"))
             .arg(main_class)
-            .args(run_args);
+            .args(run_args)
+            .spawn()
+            .unwrap();
     } else {
         let run_args = json
             .get("minecraftArguments")
