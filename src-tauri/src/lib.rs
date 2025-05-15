@@ -10,6 +10,7 @@ mod downloader;
 mod game_launcher;
 mod structs;
 mod utils;
+mod version_manager;
 
 #[command]
 async fn play_button_handler(app: AppHandle, selected_version: String, username: String) {

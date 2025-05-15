@@ -14,12 +14,7 @@ use std::path::PathBuf;
 use tauri::async_runtime::{block_on, spawn};
 use tauri::{AppHandle, Emitter};
 use zip_extract::extract;
-
-/// Returns the version_manifest.json file in a Value structure if the parse process was succeed.
-pub async fn load_version_manifest() -> Option<Value> {
-    let url = "https://launchermeta.mojang.com/mc/game/version_manifest.json";
-    load_json_url(&url.to_string()).await
-}
+use crate::version_manager::load_version_manifest;
 
 async fn download_assets(value: &Value) {
     let id = value["id"].as_str().unwrap();
