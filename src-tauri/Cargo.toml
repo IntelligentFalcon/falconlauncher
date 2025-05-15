@@ -26,3 +26,4 @@ reqwest = { version = "*", features = ["stream"] }
 sys-info = "*"
 zip-extract = "*"
 uuid = { version = "*", features = ["v4"] }
+tauri-plugin-prevent-default = "2.0"
