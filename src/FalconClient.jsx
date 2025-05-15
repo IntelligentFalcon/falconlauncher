@@ -51,7 +51,7 @@ export default function FalconClient() {
 
     const handlePlay = async () => {
         if (selectedVersion === "") {
-            setSelectedVersion(versions.findLast());
+            setSelectedVersion(versions[0]);
         }
         const unlisten = await listen('progress', (event) => {
             console.log('Progress:', event.payload);
