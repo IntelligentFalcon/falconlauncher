@@ -28,9 +28,9 @@ pub fn run() {
     create_dir_all(fl_path).unwrap();
 
     let prevent = tauri_plugin_prevent_default::Builder::new()
-  .shortcut(KeyboardShortcut::new("F12"))
-  .shortcut(KeyboardShortcut::with_modifiers("E", &[CtrlKey, ShiftKey]))
   .shortcut(KeyboardShortcut::with_modifiers("I", &[CtrlKey, ShiftKey]))
+  .shortcut(KeyboardShortcut::with_modifiers("E", &[CtrlKey, ShiftKey]))
+  .shortcut(KeyboardShortcut::new("F12"))
   .with_flags(Flags::all().difference(Flags::FIND | Flags::RELOAD))
   .build();
 
