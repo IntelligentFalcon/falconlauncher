@@ -2,6 +2,7 @@ import {useEffect, useState} from 'react';
 import {Settings, Package, Home, Newspaper, Play, X, Minus, ChevronRight} from 'lucide-react';
 import {invoke} from "@tauri-apps/api/core";
 import {listen} from '@tauri-apps/api/event';
+import { LogicalSize, getCurrentWindow, currentMonitor } from '@tauri-apps/api/window';
 
 
 export default function FalconClient() {
@@ -12,6 +13,35 @@ export default function FalconClient() {
     const [selectedVersion, setSelectedVersion] = useState("");
     const [username, setUsername] = useState("");
     const [statusMessage, setStatusMessage] = useState('Ready to play');
+
+        useEffect(() => {
+        async function lockWindow() {
+            const monitor = await currentMonitor();
+
+            // Something must be seriously wrong with the person using the app.
+            if (!monitor) {
+                console.log("What the actual fuck happened here?!");
+            }
+
+            // Calculate what size the window needs to be in order to keep the elements clean and 
+            // user-friendly according to the (poor ahh) user's aspect ratio
+            const independantMultiplier = 1.2;
+            const aspectRatio = monitor.size.width / monitor.size.height;
+            const width = (monitor.size.width / aspectRatio) * independantMultiplier;
+            const height = (monitor.size.height / aspectRatio) * independantMultiplier;
+
+            const cwin = await getCurrentWindow();
+            await cwin.setSize(new LogicalSize(width, height));
+            await cwin.center();
+            await cwin.setResizable(false);
+            await cwin.setMaximizable(false);
+            await cwin.setFocus();
+        }
+
+        // For some reason tauri wants everything to be async, needy ass fucker
+        lockWindow().catch(console.error);
+    }, []);
+
     useEffect(() => {
         invoke("get_versions")
             .then((v) => setVersions(v))
