@@ -1,22 +1,5 @@
 use serde_json::Value;
 
-pub struct LatestVersionDetail {
-    pub release: String,
-    pub snapshot: String,
-}
-
-pub struct VersionInfo {
-    pub id: String,
-    pub version_type: VersionType,
-    pub url: String,
-}
-
-pub enum VersionType {
-    Beta,
-    Alpha,
-    Release,
-    Snapshot,
-}
 
 pub struct AssetIndex {
     pub id: String,

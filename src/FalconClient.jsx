@@ -2,7 +2,7 @@ import {useEffect, useState} from 'react';
 import {Settings, Package, Home, Newspaper, Play, X, Minus, ChevronRight} from 'lucide-react';
 import {invoke} from "@tauri-apps/api/core";
 import {listen} from '@tauri-apps/api/event';
-import { LogicalSize, getCurrentWindow, currentMonitor } from '@tauri-apps/api/window';
+import {LogicalSize, getCurrentWindow, currentMonitor} from '@tauri-apps/api/window';
 
 
 export default function FalconClient() {
@@ -14,7 +14,7 @@ export default function FalconClient() {
     const [username, setUsername] = useState("");
     const [statusMessage, setStatusMessage] = useState('Ready to play');
 
-        useEffect(() => {
+    useEffect(() => {
         async function lockWindow() {
             const monitor = await currentMonitor();
 
@@ -78,7 +78,7 @@ export default function FalconClient() {
         {/* Header */}
         <div className="flex justify-between items-center px-6 py-3 bg-gray-800 border-b border-gray-700">
             <div className="flex items-center">
-                <h1 className="text-xl font-bold text-indigo-400">FalconClient</h1>
+                <h1 className="text-xl font-bold text-indigo-400">Falcon Launcher</h1>
                 <span className="ml-2 text-xs text-gray-400">v1.0.0</span>
             </div>
         </div>
@@ -192,8 +192,8 @@ function NavItem({icon, title, active, onClick}) {
 function HomeTab() {
     return (<div className="p-8">
         <div className="text-center mb-12">
-            <h1 className="text-4xl font-bold mb-2">Welcome to FalconClient</h1>
-            <p className="text-xl text-indigo-400">The ultimate Minecraft launcher</p>
+            <h1 className="text-4xl font-bold mb-2">Welcome to FalconLauncher</h1>
+            <p className="text-xl text-indigo-400">Open source and Free Minecraft Launcher :)</p>
         </div>
 
         <div className="grid grid-cols-2 gap-6">

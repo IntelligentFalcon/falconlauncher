@@ -1,4 +1,4 @@
-use crate::downloader::load_version_manifest;
+use crate::version_manager::load_version_manifest;
 use crate::structs;
 use serde_json::Value;
 use std::fs::File;

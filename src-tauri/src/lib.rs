@@ -1,4 +1,4 @@
-use crate::downloader::load_version_manifest;
+use version_manager::load_version_manifest;
 use crate::game_launcher::launch_game;
 use std::fs::{create_dir_all, exists};
 use tauri::{command, AppHandle, Manager};
