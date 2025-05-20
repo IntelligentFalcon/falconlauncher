@@ -11,7 +11,6 @@ use std::fs::File;
 use std::process::Command;
 use tauri::{AppHandle, Emitter};
 
-//TODO: minecraftArg key has changed in newer versions
 //TODO: Customization
 pub async fn launch_game(app_handle: AppHandle, version: String, username: &str) {
     let uid = uuid::Uuid::new_v4();

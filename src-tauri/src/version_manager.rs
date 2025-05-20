@@ -13,10 +13,10 @@ pub async fn download_version_manifest() -> Manifest {
 //     let url = "https://launchermeta.mojang.com/mc/game/version_manifest.json";
 //     let resp = reqwest::get(url).await;
 //     match resp {
-//         Ok(r) => {}
-//         Err(_) => {
+//         Ok(r) => {
 //
 //         }
+//         Err(_) => {}
 //     }
 // }
 

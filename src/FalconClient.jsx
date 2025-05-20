@@ -4,7 +4,7 @@ import {invoke} from "@tauri-apps/api/core";
 import {listen} from '@tauri-apps/api/event';
 import {LogicalSize, getCurrentWindow, currentMonitor} from '@tauri-apps/api/window';
 
-
+const [ramUsage, setRamUsage] = useState(2048);
 export default function FalconClient() {
     const [activeTab, setActiveTab] = useState('home');
     const [downloadProgress, setDownloadProgress] = useState(0);
@@ -23,7 +23,7 @@ export default function FalconClient() {
                 console.log("What the actual fuck happened here?!");
             }
 
-            // Calculate what size the window needs to be in order to keep the elements clean and 
+            // Calculate what size the window needs to be in order to keep the elements clean and
             // user-friendly according to the (poor ahh) user's aspect ratio
             const independantMultiplier = 1.2;
             const aspectRatio = monitor.size.width / monitor.size.height;
@@ -40,27 +40,41 @@ export default function FalconClient() {
 
         // For some reason tauri wants everything to be async, needy ass fucker
         lockWindow().catch(console.error);
+
     }, []);
 
     useEffect(() => {
         invoke("get_versions")
             .then((v) => setVersions(v))
             .catch((e) => console.error("Failed to fetch versions:", e));
+        invoke<number>("get_ram_usage")
+            .then
+            (ramUsage => setRamUsage(ramUsage)).catch("Not working fuck");
+
+
     }, []);
+    useEffect(() => {
+        async function registerEvents() {
+            const unlisten = await listen('progress', (event) => {
+                console.log('Progress:', event.payload);
+                setStatusMessage(event.payload);
+            });
 
+            const unlistenbar = await listen('progressBar', (event) => {
+                console.log('Progress:', event.payload);
+                if (event.payload >= 100) {
+                    setIsDownloading(false);
+                }
+                setDownloadProgress(event.payload);
+            });
+        }
 
+        registerEvents().catch("Failed to register events");
+    }, []);
     const handlePlay = async () => {
         if (selectedVersion === "") {
             setSelectedVersion(versions[0]);
         }
-        const unlisten = await listen('progress', (event) => {
-            console.log('Progress:', event.payload);
-            setStatusMessage(event.payload);
-        });
-        const unlistenbar = await listen('progressBar', (event) => {
-            console.log('Progress:', event.payload);
-            setDownloadProgress(event.payload);
-        });
         setIsDownloading(true);
 
         invoke("play_button_handler", {
@@ -69,9 +83,9 @@ export default function FalconClient() {
         // Simulate download progress
         if (downloadProgress >= 100) {
             setIsDownloading(false);
+            setDownloadProgress(0);
         }
-        unlistenbar();
-        unlisten();
+
     };
 
     return (<div className="flex flex-col w-full h-screen bg-gray-900 text-gray-200 overflow-hidden">
@@ -100,11 +114,6 @@ export default function FalconClient() {
                         onInput={event => {
                             setUsername(event.target.value);
                         }}
-                    />
-                    <input
-                        type="password"
-                        placeholder="Password"
-                        className="w-full p-2 bg-gray-900 border border-indigo-500 rounded text-gray-200 focus:outline-none"
                     />
                 </div>
 
@@ -170,7 +179,7 @@ export default function FalconClient() {
             <div className="flex-1 overflow-auto">
                 {activeTab === 'home' && <HomeTab/>}
                 {activeTab === 'mods' && <ModsTab/>}
-                {activeTab === 'settings' && <SettingsTab/>}
+                {activeTab === 'settings' && <SettingsTab ramUsage={ramUsage}/>}
                 {activeTab === 'news' && <NewsTab/>}
             </div>
         </div>
@@ -246,7 +255,8 @@ function ModsTab() {
     </div>);
 }
 
-function SettingsTab() {
+function SettingsTab(ramUsage) {
+
     return (<div className="p-6">
         <h2 className="text-2xl font-bold mb-6">Settings</h2>
 
@@ -257,7 +267,13 @@ function SettingsTab() {
                 <p className="text-sm text-gray-400 mb-4">Adjust how much RAM is allocated to Minecraft</p>
 
                 <div className="flex items-center">
-                    <input type="range" min="1" max="16" defaultValue="4" className="w-64"/>
+                    <input type="range" min="1" max="16" defaultValue={ramUsage} onInput={
+                        event => {
+                            invoke("save_ram_usage", {
+                                ramUsage: event.payload
+                            }).catch("Failed to save ram usage")
+                        }
+                    } className="w-64"/>
                     <span className="ml-4">4 GB</span>
                 </div>
             </div>

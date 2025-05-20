@@ -6,6 +6,7 @@ use crate::structs::OperatingSystem::{Linux, Windows};
 use crate::structs::{library_from_value, LibraryRules, OperatingSystem};
 use crate::utils;
 use crate::utils::{get_current_os, load_json_url, verify_file_existence};
+use crate::version_manager::load_version_manifest;
 use serde_json::{Map, Value};
 use std::fmt::format;
 use std::fs::{create_dir_all, exists, File};
@@ -14,7 +15,6 @@ use std::path::PathBuf;
 use tauri::async_runtime::{block_on, spawn};
 use tauri::{AppHandle, Emitter};
 use zip_extract::extract;
-use crate::version_manager::load_version_manifest;
 
 async fn download_assets(value: &Value) {
     let id = value["id"].as_str().unwrap();
@@ -154,7 +154,10 @@ async fn download_classifiers(classifiers: Option<&Value>, version: &String) {
         return;
     }
     let os = get_current_os();
-    let natives = classifiers.unwrap().get(format!("natives-{os}"));
+    let mut natives = classifiers.unwrap().get(format!("natives-{os}"));
+    if natives.is_none() && os == "windows" {
+        natives = classifiers.unwrap().get(format!("natives-{os}-64"));
+    }
     match natives {
         None => {}
         Some(val) => {

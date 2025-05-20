@@ -1,9 +1,10 @@
-use crate::version_manager::load_version_manifest;
 use crate::structs;
+use crate::version_manager::load_version_manifest;
 use serde_json::Value;
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use tauri::async_runtime::block_on;
+use tauri::command;
 use tauri::CursorIcon::Copy;
 
 pub fn get_current_os() -> String {
@@ -50,4 +51,3 @@ pub fn vec_to_string(vec: Vec<String>, separator: String) -> String {
     builder.remove(builder.len() - 1);
     builder
 }
-
