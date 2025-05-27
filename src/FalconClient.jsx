@@ -9,7 +9,14 @@ import {LogicalSize, getCurrentWindow, currentMonitor} from '@tauri-apps/api/win
  */
 lockWindow().catch(console.error);
 
-const [ramUsage, setRamUsage] = useState(2048);
+// Have to put these here because SettingsTab and the main function both need it
+var gRamUsage = 2048; // Default value
+var gRamUsagePrettified = "2.0 GB"; // Default value
+function setRamUsage(ramUsage) {
+    gRamUsage = ramUsage;
+    gRamUsagePrettified = (ramUsage / 1024).toFixed(1) + " GB";
+}
+
 export default function FalconClient() {
     const [activeTab, setActiveTab] = useState('home');
     const [downloadProgress, setDownloadProgress] = useState(0);
@@ -23,9 +30,12 @@ export default function FalconClient() {
         invoke("get_versions")
             .then((v) => setVersions(v))
             .catch((e) => console.error("Failed to fetch versions:", e));
-        invoke<number>("get_ram_usage")
-            .then
-            (ramUsage => setRamUsage(ramUsage)).catch("Not working fuck");
+
+        invoke("get_ram_usage")
+            .then(ramUsage => {
+                setRamUsage(ramUsage);
+            })
+            .catch("Not working fuck");
 
 
     }, []);
@@ -155,7 +165,7 @@ export default function FalconClient() {
             <div className="flex-1 overflow-auto">
                 {activeTab === 'home' && <HomeTab/>}
                 {activeTab === 'mods' && <ModsTab/>}
-                {activeTab === 'settings' && <SettingsTab ramUsage={ramUsage}/>}
+                {activeTab === 'settings' && <SettingsTab/>}
                 {activeTab === 'news' && <NewsTab/>}
             </div>
         </div>
@@ -231,7 +241,8 @@ function ModsTab() {
     </div>);
 }
 
-function SettingsTab(ramUsage) {
+
+function SettingsTab() {
 
     return (<div className="p-6">
         <h2 className="text-2xl font-bold mb-6">Settings</h2>
@@ -243,14 +254,26 @@ function SettingsTab(ramUsage) {
                 <p className="text-sm text-gray-400 mb-4">Adjust how much RAM is allocated to Minecraft</p>
 
                 <div className="flex items-center">
-                    <input type="range" min="1" max="16" defaultValue={ramUsage} onInput={
+                    <input type="range" min="1024" max="32768" defaultValue={gRamUsage} onInput={
                         event => {
-                            invoke("save_ram_usage", {
-                                ramUsage: event.payload
-                            }).catch("Failed to save ram usage")
+                            setRamUsage(event.target.valueAsNumber);
+
+                            /*
+                                WARNING: I'm commenting this because this is so shit.
+                                WARNING: For the love of god change this to not write in a file every single time that slider is changed
+                                This will destroy the user's CPU and is terrible for efficiency.
+                                NOTE: Remove this comment when fixed;
+                            */
+
+                            // invoke("save_ram_usage", {
+                            //     ramUsage: event.target.valueAsNumber
+                            // }).catch("Failed to save ram usage")
+
+                            
                         }
                     } className="w-64"/>
-                    <span className="ml-4">4 GB</span>
+                    {/* NOTE: Fix this not updating itself */}
+                    <data id="ram_usage_label" className="ml-4">{gRamUsagePrettified}</data>
                 </div>
             </div>
 
