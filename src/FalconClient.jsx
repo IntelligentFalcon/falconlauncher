@@ -5,6 +5,32 @@ import {listen} from '@tauri-apps/api/event';
 import {LogicalSize, getCurrentWindow, currentMonitor} from '@tauri-apps/api/window';
 
 /**
+ * Important function, do not touch!
+ */
+async function lockWindow() {
+    const monitor = await currentMonitor();
+
+    // Something must be seriously wrong with the person using the app.
+    if (!monitor) {
+        console.log("What the actual fuck happened here?!");
+    }
+
+    // Calculate what size the window needs to be in order to keep the elements clean and
+    // user-friendly according to the (poor ahh) user's aspect ratio
+    const independantMultiplier = 1.2;
+    const aspectRatio = monitor.size.width / monitor.size.height;
+    const width = (monitor.size.width / aspectRatio) * independantMultiplier;
+    const height = (monitor.size.height / aspectRatio) * independantMultiplier;
+
+    const cwin = await getCurrentWindow();
+    await cwin.setSize(new LogicalSize(width, height));
+    await cwin.center();
+    await cwin.setResizable(false);
+    await cwin.setMaximizable(false);
+    await cwin.setFocus();
+}
+
+/**
  * Important function! Do not move this lower, must be on top of everything else.
  */
 lockWindow().catch(console.error);
@@ -12,9 +38,13 @@ lockWindow().catch(console.error);
 // Have to put these here because SettingsTab and the main function both need it
 var gRamUsage = 2048; // Default value
 var gRamUsagePrettified = "2.0 GB"; // Default value
+
 function setRamUsage(ramUsage) {
     gRamUsage = ramUsage;
     gRamUsagePrettified = (ramUsage / 1024).toFixed(1) + " GB";
+    invoke("set_ram_usage", {ramUsage: ramUsage}).catch("").then();
+    const text = document.getElementById("ram_usage_label");
+    text.textContent = gRamUsagePrettified
 }
 
 export default function FalconClient() {
@@ -26,19 +56,21 @@ export default function FalconClient() {
     const [username, setUsername] = useState("");
     const [statusMessage, setStatusMessage] = useState('Ready to play');
 
-    useEffect(() => {
+    async function load_versions() {
         invoke("get_versions")
             .then((v) => setVersions(v))
             .catch((e) => console.error("Failed to fetch versions:", e));
+    }
 
-        invoke("get_ram_usage")
-            .then(ramUsage => {
-                setRamUsage(ramUsage);
-            })
-            .catch("Not working fuck");
+    if (versions.length === 0) load_versions().catch((e) => console.error("Not working!", e))
+
+    invoke("get_ram_usage")
+        .then(ramUsage => {
+            setRamUsage(ramUsage);
+        })
+        .catch("Not working fuck");
 
 
-    }, []);
     useEffect(() => {
         async function registerEvents() {
             const unlisten = await listen('progress', (event) => {
@@ -254,24 +286,19 @@ function SettingsTab() {
                 <p className="text-sm text-gray-400 mb-4">Adjust how much RAM is allocated to Minecraft</p>
 
                 <div className="flex items-center">
-                    <input type="range" min="1024" max="32768" defaultValue={gRamUsage} onInput={
-                        event => {
-                            setRamUsage(event.target.valueAsNumber);
+                    <input type="range" min="1024" max="32768" defaultValue={gRamUsage} onInput={event => {
+                        setRamUsage(event.target.valueAsNumber);
 
-                            /*
-                                WARNING: I'm commenting this because this is so shit.
-                                WARNING: For the love of god change this to not write in a file every single time that slider is changed
-                                This will destroy the user's CPU and is terrible for efficiency.
-                                NOTE: Remove this comment when fixed;
-                            */
+                        /*
+                            WARNING: I'm commenting this because this is so shit.
+                            WARNING: For the love of god change this to not write in a file every single time that slider is changed
+                            This will destroy the user's CPU and is terrible for efficiency.
+                            NOTE: Remove this comment when fixed;
+                        */
 
-                            // invoke("save_ram_usage", {
-                            //     ramUsage: event.target.valueAsNumber
-                            // }).catch("Failed to save ram usage")
 
-                            
-                        }
-                    } className="w-64"/>
+                    }} className="w-64"/>
+
                     {/* NOTE: Fix this not updating itself */}
                     <data id="ram_usage_label" className="ml-4">{gRamUsagePrettified}</data>
                 </div>
@@ -312,7 +339,10 @@ function SettingsTab() {
             </div>
 
             <div className="flex justify-end">
-                <button className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded">
+                <button className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded" onClick={
+                    invoke("set_ram_usage", {ramUsage: gRamUsage}).catch("Aw man you screwed it up")
+
+                }>
                     Save Settings
                 </button>
             </div>
@@ -348,28 +378,3 @@ function NewsTab() {
     </div>);
 }
 
-/**
- * Important function, do not touch!
- */
-async function lockWindow() {
-            const monitor = await currentMonitor();
-
-            // Something must be seriously wrong with the person using the app.
-            if (!monitor) {
-                console.log("What the actual fuck happened here?!");
-            }
-
-            // Calculate what size the window needs to be in order to keep the elements clean and
-            // user-friendly according to the (poor ahh) user's aspect ratio
-            const independantMultiplier = 1.2;
-            const aspectRatio = monitor.size.width / monitor.size.height;
-            const width = (monitor.size.width / aspectRatio) * independantMultiplier;
-            const height = (monitor.size.height / aspectRatio) * independantMultiplier;
-
-            const cwin = await getCurrentWindow();
-            await cwin.setSize(new LogicalSize(width, height));
-            await cwin.center();
-            await cwin.setResizable(false);
-            await cwin.setMaximizable(false);
-            await cwin.setFocus();
-        }
