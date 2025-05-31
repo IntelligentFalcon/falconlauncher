@@ -1,6 +1,6 @@
 use crate::directory_manager::get_falcon_launcher_directory;
 use std::fs;
-use std::fs::{create_dir_all, exists, read_to_string, File};
+use std::fs::{create_dir_all, exists, read_to_string, File, OpenOptions};
 use std::io::{BufWriter, Read, Write};
 use std::path::PathBuf;
 use tauri::utils::acl::Error::WriteFile;
@@ -11,7 +11,7 @@ pub struct Config {
     pub username: String,
     pub ram_usage: u64,
 }
-pub fn dump(config: Config) {
+pub fn dump(config: &Config) {
     let yaml = Yaml::from_str(
         format!(
             "
@@ -22,11 +22,20 @@ ram_usage: {}
         )
         .as_str(),
     );
-    let mut file = File::open(get_config_directory()).unwrap();
-    let mut out = "".to_string();
+    let mut file = OpenOptions::new()
+        .write(true)
+        .open(get_config_directory())
+        .unwrap();
+    let mut out = String::new();
     let mut dumper = YamlEmitter::new(&mut out);
     dumper.dump(&yaml).expect("Dumping failed!");
-    file.write(out.as_bytes()).expect("Writing on file failed.");
+    file.write(out.as_bytes()).expect(
+        format!(
+            "Writing on file failed. {}",
+            get_config_directory().to_string_lossy()
+        )
+        .as_str(),
+    );
 }
 fn get_yaml() -> Yaml {
     YamlLoader::load_from_str(
@@ -38,6 +47,7 @@ fn get_yaml() -> Yaml {
         .clone()
 }
 pub fn load() -> Config {
+    initialize_configuration_file();
     let yaml = get_yaml();
     let username = yaml["username"].as_str().unwrap().to_string();
     let ram_usage = yaml["ram_usage"].as_i64().unwrap() as u64;
@@ -54,7 +64,7 @@ username: \"Steve\"\
     "
     .to_string()
 }
-pub fn initialize_configuration_file() {
+fn initialize_configuration_file() {
     if !exists(get_config_directory()).unwrap() {
         create_dir_all(get_config_directory().parent().unwrap()).unwrap();
         let mut file = File::create(get_config_directory()).unwrap();
@@ -66,5 +76,3 @@ fn get_config_directory() -> PathBuf {
         .unwrap()
         .join("launcher-settings.yml")
 }
-
-

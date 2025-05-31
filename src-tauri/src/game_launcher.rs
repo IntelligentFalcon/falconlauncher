@@ -1,3 +1,4 @@
+use crate::config::Config;
 use crate::directory_manager::{
     get_assets_directory, get_libraries_directory, get_minecraft_directory, get_natives_folder,
     get_version_directory, get_versions_directory,
@@ -12,7 +13,7 @@ use std::process::Command;
 use tauri::{AppHandle, Emitter};
 
 //TODO: Customization
-pub async fn launch_game(app_handle: AppHandle, version: String, username: &str) {
+pub async fn launch_game(app_handle: AppHandle, version: String, username: &str, config: &Config) {
     let uid = uuid::Uuid::new_v4();
     app_handle
         .emit("progress", "Downloading version...")
@@ -67,6 +68,7 @@ pub async fn launch_game(app_handle: AppHandle, version: String, username: &str)
         .to_string();
     app_handle.emit("progress", "Launching game...").unwrap();
     app_handle.emit("progressBar", 100).unwrap();
+    let ram_usage = config.ram_usage.to_string() + "M";
     if json.get("minecraftArguments").is_none() {
         let typ = json.get("type").unwrap().as_str().unwrap();
         let run_args = json
@@ -99,8 +101,8 @@ pub async fn launch_game(app_handle: AppHandle, version: String, username: &str)
 
         Command::new("java")
             .arg(format!("-Djava.library.path={natives}"))
-            .arg("-Xmx4G")
-            .arg("-Xms2G")
+            .arg(format!("-Xmx{ram_usage}"))
+            .arg("-Xms1G")
             .arg("-cp")
             .arg(format!("{class_path};{libraries_str}"))
             .arg(main_class)
@@ -125,7 +127,7 @@ pub async fn launch_game(app_handle: AppHandle, version: String, username: &str)
             .replace("${user_type}", "legacy");
 
         let mut run = format!(
-            "java -Xms2048M -Xmx4096M -Djava.library.path={natives} -classpath {class_path};{libraries_str} {main_class} {run_args}"
+            "java -Xms2048M -Xmx{ram_usage} -Djava.library.path={natives} -classpath {class_path};{libraries_str} {main_class} {run_args}"
         );
         Command::new("cmd")
             .args(["/C", run.as_str()])

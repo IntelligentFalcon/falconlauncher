@@ -7,11 +7,13 @@ use crate::game_launcher::launch_game;
 use crate::version_manager::download_version_manifest;
 use tauri::async_runtime::block_on;
 
+mod config;
 mod directory_manager;
 mod downloader;
 mod game_launcher;
 mod structs;
 mod utils;
+
 mod version_manager;
 fn main() {
     falcon_lib::run()
@@ -29,5 +31,3 @@ fn test_manifest() {
         println!("{:?}", manifest)
     });
 }
-
-

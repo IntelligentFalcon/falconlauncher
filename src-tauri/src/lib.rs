@@ -1,12 +1,16 @@
-use crate::config::{dump, initialize_configuration_file, load};
+use crate::config::{dump, load, Config};
 use crate::game_launcher::launch_game;
 use std::fs::create_dir_all;
+use std::ops::Deref;
+use std::string::ToString;
+use std::sync::LazyLock;
+use tauri::async_runtime::Mutex;
+use tauri::menu::{Menu, MenuItem, Submenu};
 use tauri::{command, AppHandle, Manager};
 use tauri_plugin_prevent_default::Flags;
 use tauri_plugin_prevent_default::KeyboardShortcut;
 use tauri_plugin_prevent_default::ModifierKey::{CtrlKey, ShiftKey};
 
-// Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 mod config;
 mod directory_manager;
 mod downloader;
@@ -16,9 +20,22 @@ mod structs;
 mod utils;
 mod version_manager;
 
+static CONFIG: LazyLock<Mutex<Config>> = LazyLock::new(|| {
+    Mutex::new(Config {
+        username: "test".to_string(),
+        ram_usage: 1024,
+    })
+});
+
 #[command]
 async fn play_button_handler(app: AppHandle, selected_version: String, username: String) {
-    launch_game(app, selected_version, username.as_str()).await;
+    launch_game(
+        app,
+        selected_version,
+        username.as_str(),
+        &*CONFIG.lock().await,
+    )
+    .await;
 }
 #[command]
 async fn get_versions() -> Vec<String> {
@@ -28,7 +45,8 @@ async fn get_versions() -> Vec<String> {
 pub fn run() {
     let fl_path = directory_manager::get_falcon_launcher_directory().unwrap();
     create_dir_all(fl_path).unwrap();
-    initialize_configuration_file();
+    let config = load();
+
     let prevent = tauri_plugin_prevent_default::Builder::new()
         .shortcut(KeyboardShortcut::with_modifiers("I", &[CtrlKey, ShiftKey]))
         .shortcut(KeyboardShortcut::with_modifiers("E", &[CtrlKey, ShiftKey]))
@@ -43,10 +61,11 @@ pub fn run() {
             play_button_handler,
             get_versions,
             get_total_ram,
-            save_username,
-            save_ram_usage,
+            set_username,
+            set_ram_usage,
             get_username,
-            get_ram_usage
+            get_ram_usage,
+            save
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -57,24 +76,25 @@ async fn get_total_ram() -> u64 {
     ram.total
 }
 #[command]
-async fn save_username(username: String) {
-    let mut config = load();
-    config.username = username;
-    dump(config);
+async fn save() {
+    let cfg = CONFIG.lock().await;
+    dump(&cfg)
 }
 #[command]
-async fn save_ram_usage(ram_usage: u64) {
-    let mut config = load();
+async fn set_username(username: String) {
+    let mut config = CONFIG.lock().await;
+    config.username = username;
+}
+#[command]
+async fn set_ram_usage(ram_usage: u64) {
+    let mut config = CONFIG.lock().await;
     config.ram_usage = ram_usage;
-    dump(config);
 }
-#[tauri::command]
+#[command]
 async fn get_ram_usage() -> u64 {
-    let mut config = load();
-    config.ram_usage
+    CONFIG.lock().await.ram_usage
 }
-#[tauri::command]
+#[command]
 async fn get_username() -> String {
-    let mut config = load();
-    config.username
+    CONFIG.lock().await.username.clone()
 }
