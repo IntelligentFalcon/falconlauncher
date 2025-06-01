@@ -69,6 +69,8 @@ export default function FalconClient() {
             setRamUsage(ramUsage);
         })
         .catch("Not working fuck");
+    if (username === "")
+        invoke("get_username").then((v) => setUsername(v)).catch("Couldn't get the username");
 
 
     useEffect(() => {
@@ -94,9 +96,10 @@ export default function FalconClient() {
             setSelectedVersion(versions[0]);
         }
         setIsDownloading(true);
-
+        invoke("set_username", {userName: username}).catch("Guess what? i couldn't save your username");
+        invoke("save").catch("Saving configuration failed.");
         invoke("play_button_handler", {
-            selectedVersion: selectedVersion, username: username
+            selectedVersion: selectedVersion
         }).catch((e) => console.error("Failed to launch game:", e));
         // Simulate download progress
         if (downloadProgress >= 100) {
@@ -129,6 +132,9 @@ export default function FalconClient() {
                         type="text"
                         placeholder="Username/Email"
                         className="w-full mb-2 p-2 bg-gray-900 border border-indigo-500 rounded text-gray-200 focus:outline-none"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+
                         onInput={event => {
                             setUsername(event.target.value);
                         }}
@@ -304,7 +310,7 @@ function SettingsTab() {
                     }} className="w-64"/>
 
                     {/* NOTE: Fix this not updating itself */}
-                    <data id="ram_usage_label" className="ml-4">{gRamUsagePrettified}</data>
+                    <data id="ram_usage_label" className="ml-4" value={gRamUsagePrettified}>{gRamUsagePrettified}</data>
                 </div>
             </div>
 

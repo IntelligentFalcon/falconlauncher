@@ -13,12 +13,12 @@ use std::process::Command;
 use tauri::{AppHandle, Emitter};
 
 //TODO: Customization
-pub async fn launch_game(app_handle: AppHandle, version: String, username: &str, config: &Config) {
+pub async fn launch_game(app_handle: AppHandle, version: String, config: &Config) {
     let uid = uuid::Uuid::new_v4();
     app_handle
         .emit("progress", "Downloading version...")
         .unwrap();
-
+    let username = &config.username;
     download_version(version.clone(), &app_handle).await;
 
     app_handle

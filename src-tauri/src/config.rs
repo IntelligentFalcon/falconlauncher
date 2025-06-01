@@ -4,7 +4,7 @@ use std::fs::{create_dir_all, exists, read_to_string, File, OpenOptions};
 use std::io::{BufWriter, Read, Write};
 use std::path::PathBuf;
 use tauri::utils::acl::Error::WriteFile;
-use yaml_rust2::yaml::YamlDecoder;
+use yaml_rust2::yaml::{Hash, YamlDecoder};
 use yaml_rust2::{Yaml, YamlEmitter, YamlLoader};
 
 pub struct Config {
@@ -12,16 +12,14 @@ pub struct Config {
     pub ram_usage: u64,
 }
 pub fn dump(config: &Config) {
-    let yaml = Yaml::from_str(
-        format!(
-            "
-username: {}
-ram_usage: {}
-  ",
-            config.username, config.ram_usage
-        )
-        .as_str(),
+    let mut map = Hash::new();
+    map.insert(Yaml::from_str("username"), Yaml::from_str(&config.username));
+    map.insert(
+        Yaml::from_str("ram_usage"),
+        Yaml::Integer(config.ram_usage as i64),
     );
+
+    let yaml = Yaml::Hash(map);
     let mut file = OpenOptions::new()
         .write(true)
         .open(get_config_directory())

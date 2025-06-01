@@ -28,14 +28,8 @@ static CONFIG: LazyLock<Mutex<Config>> = LazyLock::new(|| {
 });
 
 #[command]
-async fn play_button_handler(app: AppHandle, selected_version: String, username: String) {
-    launch_game(
-        app,
-        selected_version,
-        username.as_str(),
-        &*CONFIG.lock().await,
-    )
-    .await;
+async fn play_button_handler(app: AppHandle, selected_version: String) {
+    launch_game(app, selected_version, &*CONFIG.lock().await).await;
 }
 #[command]
 async fn get_versions() -> Vec<String> {
