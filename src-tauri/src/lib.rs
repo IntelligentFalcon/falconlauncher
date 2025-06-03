@@ -1,10 +1,10 @@
-use crate::config::{dump, load, Config};
+use crate::config::{dump, load_config, Config};
 use crate::game_launcher::launch_game;
 use std::fs::create_dir_all;
 use std::ops::Deref;
 use std::string::ToString;
 use std::sync::LazyLock;
-use tauri::async_runtime::Mutex;
+use tauri::async_runtime::{block_on, Mutex};
 use tauri::menu::{Menu, MenuItem, Submenu};
 use tauri::{command, AppHandle, Manager};
 use tauri_plugin_prevent_default::Flags;
@@ -39,7 +39,9 @@ async fn get_versions() -> Vec<String> {
 pub fn run() {
     let fl_path = directory_manager::get_falcon_launcher_directory().unwrap();
     create_dir_all(fl_path).unwrap();
-    let config = load();
+    block_on(async move {
+        load_config(&mut *CONFIG.lock().await);
+    });
 
     let prevent = tauri_plugin_prevent_default::Builder::new()
         .shortcut(KeyboardShortcut::with_modifiers("I", &[CtrlKey, ShiftKey]))
@@ -72,7 +74,7 @@ async fn get_total_ram() -> u64 {
 #[command]
 async fn save() {
     let cfg = CONFIG.lock().await;
-    dump(&cfg)
+    dump(&cfg);
 }
 #[command]
 async fn set_username(username: String) {

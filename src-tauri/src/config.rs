@@ -1,76 +1,67 @@
 use crate::directory_manager::get_falcon_launcher_directory;
+use ini::Ini;
 use std::fs;
 use std::fs::{create_dir_all, exists, read_to_string, File, OpenOptions};
-use std::io::{BufWriter, Read, Write};
+use std::io::{BufReader, BufWriter, Read, Write};
 use std::path::PathBuf;
 use tauri::utils::acl::Error::WriteFile;
-use yaml_rust2::yaml::{Hash, YamlDecoder};
-use yaml_rust2::{Yaml, YamlEmitter, YamlLoader};
 
 pub struct Config {
     pub username: String,
     pub ram_usage: u64,
 }
 pub fn dump(config: &Config) {
-    let mut map = Hash::new();
-    map.insert(Yaml::from_str("username"), Yaml::from_str(&config.username));
-    map.insert(
-        Yaml::from_str("ram_usage"),
-        Yaml::Integer(config.ram_usage as i64),
-    );
-
-    let yaml = Yaml::Hash(map);
-    let mut file = OpenOptions::new()
-        .write(true)
-        .open(get_config_directory())
-        .unwrap();
-    let mut out = String::new();
-    let mut dumper = YamlEmitter::new(&mut out);
-    dumper.dump(&yaml).expect("Dumping failed!");
-    file.write(out.as_bytes()).expect(
-        format!(
-            "Writing on file failed. {}",
-            get_config_directory().to_string_lossy()
-        )
-        .as_str(),
-    );
+    let mut conf = Ini::new();
+    conf.with_section(Some("LaunchOptions"))
+        .set("ram_usage", &config.ram_usage.to_string())
+        .set("username", &config.username);
+    conf.write_to_file(get_config_directory()).unwrap()
 }
-fn get_yaml() -> Yaml {
-    YamlLoader::load_from_str(
-        read_to_string(get_config_directory().as_path())
-            .unwrap()
-            .as_str(),
-    )
-    .unwrap()[0]
-        .clone()
+fn get_ini() -> Ini {
+    let file = File::open(get_config_directory()).unwrap();
+    Ini::read_from(&mut BufReader::new(file)).expect("Reading failed!")
 }
-pub fn load() -> Config {
+pub fn load_config(config: &mut Config) {
+    let conf = load();
+    config.username = conf.username;
+    config.ram_usage = conf.ram_usage;
+}
+fn load() -> Config {
     initialize_configuration_file();
-    let yaml = get_yaml();
-    let username = yaml["username"].as_str().unwrap().to_string();
-    let ram_usage = yaml["ram_usage"].as_i64().unwrap() as u64;
+    let mut conf = get_ini();
+    let username = conf
+        .with_section(Some("LaunchOptions"))
+        .get("username")
+        .expect("Could not find username")
+        .to_string();
+    let ram_usage = conf
+        .with_section(Some("LaunchOptions"))
+        .get("ram_usage")
+        .expect("Could not find ram usage")
+        .parse::<u64>()
+        .unwrap();
     Config {
         username,
         ram_usage,
     }
 }
-fn default_config() -> String {
-    "
-ram_usage: 2048
-username: \"Steve\"\
-
-    "
-    .to_string()
+fn default_config() -> Ini {
+    let mut conf = Ini::new();
+    conf.with_section(Some("LaunchOptions"))
+        .set("ram_usage", "2048")
+        .set("username", "Steve");
+    conf
 }
 fn initialize_configuration_file() {
     if !exists(get_config_directory()).unwrap() {
         create_dir_all(get_config_directory().parent().unwrap()).unwrap();
-        let mut file = File::create(get_config_directory()).unwrap();
-        file.write(default_config().as_bytes()).unwrap();
+        default_config()
+            .write_to_file(get_config_directory())
+            .expect("Writing ini file failed");
     }
 }
 fn get_config_directory() -> PathBuf {
     get_falcon_launcher_directory()
         .unwrap()
-        .join("launcher-settings.yml")
+        .join("launcher-settings.ini")
 }

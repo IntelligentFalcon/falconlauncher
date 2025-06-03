@@ -38,13 +38,16 @@ lockWindow().catch(console.error);
 // Have to put these here because SettingsTab and the main function both need it
 var gRamUsage = 2048; // Default value
 var gRamUsagePrettified = "2.0 GB"; // Default value
+var gIsFirstTime = true;
 
 function setRamUsage(ramUsage) {
     gRamUsage = ramUsage;
     gRamUsagePrettified = (ramUsage / 1024).toFixed(1) + " GB";
     invoke("set_ram_usage", {ramUsage: ramUsage}).catch("").then();
+
     const text = document.getElementById("ram_usage_label");
-    text.textContent = gRamUsagePrettified
+    if (text != null)
+        text.textContent = gRamUsagePrettified
 }
 
 export default function FalconClient() {
@@ -69,9 +72,7 @@ export default function FalconClient() {
             setRamUsage(ramUsage);
         })
         .catch("Not working fuck");
-    if (username === "")
-        invoke("get_username").then((v) => setUsername(v)).catch("Couldn't get the username");
-
+    invoke("get_username").then((v) => setUsername(v)).catch("Couldn't get the username");
 
     useEffect(() => {
         async function registerEvents() {
@@ -96,7 +97,7 @@ export default function FalconClient() {
             setSelectedVersion(versions[0]);
         }
         setIsDownloading(true);
-        invoke("set_username", {userName: username}).catch("Guess what? i couldn't save your username");
+        invoke("set_username", {username: username}).catch("Guess what? i couldn't save your username");
         invoke("save").catch("Saving configuration failed.");
         invoke("play_button_handler", {
             selectedVersion: selectedVersion
@@ -132,12 +133,14 @@ export default function FalconClient() {
                         type="text"
                         placeholder="Username/Email"
                         className="w-full mb-2 p-2 bg-gray-900 border border-indigo-500 rounded text-gray-200 focus:outline-none"
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
+                        defaultValue={username}
 
                         onInput={event => {
                             setUsername(event.target.value);
+                            invoke("set_username", {username: event.target.value}).catch("Guess what? i couldn't save your username");
+
                         }}
+
                     />
                 </div>
 
