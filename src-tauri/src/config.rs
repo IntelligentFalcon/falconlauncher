@@ -1,14 +1,13 @@
 use crate::directory_manager::get_falcon_launcher_directory;
 use ini::Ini;
-use std::fs;
-use std::fs::{create_dir_all, exists, read_to_string, File, OpenOptions};
-use std::io::{BufReader, BufWriter, Read, Write};
+use std::fs::{create_dir_all, exists, File};
+use std::io::{BufReader, Read};
 use std::path::PathBuf;
-use tauri::utils::acl::Error::WriteFile;
 
 pub struct Config {
     pub username: String,
     pub ram_usage: u64,
+    pub java_path: String,
 }
 pub fn dump(config: &Config) {
     let mut conf = Ini::new();
@@ -43,6 +42,7 @@ fn load() -> Config {
     Config {
         username,
         ram_usage,
+        java_path: "java".to_string(),
     }
 }
 fn default_config() -> Ini {

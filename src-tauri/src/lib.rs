@@ -22,8 +22,9 @@ mod version_manager;
 
 static CONFIG: LazyLock<Mutex<Config>> = LazyLock::new(|| {
     Mutex::new(Config {
-        username: "test".to_string(),
+        username: "Steve".to_string(),
         ram_usage: 1024,
+        java_path: "java".to_string(),
     })
 });
 

@@ -1,18 +1,18 @@
 use crate::config::Config;
 use crate::directory_manager::{
     get_assets_directory, get_libraries_directory, get_minecraft_directory, get_natives_folder,
-    get_version_directory, get_versions_directory,
+    get_version_directory,
 };
 use crate::downloader::download_version;
 use crate::structs::library_from_value;
-use crate::utils::{get_current_os, vec_to_string, verify_file_existence};
+use crate::utils::{get_current_os, vec_to_string};
 use serde_json::Value;
-use std::fmt::format;
 use std::fs::File;
+use std::os::windows::process::CommandExt;
 use std::process::Command;
 use tauri::{AppHandle, Emitter};
+const CREATE_NO_WINDOW: u32 = 0x08000000;
 
-//TODO: Customization
 pub async fn launch_game(app_handle: AppHandle, version: String, config: &Config) {
     let uid = uuid::Uuid::new_v4();
     app_handle
@@ -52,7 +52,6 @@ pub async fn launch_game(app_handle: AppHandle, version: String, config: &Config
         .as_str()
         .unwrap()
         .to_string();
-    // TODO: From some versions the argument key is changed to something else and launcher must be compatible with all newest versisons as well
     let main_class = json.get("mainClass").unwrap().as_str().unwrap();
     let class_path = version_directory
         .join(format!("{version}.jar"))
@@ -107,6 +106,7 @@ pub async fn launch_game(app_handle: AppHandle, version: String, config: &Config
             .arg(format!("{class_path};{libraries_str}"))
             .arg(main_class)
             .args(run_args)
+            .creation_flags(CREATE_NO_WINDOW)
             .spawn()
             .unwrap();
     } else {
@@ -131,9 +131,11 @@ pub async fn launch_game(app_handle: AppHandle, version: String, config: &Config
         );
         Command::new("cmd")
             .args(["/C", run.as_str()])
+            .creation_flags(CREATE_NO_WINDOW)
             .spawn()
             .expect("Couldn't launch the game!");
     }
+    app_handle.emit("progress", "").unwrap();
 }
 
 fn get_library_paths(value: &Value) -> Vec<String> {
