@@ -74,24 +74,22 @@ export default function FalconClient() {
         .catch("Not working fuck");
     invoke("get_username").then((v) => setUsername(v)).catch("Couldn't get the username");
 
-    useEffect(() => {
-        async function registerEvents() {
-            const unlisten = await listen('progress', (event) => {
-                console.log('Progress:', event.payload);
-                setStatusMessage(event.payload);
-            });
+    async function registerEvents() {
+        const unlisten = await listen('progress', (event) => {
+            console.log('Progress:', event.payload);
+            setStatusMessage(event.payload);
+        });
 
-            const unlistenbar = await listen('progressBar', (event) => {
-                console.log('Progress:', event.payload);
-                if (event.payload >= 100) {
-                    setIsDownloading(false);
-                }
-                setDownloadProgress(event.payload);
-            });
-        }
+        const unlistenbar = await listen('progressBar', (event) => {
+            console.log('Progress:', event.payload);
+            if (event.payload >= 100) {
+                setIsDownloading(false);
+            }
+            setDownloadProgress(event.payload);
+        });
+    }
 
-        registerEvents().catch("Failed to register events");
-    }, []);
+    registerEvents().catch("Failed to register events");
     const handlePlay = async () => {
         if (selectedVersion === "") {
             setSelectedVersion(versions[0]);

@@ -1,8 +1,5 @@
 use crate::config::Config;
-use crate::directory_manager::{
-    get_assets_directory, get_libraries_directory, get_minecraft_directory, get_natives_folder,
-    get_version_directory,
-};
+use crate::directory_manager::*;
 use crate::downloader::download_version;
 use crate::jdk_manager::get_java;
 use crate::structs::library_from_value;
@@ -17,15 +14,11 @@ const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 pub async fn launch_game(app_handle: AppHandle, version: String, config: &Config) {
     let uid = uuid::Uuid::new_v4();
-    app_handle
-        .emit("progress", "Downloading version...")
-        .unwrap();
+    update_download_status("Downloading version...", &app_handle);
     let username = &config.username;
     download_version(version.clone(), &app_handle).await;
 
-    app_handle
-        .emit("progress", "Reading version metadata...")
-        .unwrap();
+    update_download_status("Reading version metadata...", &app_handle);
     let version_directory = get_version_directory(&version).unwrap();
     println!("Version: {}", version);
     let version_json_path = version_directory
@@ -36,129 +29,100 @@ pub async fn launch_game(app_handle: AppHandle, version: String, config: &Config
     println!("Version directory path: {}", version_json_path);
     let file_json = File::open(version_json_path).unwrap();
     let json: Value = serde_json::from_reader(&file_json).unwrap();
-    let java_version = json
-        .get("javaVersion")
-        .unwrap()
-        .get("majorVersion")
-        .unwrap()
+
+    let java_version = json["javaVersion"]["majorVersion"]
         .as_i64()
         .unwrap()
         .to_string();
 
-    let game_directory = get_minecraft_directory()
-        .unwrap()
-        .to_str()
-        .unwrap()
-        .to_string();
-    let asset_directory = get_assets_directory()
-        .unwrap()
-        .to_str()
-        .unwrap()
-        .to_string();
-    let asset_index = json
-        .get("assetIndex")
-        .unwrap()
-        .get("id")
-        .unwrap()
-        .as_str()
-        .unwrap()
-        .to_string();
-    let main_class = json.get("mainClass").unwrap().as_str().unwrap();
+    let game_directory = get_minecraft_directory().unwrap().display().to_string();
+    let asset_directory = get_assets_directory().unwrap().display().to_string();
+
+    let asset_index = json["assetIndex"]["id"].as_str().unwrap().to_string();
+    let main_class = json["mainClass"].as_str().unwrap();
     let class_path = version_directory
         .join(format!("{version}.jar"))
         .to_str()
         .unwrap()
         .to_string();
-    let libraries = get_library_paths(json.get("libraries").unwrap());
+    let libraries = get_library_paths(&json["libraries"]);
     let libraries_str = vec_to_string(libraries, ";".to_string());
     let natives = get_natives_folder(&version)
         .unwrap()
         .to_str()
         .unwrap()
         .to_string();
-    app_handle.emit("progress", "Launching game...").unwrap();
-    app_handle.emit("progressBar", 100).unwrap();
+    update_download(100, "Launching game...", &app_handle);
+
     let ram_usage = config.ram_usage.to_string() + "M";
     let java = get_java(java_version.to_string())
         .await
         .display()
         .to_string();
-
-    if json.get("minecraftArguments").is_none() {
-        let typ = json.get("type").unwrap().as_str().unwrap();
-        let run_args = json
-            .get("arguments")
-            .unwrap()
-            .get("game")
-            .unwrap()
+    let typ = json["type"].as_str().unwrap();
+    let run_args_iter = if json.get("minecraftArguments").is_none() {
+        json["arguments"]["game"]
             .as_array()
             .unwrap()
             .iter()
             .filter(|v| v.is_string())
-            .map(|v| {
-                v.as_str()
-                    .unwrap()
-                    .to_string()
-                    .replace("${auth_player_name}", username)
-                    .replace("${version_name}", &version.to_string())
-                    .replace("${game_directory}", &game_directory)
-                    .replace("${assets_root}", &asset_directory)
-                    .replace("${assets_index_name}", &asset_index)
-                    .replace("${auth_uuid}", &uid.to_string())
-                    .replace("${auth_access_token}", "0")
-                    .replace("${user_properties}", "{}")
-                    .replace("${user_type}", "legacy")
-                    .replace("${version_type}", typ)
-                    .replace("${clientid}", &uuid::Uuid::new_v4().to_string())
-                    .replace("${auth_xuid}", "0")
-            })
-            .collect::<Vec<String>>();
-        Command::new(format!("{}", java))
-            .arg(format!("-Djava.library.path={natives}"))
-            .arg(format!("-Xmx{ram_usage}"))
-            .arg("-Xms1G")
-            .arg("-cp")
-            .arg(format!("{class_path};{libraries_str}"))
-            .arg(main_class)
-            .args(run_args)
-            .creation_flags(CREATE_NO_WINDOW)
-            .spawn()
-            .unwrap();
+            .map(|v| v.as_str().unwrap().to_string())
+            .collect::<Vec<String>>()
     } else {
-        let run_args = json
-            .get("minecraftArguments")
-            .unwrap()
+        json["minecraftArguments"]
             .as_str()
             .unwrap()
-            .to_string()
-            .replace("${auth_player_name}", username)
-            .replace("${version_name}", &version.to_string())
-            .replace("${game_directory}", &game_directory)
-            .replace("${assets_root}", &asset_directory)
-            .replace("${assets_index_name}", &asset_index)
-            .replace("${auth_uuid}", &uid.to_string())
-            .replace("${auth_access_token}", "0")
-            .replace("${user_properties}", "{}")
-            .replace("${user_type}", "legacy");
+            .split(" ")
+            .map(|v| v.to_string())
+            .collect::<Vec<String>>()
+    };
+    let run_args = run_args_iter
+        .iter()
+        .map(|v| {
+            v.replace("${auth_player_name}", username)
+                .replace("${version_name}", &version.to_string())
+                .replace("${game_directory}", &game_directory)
+                .replace("${assets_root}", &asset_directory)
+                .replace("${assets_index_name}", &asset_index)
+                .replace("${auth_uuid}", &uid.to_string())
+                .replace("${auth_access_token}", "0")
+                .replace("${user_properties}", "{}")
+                .replace("${user_type}", "legacy")
+                .replace("${version_type}", typ)
+                .replace("${clientid}", &uuid::Uuid::new_v4().to_string())
+                .replace("${auth_xuid}", "0")
+        })
+        .collect::<Vec<String>>();
 
-        let mut run = format!(
-            "{java} -Xms2048M -Xmx{ram_usage} -Djava.library.path={natives} -classpath {class_path};{libraries_str} {main_class} {run_args}"
-        );
-        Command::new("cmd")
-            .args(["/C", run.as_str()])
-            .creation_flags(CREATE_NO_WINDOW)
-            .spawn()
-            .expect("Couldn't launch the game!");
-    }
-    app_handle.emit("progress", "").unwrap();
+    Command::new(format!("{}", java))
+        .arg(format!("-Djava.library.path={natives}"))
+        .arg(format!("-Xmx{ram_usage}"))
+        .arg("-Xms2048M")
+        .arg("-cp")
+        .arg(format!("{class_path};{libraries_str}"))
+        .arg(main_class)
+        .args(run_args)
+        .creation_flags(CREATE_NO_WINDOW)
+        .spawn()
+        .unwrap();
+    update_download_status("", &app_handle);
 }
-
+fn update_download_bar(progress: i64, app_handle: &AppHandle) {
+    app_handle.emit("progressBar", progress).unwrap();
+}
+fn update_download_status(text: &str, app_handle: &AppHandle) {
+    app_handle.emit("progress", text).unwrap();
+}
+fn update_download(progress: i64, text: &str, app_handle: &AppHandle) {
+    app_handle.emit("progress", text).unwrap();
+    app_handle.emit("progressBar", progress).unwrap();
+}
 fn get_library_paths(value: &Value) -> Vec<String> {
     let libraries_path = get_libraries_directory().unwrap();
     let mut libraries = vec![];
     for library in value.as_array().unwrap() {
-        if library.get("downloads").unwrap().get("artifact").is_none() {
-            let classifiers = library.get("downloads").unwrap().get("classifiers");
+        if library["downloads"].get("artifact").is_none() {
+            let classifiers = &library["downloads"]["classifiers"];
             let os = get_current_os();
             match classifiers {
                 None => {}
