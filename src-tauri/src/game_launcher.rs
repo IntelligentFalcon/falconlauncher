@@ -4,6 +4,7 @@ use crate::directory_manager::{
     get_version_directory,
 };
 use crate::downloader::download_version;
+use crate::jdk_manager::get_java;
 use crate::structs::library_from_value;
 use crate::utils::{get_current_os, vec_to_string};
 use serde_json::Value;
@@ -11,6 +12,7 @@ use std::fs::File;
 use std::os::windows::process::CommandExt;
 use std::process::Command;
 use tauri::{AppHandle, Emitter};
+
 const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 pub async fn launch_game(app_handle: AppHandle, version: String, config: &Config) {
@@ -34,6 +36,15 @@ pub async fn launch_game(app_handle: AppHandle, version: String, config: &Config
     println!("Version directory path: {}", version_json_path);
     let file_json = File::open(version_json_path).unwrap();
     let json: Value = serde_json::from_reader(&file_json).unwrap();
+    let java_version = json
+        .get("javaVersion")
+        .unwrap()
+        .get("majorVersion")
+        .unwrap()
+        .as_i64()
+        .unwrap()
+        .to_string();
+
     let game_directory = get_minecraft_directory()
         .unwrap()
         .to_str()
@@ -68,6 +79,11 @@ pub async fn launch_game(app_handle: AppHandle, version: String, config: &Config
     app_handle.emit("progress", "Launching game...").unwrap();
     app_handle.emit("progressBar", 100).unwrap();
     let ram_usage = config.ram_usage.to_string() + "M";
+    let java = get_java(java_version.to_string())
+        .await
+        .display()
+        .to_string();
+
     if json.get("minecraftArguments").is_none() {
         let typ = json.get("type").unwrap().as_str().unwrap();
         let run_args = json
@@ -97,8 +113,7 @@ pub async fn launch_game(app_handle: AppHandle, version: String, config: &Config
                     .replace("${auth_xuid}", "0")
             })
             .collect::<Vec<String>>();
-
-        Command::new("java")
+        Command::new(format!("{}", java))
             .arg(format!("-Djava.library.path={natives}"))
             .arg(format!("-Xmx{ram_usage}"))
             .arg("-Xms1G")
@@ -127,7 +142,7 @@ pub async fn launch_game(app_handle: AppHandle, version: String, config: &Config
             .replace("${user_type}", "legacy");
 
         let mut run = format!(
-            "java -Xms2048M -Xmx{ram_usage} -Djava.library.path={natives} -classpath {class_path};{libraries_str} {main_class} {run_args}"
+            "{java} -Xms2048M -Xmx{ram_usage} -Djava.library.path={natives} -classpath {class_path};{libraries_str} {main_class} {run_args}"
         );
         Command::new("cmd")
             .args(["/C", run.as_str()])

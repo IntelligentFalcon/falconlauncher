@@ -50,6 +50,13 @@ pub fn get_falcon_launcher_directory() -> Option<PathBuf> {
     let minecraft_directory = get_minecraft_directory();
     match minecraft_directory {
         None => None,
-        Some(val) => Some(val.join("falconlauncher"))
+        Some(val) => Some(val.join("falconlauncher")),
+    }
+}
+
+pub fn get_launcher_java_directory() -> Option<PathBuf> {
+    match get_falcon_launcher_directory() {
+        None => None,
+        Some(val) => Some(val.join("java")),
     }
 }
