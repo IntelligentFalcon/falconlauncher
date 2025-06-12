@@ -12,9 +12,7 @@ pub fn get_current_os() -> String {
 
 pub async fn load_versions() -> Vec<String> {
     let json = load_version_manifest().await;
-    let manifest = get_versions_directory()
-        .unwrap()
-        .join("version_manifest_v2.json");
+    let manifest = get_versions_directory().join("version_manifest_v2.json");
     if is_connected_to_internet().await && manifest.exists() {
         let mut f = File::open(manifest.as_path()).unwrap();
         let mut text = String::new();
@@ -24,7 +22,7 @@ pub async fn load_versions() -> Vec<String> {
         let res = versions
             .iter()
             .filter(|ver| ver.get("type").unwrap() == "release")
-            .map(|ver| ver.get("id").unwrap().as_str().unwrap().to_string())
+            .map(|ver| ver. get("id").unwrap().as_str().unwrap().to_string())
             .collect::<Vec<String>>();
         return res;
     }

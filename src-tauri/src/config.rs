@@ -62,6 +62,5 @@ fn initialize_configuration_file() {
 }
 fn get_config_directory() -> PathBuf {
     get_falcon_launcher_directory()
-        .unwrap()
         .join("launcher-settings.ini")
 }

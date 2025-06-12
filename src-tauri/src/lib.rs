@@ -38,8 +38,8 @@ async fn get_versions() -> Vec<String> {
 }
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let fl_path = directory_manager::get_falcon_launcher_directory().unwrap();
-    let jdk_path = directory_manager::get_launcher_java_directory().unwrap();
+    let fl_path = directory_manager::get_falcon_launcher_directory();
+    let jdk_path = directory_manager::get_launcher_java_directory();
     create_dir_all(fl_path).unwrap();
     create_dir_all(jdk_path).unwrap();
     block_on(async move {

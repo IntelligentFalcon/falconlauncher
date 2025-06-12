@@ -19,7 +19,7 @@ pub async fn launch_game(app_handle: AppHandle, version: String, config: &Config
     download_version(version.clone(), &app_handle).await;
 
     update_download_status("Reading version metadata...", &app_handle);
-    let version_directory = get_version_directory(&version).unwrap();
+    let version_directory = get_version_directory(&version);
     println!("Version: {}", version);
     let version_json_path = version_directory
         .join(format!("{version}.json"))
@@ -35,8 +35,8 @@ pub async fn launch_game(app_handle: AppHandle, version: String, config: &Config
         .unwrap()
         .to_string();
 
-    let game_directory = get_minecraft_directory().unwrap().display().to_string();
-    let asset_directory = get_assets_directory().unwrap().display().to_string();
+    let game_directory = get_minecraft_directory().display().to_string();
+    let asset_directory = get_assets_directory().display().to_string();
 
     let asset_index = json["assetIndex"]["id"].as_str().unwrap().to_string();
     let main_class = json["mainClass"].as_str().unwrap();
@@ -47,11 +47,7 @@ pub async fn launch_game(app_handle: AppHandle, version: String, config: &Config
         .to_string();
     let libraries = get_library_paths(&json["libraries"]);
     let libraries_str = vec_to_string(libraries, ";".to_string());
-    let natives = get_natives_folder(&version)
-        .unwrap()
-        .to_str()
-        .unwrap()
-        .to_string();
+    let natives = get_natives_folder(&version).to_str().unwrap().to_string();
     update_download(100, "Launching game...", &app_handle);
 
     let ram_usage = config.ram_usage.to_string() + "M";
@@ -107,22 +103,22 @@ pub async fn launch_game(app_handle: AppHandle, version: String, config: &Config
         .unwrap();
     update_download_status("", &app_handle);
 }
-fn update_download_bar(progress: i64, app_handle: &AppHandle) {
+pub fn update_download_bar(progress: i64, app_handle: &AppHandle) {
     app_handle.emit("progressBar", progress).unwrap();
 }
-fn update_download_status(text: &str, app_handle: &AppHandle) {
+pub fn update_download_status(text: &str, app_handle: &AppHandle) {
     app_handle.emit("progress", text).unwrap();
 }
-fn update_download(progress: i64, text: &str, app_handle: &AppHandle) {
+pub fn update_download(progress: i64, text: &str, app_handle: &AppHandle) {
     app_handle.emit("progress", text).unwrap();
     app_handle.emit("progressBar", progress).unwrap();
 }
 fn get_library_paths(value: &Value) -> Vec<String> {
-    let libraries_path = get_libraries_directory().unwrap();
+    let libraries_path = get_libraries_directory();
     let mut libraries = vec![];
     for library in value.as_array().unwrap() {
         if library["downloads"].get("artifact").is_none() {
-            let classifiers = &library["downloads"]["classifiers"];
+            let classifiers = &library["downloads"].get("classifiers");
             let os = get_current_os();
             match classifiers {
                 None => {}

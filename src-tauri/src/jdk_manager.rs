@@ -19,8 +19,8 @@ pub async fn download_java(id: &String) {
     };
 
     let file_name = url.split("/").last().unwrap();
-    let zip_file_path = get_launcher_java_directory().unwrap().join(file_name);
-    let mut output_folder = get_launcher_java_directory().unwrap().join(id);
+    let zip_file_path = get_launcher_java_directory().join(file_name);
+    let mut output_folder = get_launcher_java_directory().join(id);
     if output_folder.join("bin").exists() {
         return;
     }
@@ -59,13 +59,11 @@ pub async fn get_java(id: String) -> PathBuf {
     let os = utils::get_current_os();
     if os == "windows" {
         get_launcher_java_directory()
-            .unwrap()
             .join(&id)
             .join("bin")
             .join("javaw.exe")
-    } else  {
+    } else {
         get_launcher_java_directory()
-            .unwrap()
             .join(&id)
             .join("bin")
             .join("java")

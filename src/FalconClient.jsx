@@ -46,8 +46,7 @@ function setRamUsage(ramUsage) {
     invoke("set_ram_usage", {ramUsage: ramUsage}).catch("").then();
 
     const text = document.getElementById("ram_usage_label");
-    if (text != null)
-        text.textContent = gRamUsagePrettified
+    if (text != null) text.textContent = gRamUsagePrettified
 }
 
 export default function FalconClient() {
@@ -61,7 +60,10 @@ export default function FalconClient() {
 
     async function load_versions() {
         invoke("get_versions")
-            .then((v) => setVersions(v))
+            .then((v) => {
+                setVersions(v)
+                setSelectedVersion(v[0])
+            })
             .catch((e) => console.error("Failed to fetch versions:", e));
     }
 
@@ -91,8 +93,9 @@ export default function FalconClient() {
 
     registerEvents().catch("Failed to register events");
     const handlePlay = async () => {
-        if (selectedVersion === "") {
+        if (selectedVersion === "" || selectedVersion === null) {
             setSelectedVersion(versions[0]);
+            console.log(versions)
         }
         setIsDownloading(true);
         invoke("set_username", {username: username}).catch("Guess what? i couldn't save your username");

@@ -24,7 +24,7 @@ fn main() {
 
 #[test]
 fn test_envs() {
-    get_minecraft_directory().expect("Minecraft dir was not found");
+    get_minecraft_directory();
 }
 
 #[test]
