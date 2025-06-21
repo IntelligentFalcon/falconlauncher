@@ -1,5 +1,9 @@
+use crate::directory_manager::get_versions_directory;
+use crate::version_manager::VersionInfo;
 use serde_json::Value;
-
+use std::fs;
+use std::fs::exists;
+use std::path::{Path, PathBuf};
 
 pub struct AssetIndex {
     pub id: String,
@@ -59,4 +63,50 @@ pub fn parse_os(os: String) -> String {
 pub struct LibraryRules {
     pub allowed_oses: Vec<String>,
     pub disallowed_oses: Vec<String>,
+}
+
+pub struct MinecraftVersion {
+    pub id: String,
+    pub version_path: String,
+}
+
+impl MinecraftVersion {
+    pub fn is_installed(&self) -> bool {
+        exists(&self.version_path).unwrap()
+    }
+
+    pub fn new(id: String, version_folder: String) -> Self {
+        let versions_dir = get_versions_directory();
+        Self {
+            id,
+            version_path: versions_dir
+                .join(version_folder)
+                .to_str()
+                .unwrap()
+                .to_string(),
+        }
+    }
+    pub fn from_id(id: String) -> Self {
+        MinecraftVersion::new(id.clone(), id)
+    }
+    pub fn from_folder(directory: PathBuf) -> Option<Self> {
+        let mut filtered_file: Vec<PathBuf> = directory
+            .read_dir()
+            .unwrap()
+            .map(|x| x.unwrap().path())
+            .filter(|x| x.is_file() && x.extension().unwrap() == "json")
+            .collect();
+        let count = &filtered_file.len();
+        if count == &1 {
+            let next = &filtered_file[0];
+            let json: Value =
+                serde_json::from_str(fs::read_to_string(next).unwrap().as_str()).unwrap();
+            let name = json["id"].as_str().unwrap().to_string();
+            return Some(Self {
+                id: name,
+                version_path: directory.as_path().to_str().unwrap().to_string(),
+            });
+        }
+        None
+    }
 }

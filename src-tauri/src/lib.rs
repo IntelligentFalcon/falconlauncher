@@ -25,6 +25,7 @@ static CONFIG: LazyLock<Mutex<Config>> = LazyLock::new(|| {
         username: "Steve".to_string(),
         ram_usage: 1024,
         java_path: "java".to_string(),
+        versions: Vec::new(),
     })
 });
 
@@ -34,7 +35,14 @@ async fn play_button_handler(app: AppHandle, selected_version: String) {
 }
 #[command]
 async fn get_versions() -> Vec<String> {
-    utils::load_versions().await
+    CONFIG
+        .lock()
+        .await
+        .versions
+        .iter()
+        .map(|x| x.id.to_string())
+        .clone()
+        .collect()
 }
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -43,9 +51,8 @@ pub fn run() {
     create_dir_all(fl_path).unwrap();
     create_dir_all(jdk_path).unwrap();
     block_on(async move {
-        load_config(&mut *CONFIG.lock().await);
+        load_config(&mut *CONFIG.lock().await).await;
     });
-
     let prevent = tauri_plugin_prevent_default::Builder::new()
         .shortcut(KeyboardShortcut::with_modifiers("I", &[CtrlKey, ShiftKey]))
         .shortcut(KeyboardShortcut::with_modifiers("E", &[CtrlKey, ShiftKey]))

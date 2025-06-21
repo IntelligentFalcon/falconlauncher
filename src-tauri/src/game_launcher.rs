@@ -3,7 +3,7 @@ use crate::directory_manager::*;
 use crate::downloader::download_version;
 use crate::jdk_manager::get_java;
 use crate::structs::library_from_value;
-use crate::utils::{get_current_os, vec_to_string};
+use crate::utils::{get_current_os, is_connected_to_internet, vec_to_string};
 use serde_json::Value;
 use std::fs::File;
 use std::os::windows::process::CommandExt;
@@ -14,11 +14,13 @@ const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 pub async fn launch_game(app_handle: AppHandle, version: String, config: &Config) {
     let uid = uuid::Uuid::new_v4();
-    update_download_status("Downloading version...", &app_handle);
-    let username = &config.username;
-    download_version(version.clone(), &app_handle).await;
-
+    if is_connected_to_internet().await {
+        update_download_status("Downloading version...", &app_handle);
+        download_version(version.clone(), &app_handle).await;
+    }
     update_download_status("Reading version metadata...", &app_handle);
+    let username = &config.username;
+
     let version_directory = get_version_directory(&version);
     println!("Version: {}", version);
     let version_json_path = version_directory
