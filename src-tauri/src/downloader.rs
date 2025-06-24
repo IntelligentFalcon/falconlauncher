@@ -1,20 +1,17 @@
 use crate::directory_manager::{
-    get_assets_directory, get_libraries_directory, get_minecraft_directory, get_natives_folder,
-    get_version_directory, get_versions_directory,
+    get_assets_directory, get_libraries_directory, get_natives_folder, get_version_directory,
+    get_versions_directory,
 };
-use crate::game_launcher::{update_download, update_download_bar};
-use crate::structs::OperatingSystem::{Linux, Windows};
-use crate::structs::{library_from_value, LibraryRules, OperatingSystem};
-use crate::utils;
-use crate::utils::{get_current_os, load_json_url, verify_file_existence};
+use crate::game_launcher::update_download_bar;
+use crate::structs::{library_from_value, LibraryRules, MinecraftVersion};
+use crate::utils::{get_current_os, verify_file_existence};
 use crate::version_manager::load_version_manifest;
-use reqwest::Client;
-use serde_json::{Map, Value};
-use std::fmt::format;
+use serde_json::Value;
+use std::fs;
 use std::fs::{create_dir_all, exists, File};
 use std::io::Write;
 use std::path::PathBuf;
-use tauri::async_runtime::{block_on, spawn};
+use tauri::async_runtime::block_on;
 use tauri::{AppHandle, Emitter};
 use zip_extract::extract;
 
@@ -70,43 +67,56 @@ pub async fn download_file_if_not_exists(path: &PathBuf, url: String, size: u64)
         download_file(url, path.to_str().unwrap().to_string()).await;
     }
 }
-pub async fn download_version(id: String, app_handle: &AppHandle) {
+pub async fn download_version(version: &MinecraftVersion, app_handle: &AppHandle) {
+    let id = &version.id;
+
     println!("Downloading version {} process started.", id);
     let manifest = load_version_manifest().await;
-    println!("Loaded version manifest");
-    match manifest {
-        None => {}
-        Some(val) => {
-            let version = val["versions"]
-                .as_array()
-                .unwrap()
-                .iter()
-                .find(|v| v["id"].as_str().unwrap() == id)
-                .expect(format!("Couldn't find version in manifest. {id}").as_str());
-            let version_url = version["url"].as_str().unwrap();
-            download_file(
-                version_url.to_string(),
-                get_version_directory(&id)
-                    .join(format!("{}.json", id))
-                    .to_str()
-                    .unwrap()
-                    .to_string(),
-            )
-            .await;
-            app_handle.emit("progressBar", 10).unwrap();
-
-            let json = load_json_url(&version_url.to_string())
-                .await
-                .expect("Couldn't find the version");
-            download_assets(&json["assetIndex"]).await;
-            update_download_bar(50, app_handle);
-            download_libraries(&json["libraries"], &id).await;
-            update_download_bar(80, app_handle);
-            download_client(&json["downloads"]["client"], &id).await;
-            update_download_bar(90, app_handle);
+    if !version.is_installed() {
+        match manifest {
+            None => {}
+            Some(val) => {
+                download_from_manifest(id, val).await;
+            }
         }
     }
+    app_handle.emit("progressBar", 10).unwrap();
+    let content = fs::read_to_string(PathBuf::from(version.get_json())).unwrap();
+
+    let json: Value = serde_json::from_str(&content).unwrap();
+
+    download_libraries(&json["libraries"], &id).await;
+    update_download_bar(40, app_handle);
+    if !json.get("downloads").is_none() {
+        download_client(&json["downloads"]["client"], &id).await;
+    }
+    update_download_bar(50, app_handle);
+
+    if json.get("assetIndex") != None {
+        download_assets(&json["assetIndex"]).await;
+    }
+    update_download_bar(90, app_handle);
 }
+
+async fn download_from_manifest(id: &String, manifest: Value) {
+    let version = manifest["versions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|v| v["id"].as_str().unwrap() == id)
+        .expect(format!("Couldn't find version in manifest. {id}").as_str());
+    let version_url = version["url"].as_str().unwrap();
+    download_file(
+        version_url.to_string(),
+        get_version_directory(&id)
+            .join(format!("{}.json", id))
+            .to_str()
+            .unwrap()
+            .to_string(),
+    )
+    .await;
+}
+
 async fn download_client(value: &Value, version: &String) {
     let size = value["size"].as_u64().unwrap();
     let url = value["url"].as_str().unwrap();
@@ -119,6 +129,31 @@ async fn download_client(value: &Value, version: &String) {
 async fn download_libraries(libraries: &Value, version: &String) {
     let libraries_path = get_libraries_directory();
     for library in libraries.as_array().unwrap() {
+        if library.get("downloads").is_none() {
+            let name = library["name"].as_str().unwrap().replace(":", "/");
+            let parts = name.split("/").collect::<Vec<&str>>();
+            let group = parts[0].replace(".", "/");
+            let artifact = parts[1];
+            let version = parts[2];
+            let path = format!("{group}/{artifact}/{version}/{artifact}-{version}.jar");
+            if group.to_lowercase() == "net/minecraft" {
+                let url = format!("https://libraries.minecraft.net/{path}");
+                let full_path = get_libraries_directory().join(path);
+                download_file_if_not_exists(&full_path, url, 0).await;
+            } else {
+                let urls = vec![
+                    format!("https://maven.minecraftforge.net/{path}"),
+                    format!("https://repo.spongepowered.org/maven/{path}"),
+                ];
+                for url in urls {
+                    let full_path = get_libraries_directory().join(&path);
+                    if !reqwest::get(url.clone()).await.is_err() {
+                        download_file_if_not_exists(&full_path, url, 0).await;
+                    }
+                }
+            }
+            continue;
+        }
         if library["downloads"].get("artifact").is_none() {
             download_classifiers(library["downloads"].get("classifiers"), version).await;
             continue;
@@ -146,7 +181,7 @@ async fn download_classifiers(classifiers: Option<&Value>, version: &String) {
         None => {}
         Some(val) => {
             let path = val["path"].as_str().unwrap();
-            let full_path = get_libraries_directory();
+            let full_path = get_libraries_directory().join(path);
             let size = val["size"].as_u64().unwrap();
             let url = val["url"].as_str().unwrap();
             download_file_if_not_exists(&full_path, url.to_string(), size).await;

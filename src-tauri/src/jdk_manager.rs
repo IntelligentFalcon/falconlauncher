@@ -1,6 +1,4 @@
-use crate::directory_manager::{
-    get_falcon_launcher_directory, get_launcher_java_directory, get_minecraft_directory,
-};
+use crate::directory_manager::get_launcher_java_directory;
 use crate::utils;
 use std::fs;
 use std::fs::{remove_file, File};

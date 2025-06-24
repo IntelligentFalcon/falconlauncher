@@ -1,9 +1,7 @@
 use crate::directory_manager::get_versions_directory;
-use crate::version_manager::VersionInfo;
 use serde_json::Value;
 use std::fs;
-use std::fs::exists;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 pub struct AssetIndex {
     pub id: String,
@@ -64,7 +62,7 @@ pub struct LibraryRules {
     pub allowed_oses: Vec<String>,
     pub disallowed_oses: Vec<String>,
 }
-
+#[derive(Clone)]
 pub struct MinecraftVersion {
     pub id: String,
     pub version_path: String,
@@ -72,7 +70,7 @@ pub struct MinecraftVersion {
 
 impl MinecraftVersion {
     pub fn is_installed(&self) -> bool {
-        exists(&self.version_path).unwrap()
+        PathBuf::from(self.get_json()).exists()
     }
 
     pub fn new(id: String, version_folder: String) -> Self {
@@ -85,6 +83,9 @@ impl MinecraftVersion {
                 .unwrap()
                 .to_string(),
         }
+    }
+    pub fn get_json(&self) -> String {
+        self.version_path.clone() + "/" + self.id.clone().as_str() + ".json"
     }
     pub fn from_id(id: String) -> Self {
         MinecraftVersion::new(id.clone(), id)
@@ -108,5 +109,29 @@ impl MinecraftVersion {
             });
         }
         None
+    }
+    pub fn is_forge(&self) -> bool {
+        self.id.contains("forge")
+    }
+    pub fn load_json(&self) -> Value {
+        if !self.is_installed() {
+            Value::from("")
+        } else {
+            let content = fs::read_to_string(PathBuf::from(self.get_json())).unwrap();
+            serde_json::from_str(&content).unwrap()
+        }
+    }
+    pub fn get_inherited(&self) -> MinecraftVersion {
+        let json = self.load_json();
+        if json.get("inheritsFrom").is_none() {
+            self.clone()
+        } else {
+            let inherited = json["inheritsFrom"].as_str().unwrap().to_string();
+            let version = MinecraftVersion::from_id(inherited);
+            version
+        }
+    }
+    pub fn is_fabric(&self) -> bool {
+        self.id.contains("fabric")
     }
 }

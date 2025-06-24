@@ -2,8 +2,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use crate::directory_manager::get_minecraft_directory;
-use crate::downloader::download_version;
-use crate::game_launcher::launch_game;
 use crate::jdk_manager::{download_java, get_java};
 use crate::version_manager::download_version_manifest;
 use tauri::async_runtime::block_on;

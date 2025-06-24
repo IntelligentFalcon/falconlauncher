@@ -1,13 +1,12 @@
-use crate::directory_manager::get_versions_directory;
+use crate::directory_manager::{get_libraries_directory, get_versions_directory};
 use crate::structs;
 use crate::structs::MinecraftVersion;
 use crate::version_manager::load_version_manifest;
+use reqwest::Client;
 use serde_json::Value;
-use std::ffi::OsStr;
-use std::fs::{read_dir, File};
-use std::io::Read;
+use std::fs::File;
 use std::path::Path;
-use tauri::http::Response;
+use std::time::Duration;
 
 pub fn get_current_os() -> String {
     structs::parse_os(sys_info::os_type().expect("Unsupported Operating System"))
@@ -76,23 +75,31 @@ pub async fn load_versions() -> Vec<MinecraftVersion> {
     versions
 }
 
-// pub fn get_local_versions() -> Vec<String> {
-//
-// }
-/// Verifies if file exists and is not broken by the expected file size
+/// Verifies if file exists and is not broken by the expected file size if expected_size is zero it will ignore checking file size
 pub fn verify_file_existence(path_str: &String, expected_size: u64) -> bool {
     let path = Path::new(&path_str);
     if !path.exists() {
         false
-    } else {
-        let file = File::open(path).unwrap();
+    } else if expected_size != 0 {
+        let file = File::open(path).expect(&("Error ".to_string() + path_str));
         let metadata = file.metadata().unwrap();
         metadata.len() == expected_size
+    } else {
+        true
     }
 }
 pub async fn is_connected_to_internet() -> bool {
-    let req = reqwest::get("https://jsonplaceholder.typicode.com/todos/1");
-    match req.await {
+    let client = Client::builder()
+        .timeout(Duration::from_secs(3))
+        .build()
+        .unwrap();
+
+    let req = client
+        .get("https://jsonplaceholder.typicode.com/todos/1")
+        .send()
+        .await;
+
+    match req {
         Ok(_) => true,
         Err(_) => false,
     }
@@ -112,4 +119,25 @@ pub fn vec_to_string(vec: Vec<String>, separator: String) -> String {
     }
     builder.remove(builder.len() - 1);
     builder
+}
+
+pub fn parse_library_name_to_path(mavenized_path: String) -> String {
+    let parts = mavenized_path.split(":").collect::<Vec<&str>>();
+    let group = parts[0].replace(".", "/");
+    let artifact_id = parts[1];
+    let version = parts[2];
+    format!(
+        "{}/{group}/{artifact_id}/{version}/{artifact_id}-{version}.jar",
+        get_libraries_directory().to_str().unwrap()
+    )
+}
+
+/// concatenate two vectors without adding repeated indexes
+pub fn extend_once<T: PartialEq>(mut vec1: Vec<T>, vec2: Vec<T>) -> Vec<T> {
+    for index in vec2 {
+        if !vec1.contains(&index) {
+            vec1.push(index);
+        }
+    }
+    vec1
 }
