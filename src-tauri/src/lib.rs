@@ -5,7 +5,6 @@ use std::ops::Deref;
 use std::string::ToString;
 use std::sync::LazyLock;
 use tauri::async_runtime::{block_on, Mutex};
-use tauri::menu::{Menu, MenuItem, Submenu};
 use tauri::{command, AppHandle, Manager};
 use tauri_plugin_prevent_default::Flags;
 use tauri_plugin_prevent_default::KeyboardShortcut;

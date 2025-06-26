@@ -2,7 +2,7 @@ use crate::directory_manager::{
     get_assets_directory, get_libraries_directory, get_natives_folder, get_version_directory,
     get_versions_directory,
 };
-use crate::game_launcher::update_download_bar;
+use crate::game_launcher::{update_download, update_download_bar, update_download_status};
 use crate::structs::{library_from_value, LibraryRules, MinecraftVersion};
 use crate::utils::{get_current_os, verify_file_existence};
 use crate::version_manager::load_version_manifest;
@@ -10,9 +10,10 @@ use serde_json::Value;
 use std::fs;
 use std::fs::{create_dir_all, exists, File};
 use std::io::Write;
+use std::ops::Index;
 use std::path::PathBuf;
 use tauri::async_runtime::block_on;
-use tauri::{AppHandle, Emitter};
+use tauri::AppHandle;
 use zip_extract::extract;
 
 async fn download_assets(value: &Value) {
@@ -80,22 +81,18 @@ pub async fn download_version(version: &MinecraftVersion, app_handle: &AppHandle
             }
         }
     }
-    app_handle.emit("progressBar", 10).unwrap();
     let content = fs::read_to_string(PathBuf::from(version.get_json())).unwrap();
 
     let json: Value = serde_json::from_str(&content).unwrap();
 
-    download_libraries(&json["libraries"], &id).await;
-    update_download_bar(40, app_handle);
+    download_libraries(&json["libraries"], &id, app_handle).await;
     if !json.get("downloads").is_none() {
         download_client(&json["downloads"]["client"], &id).await;
     }
-    update_download_bar(50, app_handle);
 
     if json.get("assetIndex") != None {
         download_assets(&json["assetIndex"]).await;
     }
-    update_download_bar(90, app_handle);
 }
 
 async fn download_from_manifest(id: &String, manifest: Value) {
@@ -126,9 +123,11 @@ async fn download_client(value: &Value, version: &String) {
     download_file_if_not_exists(&path, url.to_string(), size).await;
 }
 
-async fn download_libraries(libraries: &Value, version: &String) {
+async fn download_libraries(libraries: &Value, version: &String, app_handle: &AppHandle) {
     let libraries_path = get_libraries_directory();
-    for library in libraries.as_array().unwrap() {
+    let array = libraries.as_array().unwrap();
+    for library_index in 0..array.len() {
+        let library = &array[library_index];
         if library.get("downloads").is_none() {
             let name = library["name"].as_str().unwrap().replace(":", "/");
             let parts = name.split("/").collect::<Vec<&str>>();
@@ -159,6 +158,11 @@ async fn download_libraries(libraries: &Value, version: &String) {
             continue;
         }
         let library_info = library_from_value(library);
+        update_download(
+            (library_index / array.len() * 100) as i64,
+            format!("Downloading {}", library_info.name).as_str(),
+            app_handle,
+        );
         let os = get_current_os();
         let rules = fetch_rules(library.get("rules"));
         download_classifiers(library["downloads"].get("classifiers"), version).await;
