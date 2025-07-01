@@ -1,9 +1,9 @@
 # فالکن لانچر
-Note: This project is not affiliated with Mojang or Microsoft. Minecraft is a trademark of Mojang Synergies AB.
 
 یک لانچر فارسی زبان برای کاربران ایرانی بازی ماینکرفت.
 
 همچنان در دست توسعه... 
+Note: This project is not affiliated with Mojang or Microsoft. Minecraft is a trademark of Mojang Synergies AB.
 
 ### ویژگی ها
 * بروزرسانی ورژن و دانلود✅
