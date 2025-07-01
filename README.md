@@ -4,8 +4,8 @@
 
 همچنان در دست توسعه... 
 
-_Note: This project is not affiliated with Mojang or Microsoft. Minecraft is a trademark of Mojang Synergies AB.
-_
+Note: This project is not affiliated with Mojang or Microsoft. Minecraft is a trademark of Mojang Synergies AB.
+
 ### ویژگی ها
 * بروزرسانی ورژن و دانلود✅
 * لانچ بازی (با اکانت پرمیوم یا بدون اکانت پرمیوم) ⚙
