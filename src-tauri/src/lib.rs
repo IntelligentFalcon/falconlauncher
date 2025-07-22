@@ -6,6 +6,7 @@ use std::string::ToString;
 use std::sync::LazyLock;
 use tauri::async_runtime::{block_on, Mutex};
 use tauri::{command, AppHandle, Manager};
+use tauri_plugin_dialog::{DialogExt, MessageDialogButtons};
 use tauri_plugin_prevent_default::Flags;
 use tauri_plugin_prevent_default::KeyboardShortcut;
 use tauri_plugin_prevent_default::ModifierKey::{CtrlKey, ShiftKey};
@@ -48,6 +49,7 @@ pub fn run() {
     let fl_path = directory_manager::get_falcon_launcher_directory();
     let jdk_path = directory_manager::get_launcher_java_directory();
     create_dir_all(fl_path).unwrap();
+
     create_dir_all(jdk_path).unwrap();
     block_on(async move {
         load_config(&mut *CONFIG.lock().await).await;
@@ -60,6 +62,8 @@ pub fn run() {
         .build();
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(prevent)
         .invoke_handler(tauri::generate_handler![

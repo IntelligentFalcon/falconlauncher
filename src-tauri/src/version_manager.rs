@@ -25,7 +25,6 @@ pub async fn load_version_manifest() -> Option<Value> {
     load_json_url(&url.to_string()).await
 }
 
-
 #[derive(Deserialize, Debug)]
 pub struct Manifest {
     latest: LatestVersionDetail,

@@ -36,18 +36,6 @@ async function lockWindow() {
 lockWindow().catch(console.error);
 
 // Have to put these here because SettingsTab and the main function both need it
-var gRamUsage = 2048; // Default value
-var gRamUsagePrettified = "2.0 GB"; // Default value
-var gIsFirstTime = true;
-
-function setRamUsage(ramUsage) {
-    gRamUsage = ramUsage;
-    gRamUsagePrettified = (ramUsage / 1024).toFixed(1) + " GB";
-    invoke("set_ram_usage", {ramUsage: ramUsage}).catch("").then();
-
-    const text = document.getElementById("ram_usage_label");
-    if (text != null) text.textContent = gRamUsagePrettified
-}
 
 export default function FalconClient() {
     const [activeTab, setActiveTab] = useState('home');
@@ -110,7 +98,6 @@ export default function FalconClient() {
         }
 
     };
-
     return (<div className="flex flex-col w-full h-screen bg-gray-900 text-gray-200 overflow-hidden">
         {/* Header */}
         <div className="flex justify-between items-center px-6 py-3 bg-gray-800 border-b border-gray-700">
@@ -212,6 +199,7 @@ export default function FalconClient() {
             </div>
         </div>
     </div>);
+
 }
 
 function NavItem({icon, title, active, onClick}) {
@@ -283,8 +271,33 @@ function ModsTab() {
     </div>);
 }
 
+function RamUsageBar({totalRam}) {
+    const [ramUsage, setRamUsage] = useState(2048);
+    const [ramUsagePretiffied, setRamUsagePrettified] = useState("2GB");
+    return <div className="bg-gray-800 p-6 rounded">
+        <h3 className="text-lg font-semibold mb-1">Memory Allocation</h3>
+        <p className="text-sm text-gray-400 mb-4">Adjust how much RAM is allocated to Minecraft</p>
+        <div className="flex items-center">
+            <input type="range" min="1.0" max={parseInt(totalRam / 1024)} defaultValue={ramUsage}
+                   onInput={event => {
+                       setRamUsage(event.target.valueAsNumber);
+                       setRamUsagePrettified((ramUsage / 1024).toFixed(1) + " GB");
+                       invoke("set_ram_usage", {ramUsage: ramUsage}).catch("").then();
+                       const text = document.getElementById("ram_usage_label");
+                       if (text != null) text.textContent = gRamUsagePrettified
+                   }} className="w-64"/>
+
+            <data id="ram_usage_label" className="ml-4"
+                  value={ramUsagePretiffied}>{ramUsagePretiffied}</data>
+        </div>
+    </div>
+}
 
 function SettingsTab() {
+    const [totalRam, setTotalRam] = useState(0)
+    if (totalRam === 0)
+        invoke("get_total_ram").catch((e) => console.error("I hate things not to work", e)).then(ram => setTotalRam(ram))
+
     function save() {
         invoke("set_ram_usage", {ramUsage: gRamUsage}).catch("Aw man you screwed it up");
         invoke("save").catch("Couldn't save file.")
@@ -295,28 +308,7 @@ function SettingsTab() {
 
         <div className="space-y-6">
             {/* Memory Settings */}
-            <div className="bg-gray-800 p-6 rounded">
-                <h3 className="text-lg font-semibold mb-1">Memory Allocation</h3>
-                <p className="text-sm text-gray-400 mb-4">Adjust how much RAM is allocated to Minecraft</p>
-
-                <div className="flex items-center">
-                    <input type="range" min="1024" max="32768" defaultValue={gRamUsage} onInput={event => {
-                        setRamUsage(event.target.valueAsNumber);
-
-                        /*
-                            WARNING: I'm commenting this because this is so shit.
-                            WARNING: For the love of god change this to not write in a file every single time that slider is changed
-                            This will destroy the user's CPU and is terrible for efficiency.
-                            NOTE: Remove this comment when fixed;
-                        */
-
-
-                    }} className="w-64"/>
-
-                    {/* NOTE: Fix this not updating itself */}
-                    <data id="ram_usage_label" className="ml-4" value={gRamUsagePrettified}>{gRamUsagePrettified}</data>
-                </div>
-            </div>
+            <RamUsageBar totalRam={totalRam}/>
 
             {/* Java Settings */}
             <div className="bg-gray-800 p-6 rounded">

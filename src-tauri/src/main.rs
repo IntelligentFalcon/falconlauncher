@@ -3,6 +3,7 @@
 
 use crate::directory_manager::get_minecraft_directory;
 use crate::jdk_manager::{download_java, get_java};
+use crate::mod_manager::load_mods;
 use crate::version_manager::download_version_manifest;
 use tauri::async_runtime::block_on;
 
@@ -14,7 +15,9 @@ mod jdk_manager;
 mod structs;
 mod utils;
 
+mod mod_manager;
 mod version_manager;
+
 #[allow(unused_imports)]
 fn main() {
     falcon_lib::run()
@@ -45,4 +48,14 @@ fn test_get_java() {
         let id = "8".to_string();
         println!("{}", get_java(id).await.to_str().unwrap());
     })
+}
+
+#[test]
+fn test_get_mods() {
+    let mods = load_mods();
+    println!(
+        "Loaded {} mods with first one being called {}",
+        mods.len(),
+        mods[0].mod_id
+    );
 }

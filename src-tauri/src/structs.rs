@@ -135,3 +135,20 @@ impl MinecraftVersion {
         self.id.contains("fabric")
     }
 }
+
+pub struct ModInfo {
+    pub path: String,
+    pub mod_id: String,
+    pub display_name: String,
+    pub version: String,
+}
+impl ModInfo {
+    pub fn new(path: String, mod_id: String, display_name: String, version: String) -> Self {
+        Self {
+            path,
+            mod_id,
+            display_name,
+            version,
+        }
+    }
+}
