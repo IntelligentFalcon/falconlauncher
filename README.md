@@ -7,7 +7,7 @@
 Note: This project is not affiliated with Mojang or Microsoft. Minecraft is a trademark of Mojang Synergies AB.
 
 لینک حمایت مالی:
-https://www.coffeebede.com/mmd4j
+https://daramet.com/IFalcon
 ### ویژگی ها
 * بروزرسانی ورژن و دانلود✅
 * لانچ بازی (با اکانت پرمیوم یا بدون اکانت پرمیوم) ⚙
