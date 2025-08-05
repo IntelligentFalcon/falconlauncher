@@ -140,7 +140,6 @@ async fn download_libraries(libraries: &Value, version: &String, app_handle: &Ap
                 let full_path = get_libraries_directory().join(path);
                 download_file_if_not_exists(&full_path, url, 0).await;
             } else {
-                println!("{}", path);
                 let urls = vec![
                     format!("https://maven.minecraftforge.net/{path}"),
                     format!("https://repo.spongepowered.org/maven/{path}"),
@@ -148,7 +147,6 @@ async fn download_libraries(libraries: &Value, version: &String, app_handle: &Ap
                 for url in urls {
                     let full_path = get_libraries_directory().join(&path);
                     if reqwest::get(url.clone()).await.unwrap().status().is_success() {
-                        println!("Downloading libraries from {}", url);
                         download_file_if_not_exists(&full_path, url, 0).await;
                     }
                 }
