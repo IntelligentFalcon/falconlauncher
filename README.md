@@ -4,10 +4,14 @@
 
 همچنان در دست توسعه... 
 
+Note: This project is not affiliated with Mojang or Microsoft. Minecraft is a trademark of Mojang Synergies AB.
+
+لینک حمایت مالی:
+https://daramet.com/IFalcon
 ### ویژگی ها
 * بروزرسانی ورژن و دانلود✅
 * لانچ بازی (با اکانت پرمیوم یا بدون اکانت پرمیوم) ⚙
-* پنل ماد❌
+* پنل ماد⚙
 * پشتیبانی صحیح از زبان فارسی ❌
 
 ### Credits
