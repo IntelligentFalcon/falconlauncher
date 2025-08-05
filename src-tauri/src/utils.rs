@@ -28,8 +28,12 @@ fn load_downloaded_versions() {
             .for_each(|x| {})
     }
 }
+/// Loads downloaded versions and non-downloaded versions (if it is connected to the internet)
 pub async fn load_versions() -> Vec<MinecraftVersion> {
     let mut versions = Vec::new();
+    if !get_versions_directory().exists() {
+        std::fs::create_dir(get_versions_directory()).unwrap();
+    }
     versions = get_versions_directory()
         .read_dir()
         .unwrap()
@@ -49,7 +53,7 @@ pub async fn load_versions() -> Vec<MinecraftVersion> {
             MinecraftVersion::from_folder(
                 get_versions_directory().join(v.file_name().to_str().unwrap().to_string()),
             )
-            .unwrap()
+                .unwrap()
         })
         .collect();
     if is_connected_to_internet().await {
@@ -72,6 +76,8 @@ pub async fn load_versions() -> Vec<MinecraftVersion> {
         };
         versions.extend(founded_versions);
     }
+
+
     versions
 }
 
@@ -95,7 +101,7 @@ pub async fn is_connected_to_internet() -> bool {
         .unwrap();
 
     let req = client
-        .get("https://jsonplaceholder.typicode.com/todos/1")
+        .get("https://google.com")
         .send()
         .await;
 
@@ -141,5 +147,3 @@ pub fn extend_once<T: PartialEq>(mut vec1: Vec<T>, vec2: Vec<T>) -> Vec<T> {
     }
     vec1
 }
-
-
