@@ -250,7 +250,7 @@ function ModsTab() {
                 type="text"
                 placeholder="Search mods..."
                 className="w-64 p-2 bg-gray-800 border border-gray-700 rounded"
-            />
+                />
         </div>
 
         <div className="space-y-3">

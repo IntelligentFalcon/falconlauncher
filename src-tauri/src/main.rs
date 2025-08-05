@@ -59,3 +59,16 @@ fn test_get_mods() {
         mods[0].mod_id
     );
 }
+
+#[test]
+fn test_err_url() {
+    block_on(async {
+        let sample_failure_url = "https://maven.minecraftforge.net/lzma/lzma/0.0.1/lzma-0.0.1.jar";
+        let resp_failure = reqwest::get(sample_failure_url).await;
+        assert!(resp_failure.unwrap().status().is_success());
+        let sample_success_url =
+            "https://repo.spongepowered.org/maven/lzma/lzma/0.0.1/lzma-0.0.1.jar";
+        let resp_success = reqwest::get(sample_success_url).await;
+        assert!(resp_success.unwrap().status().is_success());
+    });
+}
