@@ -41,6 +41,8 @@ export default function FalconClient() {
     const [activeTab, setActiveTab] = useState('home');
     const [downloadProgress, setDownloadProgress] = useState(0);
     const [isDownloading, setIsDownloading] = useState(false);
+    const [isShowingSnapshots, setShowingSnapshots] = useState(false);
+    const [isShowingAlpha, setShowingAlpha] = useState(false);
     const [versions, setVersions] = useState([]);
     const [selectedVersion, setSelectedVersion] = useState("");
     const [username, setUsername] = useState("");
@@ -98,6 +100,15 @@ export default function FalconClient() {
         }
 
     };
+
+    const toggleShowingSnapshots = () => {
+        setShowingSnapshots(!isShowingSnapshots);
+    };
+
+    const toggleShowAlpha = () => {
+        setShowingAlpha(!isShowingAlpha);
+    };
+
     return (<div className="flex flex-col w-full h-screen bg-gray-900 text-gray-200 overflow-hidden">
         {/* Header */}
         <div className="flex justify-between items-center px-6 py-3 bg-gray-800 border-b border-gray-700">
@@ -141,6 +152,42 @@ export default function FalconClient() {
                             }}>
                         {versions.map((version) => (<option key={version}>{version}</option>))}
                     </select>
+
+                    <div className="flex items-center justify-left mt-6">
+                        <button
+                            onClick={toggleShowingSnapshots}
+                            className={`relative inline-flex h-6 w-10 items-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                            isShowingSnapshots ? 'bg-blue-600' : 'bg-gray-300'
+                            }`}
+                            role="switch"
+                            aria-checked={isShowingSnapshots}
+                        >
+                            <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-lg transition-transform duration-200 ease-in-out ${
+                                isShowingSnapshots ? 'translate-x-5' : 'translate-x-1'
+                            }`}
+                            />
+                        </button>
+                        <label className='ml-2'>Show Snapshots</label>
+                    </div>
+
+                    <div className="flex items-center justify-left mt-2">
+                        <button
+                            onClick={toggleShowAlpha}
+                            className={`relative inline-flex h-6 w-10 items-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                            isShowingAlpha ? 'bg-blue-600' : 'bg-gray-300'
+                            }`}
+                            role="switch"
+                            aria-checked={isShowingAlpha}
+                        >
+                            <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-lg transition-transform duration-200 ease-in-out ${
+                                isShowingAlpha ? 'translate-x-5' : 'translate-x-1'
+                            }`}
+                            />
+                        </button>
+                        <label className='ml-2'>Show Alpha Versions</label>
+                    </div>
                 </div>
 
                 {/* Navigation */}
