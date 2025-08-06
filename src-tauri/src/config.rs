@@ -12,6 +12,8 @@ pub struct Config {
     pub ram_usage: u64,
     pub java_path: String,
     pub versions: Vec<MinecraftVersion>,
+    pub show_old_versions: bool,
+    pub show_snapshots: bool,
 }
 
 pub fn dump(config: &Config) {
@@ -52,6 +54,8 @@ async fn load() -> Config {
         ram_usage,
         java_path: "java".to_string(),
         versions,
+        show_old_versions: false,
+        show_snapshots: false ,
     }
 }
 fn default_config() -> Ini {

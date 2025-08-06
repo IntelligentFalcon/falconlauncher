@@ -6,7 +6,7 @@ use std::string::ToString;
 use std::sync::LazyLock;
 use tauri::async_runtime::{block_on, Mutex};
 use tauri::{command, AppHandle, Manager};
-use tauri_plugin_dialog::{DialogExt, MessageDialogButtons};
+use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_prevent_default::Flags;
 use tauri_plugin_prevent_default::KeyboardShortcut;
 use tauri_plugin_prevent_default::ModifierKey::{CtrlKey, ShiftKey};
@@ -26,6 +26,8 @@ static CONFIG: LazyLock<Mutex<Config>> = LazyLock::new(|| {
         ram_usage: 1024,
         java_path: "java".to_string(),
         versions: Vec::new(),
+        show_old_versions: false,
+        show_snapshots: false,
     })
 });
 
@@ -33,6 +35,7 @@ static CONFIG: LazyLock<Mutex<Config>> = LazyLock::new(|| {
 async fn play_button_handler(app: AppHandle, selected_version: String) {
     launch_game(app, selected_version, &*CONFIG.lock().await).await;
 }
+
 #[command]
 async fn get_versions() -> Vec<String> {
     CONFIG
@@ -72,9 +75,14 @@ pub fn run() {
             get_total_ram,
             set_username,
             set_ram_usage,
+            set_allow_snapshot,
+            set_allow_old_versions,
+            get_allow_old_versions,
+            get_allow_snapshot,
             get_username,
             get_ram_usage,
-            save
+            save,
+
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -106,4 +114,25 @@ async fn get_ram_usage() -> u64 {
 #[command]
 async fn get_username() -> String {
     CONFIG.lock().await.username.clone()
+}
+#[command]
+async fn set_allow_snapshot(b: bool) {
+    let mut config = CONFIG.lock().await;
+    config.show_snapshots = b;
+}
+
+#[command]
+async fn get_allow_snapshot() -> bool {
+    CONFIG.lock().await.show_snapshots
+}
+
+#[command]
+async fn set_allow_old_versions(b: bool) {
+    let mut config = CONFIG.lock().await;
+    config.show_old_versions = b;
+}
+
+#[command]
+async fn get_allow_old_versions() -> bool {
+    CONFIG.lock().await.show_old_versions
 }
