@@ -47,15 +47,16 @@ async fn load() -> Config {
         .expect("Could not find ram usage")
         .parse::<u64>()
         .unwrap();
+
     let mut versions = Vec::<MinecraftVersion>::new();
-    versions = load_versions().await;
+    versions = load_versions(false, false).await;
     Config {
         username,
         ram_usage,
         java_path: "java".to_string(),
         versions,
         show_old_versions: false,
-        show_snapshots: false ,
+        show_snapshots: false,
     }
 }
 fn default_config() -> Ini {

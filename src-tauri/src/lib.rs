@@ -5,12 +5,12 @@ use std::ops::Deref;
 use std::string::ToString;
 use std::sync::LazyLock;
 use tauri::async_runtime::{block_on, Mutex};
-use tauri::{command, AppHandle, Manager};
+use tauri::{command, AppHandle, LogicalSize, Manager};
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_prevent_default::Flags;
 use tauri_plugin_prevent_default::KeyboardShortcut;
 use tauri_plugin_prevent_default::ModifierKey::{CtrlKey, ShiftKey};
-
+use utils::load_versions;
 mod config;
 mod directory_manager;
 mod downloader;
@@ -37,6 +37,11 @@ async fn play_button_handler(app: AppHandle, selected_version: String) {
 }
 
 #[command]
+async fn reload_versions() {
+    let mut config = CONFIG.lock().await;
+    config.versions = load_versions(config.show_snapshots, config.show_old_versions).await;
+}
+#[command]
 async fn get_versions() -> Vec<String> {
     CONFIG
         .lock()
@@ -47,6 +52,7 @@ async fn get_versions() -> Vec<String> {
         .clone()
         .collect()
 }
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let fl_path = directory_manager::get_falcon_launcher_directory();
@@ -57,18 +63,34 @@ pub fn run() {
     block_on(async move {
         load_config(&mut *CONFIG.lock().await).await;
     });
-    let prevent = tauri_plugin_prevent_default::Builder::new()
-        .shortcut(KeyboardShortcut::with_modifiers("I", &[CtrlKey, ShiftKey]))
-        .shortcut(KeyboardShortcut::with_modifiers("E", &[CtrlKey, ShiftKey]))
-        .shortcut(KeyboardShortcut::new("F12"))
-        .with_flags(Flags::all().difference(Flags::FIND | Flags::RELOAD))
-        .build();
 
     tauri::Builder::default()
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
-        .plugin(prevent)
+        .setup(|app| {
+            let handle = app.handle();
+            let window = handle.get_window("main").unwrap();
+            let independant_multiplier = 1.2;
+            let monitor = window.primary_monitor().unwrap().unwrap();
+            let size = monitor.size();
+            let aspect_ratio = size.width as f64 / size.height as f64;
+            let width = (size.width as f64 / aspect_ratio) * independant_multiplier;
+            let height = (size.height as f64 / aspect_ratio) * independant_multiplier;
+
+            window
+                .set_size(LogicalSize::new(width, height))
+                .expect("Failed to change the window size");
+            window.center().expect("Failed to center the window");
+            window
+                .set_resizable(false)
+                .expect("Failed to rmeove resiazability");
+            window
+                .set_maximizable(false)
+                .expect("Failed to remove maximizablity");
+            window.set_focus().expect("Failed to set window on focus");
+            return Ok(());
+        })
         .invoke_handler(tauri::generate_handler![
             play_button_handler,
             get_versions,
@@ -80,9 +102,9 @@ pub fn run() {
             get_allow_old_versions,
             get_allow_snapshot,
             get_username,
+            reload_versions,
             get_ram_usage,
             save,
-
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -116,9 +138,9 @@ async fn get_username() -> String {
     CONFIG.lock().await.username.clone()
 }
 #[command]
-async fn set_allow_snapshot(b: bool) {
+async fn set_allow_snapshot(enabled: bool) {
     let mut config = CONFIG.lock().await;
-    config.show_snapshots = b;
+    config.show_snapshots = enabled;
 }
 
 #[command]
@@ -127,9 +149,9 @@ async fn get_allow_snapshot() -> bool {
 }
 
 #[command]
-async fn set_allow_old_versions(b: bool) {
+async fn set_allow_old_versions(enabled: bool) {
     let mut config = CONFIG.lock().await;
-    config.show_old_versions = b;
+    config.show_old_versions = enabled;
 }
 
 #[command]

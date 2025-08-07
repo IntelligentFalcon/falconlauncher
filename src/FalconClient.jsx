@@ -4,38 +4,6 @@ import {invoke} from "@tauri-apps/api/core";
 import {listen} from '@tauri-apps/api/event';
 import {LogicalSize, getCurrentWindow, currentMonitor} from '@tauri-apps/api/window';
 
-/**
- * Important function, do not touch!
- */
-async function lockWindow() {
-    const monitor = await currentMonitor();
-
-    // Something must be seriously wrong with the person using the app.
-    if (!monitor) {
-        console.log("What the actual fuck happened here?!");
-    }
-
-    // Calculate what size the window needs to be in order to keep the elements clean and
-    // user-friendly according to the (poor ahh) user's aspect ratio
-    const independantMultiplier = 1.2;
-    const aspectRatio = monitor.size.width / monitor.size.height;
-    const width = (monitor.size.width / aspectRatio) * independantMultiplier;
-    const height = (monitor.size.height / aspectRatio) * independantMultiplier;
-
-    const cwin = await getCurrentWindow();
-    await cwin.setSize(new LogicalSize(width, height));
-    await cwin.center();
-    await cwin.setResizable(false);
-    await cwin.setMaximizable(false);
-    await cwin.setFocus();
-}
-
-/**
- * Important function! Do not move this lower, must be on top of everything else.
- */
-lockWindow().catch(console.error);
-
-// Have to put these here because SettingsTab and the main function both need it
 
 export default function FalconClient() {
     const [activeTab, setActiveTab] = useState('home');
@@ -59,11 +27,6 @@ export default function FalconClient() {
 
     if (versions.length === 0) load_versions().catch((e) => console.error("Not working!", e))
 
-    invoke("get_ram_usage")
-        .then(ramUsage => {
-            setRamUsage(ramUsage);
-        })
-        .catch("Not working fuck");
     invoke("get_username").then((v) => setUsername(v)).catch("Couldn't get the username");
 
     async function registerEvents() {
@@ -103,10 +66,17 @@ export default function FalconClient() {
 
     const toggleShowingSnapshots = () => {
         setShowingSnapshots(!isShowingSnapshots);
+        invoke("set_allow_snapshot", {enabled: isShowingSnapshots}).catch("Failed to toggle snapshots");
+        invoke("reload_versions").catch("holy shit")
+        load_versions().catch("Failed to reload versions");
     };
 
     const toggleShowAlpha = () => {
         setShowingAlpha(!isShowingAlpha);
+        invoke("set_allow_old_versions", {enabled: isShowingAlpha}).catch("Failed to toggle old versions");
+        invoke("reload_versions").catch("holy shit")
+        console.log("Done!");
+        load_versions().catch("Failed to reload versions");
     };
 
     return (<div className="flex flex-col w-full h-screen bg-gray-900 text-gray-200 overflow-hidden">
@@ -157,15 +127,15 @@ export default function FalconClient() {
                         <button
                             onClick={toggleShowingSnapshots}
                             className={`relative inline-flex h-6 w-10 items-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                            isShowingSnapshots ? 'bg-blue-600' : 'bg-gray-300'
+                                isShowingSnapshots ? 'bg-blue-600' : 'bg-gray-300'
                             }`}
                             role="switch"
                             aria-checked={isShowingSnapshots}
                         >
                             <span
-                            className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-lg transition-transform duration-200 ease-in-out ${
-                                isShowingSnapshots ? 'translate-x-5' : 'translate-x-1'
-                            }`}
+                                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-lg transition-transform duration-200 ease-in-out ${
+                                    isShowingSnapshots ? 'translate-x-5' : 'translate-x-1'
+                                }`}
                             />
                         </button>
                         <label className='ml-2'>Show Snapshots</label>
@@ -175,15 +145,15 @@ export default function FalconClient() {
                         <button
                             onClick={toggleShowAlpha}
                             className={`relative inline-flex h-6 w-10 items-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                            isShowingAlpha ? 'bg-blue-600' : 'bg-gray-300'
+                                isShowingAlpha ? 'bg-blue-600' : 'bg-gray-300'
                             }`}
                             role="switch"
                             aria-checked={isShowingAlpha}
                         >
                             <span
-                            className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-lg transition-transform duration-200 ease-in-out ${
-                                isShowingAlpha ? 'translate-x-5' : 'translate-x-1'
-                            }`}
+                                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-lg transition-transform duration-200 ease-in-out ${
+                                    isShowingAlpha ? 'translate-x-5' : 'translate-x-1'
+                                }`}
                             />
                         </button>
                         <label className='ml-2'>Show Alpha Versions</label>
@@ -297,7 +267,7 @@ function ModsTab() {
                 type="text"
                 placeholder="Search mods..."
                 className="w-64 p-2 bg-gray-800 border border-gray-700 rounded"
-                />
+            />
         </div>
 
         <div className="space-y-3">
@@ -319,8 +289,15 @@ function ModsTab() {
 }
 
 function RamUsageBar({totalRam}) {
-    const [ramUsage, setRamUsage] = useState(2048);
+    const [ramUsage, setRamUsage] = useState(0);
     const [ramUsagePretiffied, setRamUsagePrettified] = useState("2GB");
+    if (ramUsage === 0)
+        invoke("get_ram_usage")
+            .then(ramUsage => {
+                setRamUsage(ramUsage);
+            })
+            .catch("Not working fuck");
+
     return <div className="bg-gray-800 p-6 rounded">
         <h3 className="text-lg font-semibold mb-1">Memory Allocation</h3>
         <p className="text-sm text-gray-400 mb-4">Adjust how much RAM is allocated to Minecraft</p>

@@ -29,10 +29,18 @@ fn load_downloaded_versions() {
     }
 }
 /// Loads downloaded versions and non-downloaded versions (if it is connected to the internet)
-pub async fn load_versions() -> Vec<MinecraftVersion> {
+pub async fn load_versions(snapshots: bool, old_versions: bool) -> Vec<MinecraftVersion> {
     let mut versions = Vec::new();
     if !get_versions_directory().exists() {
         std::fs::create_dir(get_versions_directory()).unwrap();
+    }
+    let mut filtered_types = vec!["release"];
+    if snapshots {
+        filtered_types.push("snapshot");
+    }
+    if old_versions {
+        filtered_types.push("old_beta");
+        filtered_types.push("old_alpha");
     }
     versions = get_versions_directory()
         .read_dir()
@@ -53,7 +61,7 @@ pub async fn load_versions() -> Vec<MinecraftVersion> {
             MinecraftVersion::from_folder(
                 get_versions_directory().join(v.file_name().to_str().unwrap().to_string()),
             )
-                .unwrap()
+            .unwrap()
         })
         .collect();
     if is_connected_to_internet().await {
@@ -65,7 +73,7 @@ pub async fn load_versions() -> Vec<MinecraftVersion> {
                 let versions = v.get("versions").unwrap().as_array().unwrap();
                 versions
                     .iter()
-                    .filter(|ver| ver.get("type").unwrap() == "release")
+                    .filter(|ver| versions.contains(ver.get("type").unwrap()))
                     .map(|ver| {
                         MinecraftVersion::from_id(
                             ver.get("id").unwrap().as_str().unwrap().to_string(),
@@ -76,7 +84,6 @@ pub async fn load_versions() -> Vec<MinecraftVersion> {
         };
         versions.extend(founded_versions);
     }
-
 
     versions
 }
@@ -100,10 +107,7 @@ pub async fn is_connected_to_internet() -> bool {
         .build()
         .unwrap();
 
-    let req = client
-        .get("https://google.com")
-        .send()
-        .await;
+    let req = client.get("https://google.com").send().await;
 
     match req {
         Ok(_) => true,
