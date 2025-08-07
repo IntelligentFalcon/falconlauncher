@@ -1,7 +1,9 @@
 use crate::directory_manager::{get_libraries_directory, get_versions_directory};
 use crate::structs;
 use crate::structs::MinecraftVersion;
-use crate::version_manager::load_version_manifest;
+use crate::version_manager::{
+    download_version_manifest, load_version_manifest, load_version_manifest_local,
+};
 use reqwest::Client;
 use serde_json::Value;
 use std::fs::File;
@@ -65,27 +67,29 @@ pub async fn load_versions(snapshots: bool, old_versions: bool) -> Vec<Minecraft
         })
         .collect();
     if is_connected_to_internet().await {
-        let json = load_version_manifest().await;
-
+        download_version_manifest().await;
+    }
+    if get_versions_directory()
+        .join("version_manifest_v2.json")
+        .exists()
+    {
+        let json = load_version_manifest_local().await;
         let founded_versions = match json {
             None => Vec::new(),
-            Some(v) => {
-                let versions = v.get("versions").unwrap().as_array().unwrap();
-                versions
-                    .iter()
-                    .filter(|ver| versions.contains(ver.get("type").unwrap()))
-                    .map(|ver| {
-                        MinecraftVersion::from_id(
-                            ver.get("id").unwrap().as_str().unwrap().to_string(),
-                        )
-                    })
-                    .collect()
-            }
+            Some(v) => load_versions_through_json(v, filtered_types),
         };
         versions.extend(founded_versions);
     }
-
     versions
+}
+
+fn load_versions_through_json(v: Value, types: Vec<&str>) -> Vec<MinecraftVersion> {
+    let versions = v.get("versions").unwrap().as_array().unwrap();
+    versions
+        .iter()
+        .filter(|ver| types.contains(&ver.get("type").unwrap().as_str().unwrap()))
+        .map(|ver| MinecraftVersion::from_id(ver.get("id").unwrap().as_str().unwrap().to_string()))
+        .collect()
 }
 
 /// Verifies if file exists and is not broken by the expected file size if expected_size is zero it will ignore checking file size

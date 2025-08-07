@@ -65,17 +65,21 @@ export default function FalconClient() {
     };
 
     const toggleShowingSnapshots = () => {
-        setShowingSnapshots(!isShowingSnapshots);
-        invoke("set_allow_snapshot", {enabled: isShowingSnapshots}).catch("Failed to toggle snapshots");
+        const newValue = !isShowingSnapshots;
+
+        setShowingSnapshots(newValue);
+        invoke("set_allow_snapshot", {enabled: newValue}).catch("Failed to toggle snapshots");
         invoke("reload_versions").catch("holy shit")
         load_versions().catch("Failed to reload versions");
     };
 
     const toggleShowAlpha = () => {
-        setShowingAlpha(!isShowingAlpha);
-        invoke("set_allow_old_versions", {enabled: isShowingAlpha}).catch("Failed to toggle old versions");
+        const newValue = !isShowingAlpha;
+
+        console.log(newValue)
+        setShowingAlpha(newValue);
+        invoke("set_allow_old_versions", {enabled: newValue}).catch("Failed to toggle old versions");
         invoke("reload_versions").catch("holy shit")
-        console.log("Done!");
         load_versions().catch("Failed to reload versions");
     };
 

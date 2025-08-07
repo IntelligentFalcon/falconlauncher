@@ -7,9 +7,6 @@ use std::sync::LazyLock;
 use tauri::async_runtime::{block_on, Mutex};
 use tauri::{command, AppHandle, LogicalSize, Manager};
 use tauri_plugin_dialog::DialogExt;
-use tauri_plugin_prevent_default::Flags;
-use tauri_plugin_prevent_default::KeyboardShortcut;
-use tauri_plugin_prevent_default::ModifierKey::{CtrlKey, ShiftKey};
 use utils::load_versions;
 mod config;
 mod directory_manager;
@@ -26,8 +23,8 @@ static CONFIG: LazyLock<Mutex<Config>> = LazyLock::new(|| {
         ram_usage: 1024,
         java_path: "java".to_string(),
         versions: Vec::new(),
-        show_old_versions: false,
-        show_snapshots: false,
+        show_old_versions: true,
+        show_snapshots: true,
     })
 });
 
