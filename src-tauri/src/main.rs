@@ -17,6 +17,7 @@ mod utils;
 
 mod mod_manager;
 mod version_manager;
+mod account_manager;
 
 #[allow(unused_imports)]
 fn main() {

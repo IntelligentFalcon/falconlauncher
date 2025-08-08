@@ -95,16 +95,15 @@ export default function FalconClient() {
         <div className="flex flex-1 overflow-hidden">
             {/* Sidebar */}
             <div className="w-64 bg-gray-800 flex flex-col">
-                {/* User profile */}
+                {/*User profile */}
                 <div className="p-6 flex flex-col items-center">
-                    <div
-                        className="w-16 h-16 rounded-full bg-indigo-500 flex items-center justify-center text-white font-bold text-xl mb-4">
-                        FC
-                    </div>
-                    <h2 className="text-lg font-semibold mb-4">Account Login</h2>
+                    <h2 className="text-lg font-semibold mb-4">Select a Profile</h2>
+                    <select name="Profile"
+                            className="w-full mb-2 p-2 bg-gray-900 border border-indigo-500 rounded text-gray-200 focus:outline-none"
+                    ></select>
                     <input
                         type="text"
-                        placeholder="Username/Email"
+                        placeholder="Username"
                         className="w-full mb-2 p-2 bg-gray-900 border border-indigo-500 rounded text-gray-200 focus:outline-none"
                         defaultValue={username}
 
@@ -184,12 +183,6 @@ export default function FalconClient() {
                         active={activeTab === 'settings'}
                         onClick={() => setActiveTab('settings')}
                     />
-                    <NavItem
-                        icon={<Newspaper size={18}/>}
-                        title="News"
-                        active={activeTab === 'news'}
-                        onClick={() => setActiveTab('news')}
-                    />
                 </div>
 
                 {/* Play button and status */}
@@ -216,7 +209,6 @@ export default function FalconClient() {
                 {activeTab === 'home' && <HomeTab/>}
                 {activeTab === 'mods' && <ModsTab/>}
                 {activeTab === 'settings' && <SettingsTab/>}
-                {activeTab === 'news' && <NewsTab/>}
             </div>
         </div>
     </div>);
@@ -236,23 +228,32 @@ function NavItem({icon, title, active, onClick}) {
 }
 
 function HomeTab() {
-    return (<div className="p-8">
-        <div className="text-center mb-12">
-            <h1 className="text-4xl font-bold mb-2">Welcome to FalconLauncher</h1>
-            <p className="text-xl text-indigo-400">Open source and Free Minecraft Launcher :)</p>
-        </div>
+    const newsArticles = [{
+        title: 'Minecraft 1.20.4 Released',
+        content: 'The latest version brings new features and bug fixes',
+        date: '3 days ago'
+    }, {
+        title: 'Community Event: Building Competition',
+        content: 'Join our weekly building competition',
+        date: '1 week ago'
+    }, {
+        title: 'New Mod Spotlight: Enhanced Biomes',
+        content: 'Discover incredible new biomes with this mod',
+        date: '2 weeks ago'
+    }];
 
-        <div className="grid grid-cols-2 gap-6">
-            {[{title: 'Performance', description: 'Optimized for speed and smooth gameplay'}, {
-                title: 'Mods', description: 'Easy installation and management of mods'
-            }, {title: 'Customization', description: 'Personalize your Minecraft experience'}, {
-                title: 'Security', description: 'Safe and secure gaming environment'
-            }].map((feature, index) => (<div key={index} className="bg-gray-800 p-6 rounded-lg">
-                <h3 className="text-xl font-bold text-indigo-400 mb-2">{feature.title}</h3>
-                <p className="text-gray-300">{feature.description}</p>
+    return (<div className="p-8">
+        <h2 className="text-2xl font-bold mb-6">Minecraft News</h2>
+
+        <div className="space-y-4">
+            {newsArticles.map((article, index) => (<div key={index} className="bg-gray-800 p-6 rounded">
+                <h3 className="text-xl font-semibold mb-2">{article.title}</h3>
+                <p className="text-gray-300 mb-3">{article.content}</p>
+                <p className="text-sm text-indigo-400 italic">{article.date}</p>
             </div>))}
         </div>
-    </div>);
+    </div>)
+        ;
 }
 
 function ModsTab() {
@@ -377,34 +378,6 @@ function SettingsTab() {
                     Save Settings
                 </button>
             </div>
-        </div>
-    </div>);
-}
-
-function NewsTab() {
-    const newsArticles = [{
-        title: 'Minecraft 1.20.4 Released',
-        content: 'The latest version brings new features and bug fixes',
-        date: '3 days ago'
-    }, {
-        title: 'Community Event: Building Competition',
-        content: 'Join our weekly building competition',
-        date: '1 week ago'
-    }, {
-        title: 'New Mod Spotlight: Enhanced Biomes',
-        content: 'Discover incredible new biomes with this mod',
-        date: '2 weeks ago'
-    }];
-
-    return (<div className="p-6">
-        <h2 className="text-2xl font-bold mb-6">Minecraft News</h2>
-
-        <div className="space-y-4">
-            {newsArticles.map((article, index) => (<div key={index} className="bg-gray-800 p-6 rounded">
-                <h3 className="text-xl font-semibold mb-2">{article.title}</h3>
-                <p className="text-gray-300 mb-3">{article.content}</p>
-                <p className="text-sm text-indigo-400 italic">{article.date}</p>
-            </div>))}
         </div>
     </div>);
 }
