@@ -78,7 +78,7 @@ pub async fn load_versions(snapshots: bool, old_versions: bool) -> Vec<Minecraft
             None => Vec::new(),
             Some(v) => load_versions_through_json(v, filtered_types),
         };
-        versions.extend(founded_versions);
+        versions = extend_once(versions,founded_versions);
     }
     versions
 }

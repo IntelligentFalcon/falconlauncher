@@ -62,7 +62,7 @@ pub struct LibraryRules {
     pub allowed_oses: Vec<String>,
     pub disallowed_oses: Vec<String>,
 }
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct MinecraftVersion {
     pub id: String,
     pub version_path: String,
