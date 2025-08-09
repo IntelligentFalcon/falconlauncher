@@ -43,3 +43,7 @@ pub fn get_launcher_java_directory() -> PathBuf {
 pub fn get_mods_folder() -> PathBuf {
     get_minecraft_directory().join("mods")
 }
+
+pub fn get_profiles_file() -> PathBuf {
+    get_falcon_launcher_directory().join("profiles.json")
+}

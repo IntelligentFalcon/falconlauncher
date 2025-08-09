@@ -1,4 +1,5 @@
 use crate::directory_manager::get_versions_directory;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::fs;
 use std::path::PathBuf;
@@ -151,4 +152,10 @@ impl ModInfo {
             version,
         }
     }
+}
+#[derive(Serialize, Deserialize,Clone)]
+pub struct Profile {
+    pub name: String,
+    pub online: bool,
+    pub uuid: uuid::Uuid
 }

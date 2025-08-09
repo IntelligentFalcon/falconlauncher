@@ -2,6 +2,7 @@ use crate::config::Config;
 use crate::directory_manager::*;
 use crate::downloader::download_version;
 use crate::jdk_manager::get_java;
+use crate::profile_manager::get_profile;
 use crate::structs::library_from_value;
 use crate::utils::{
     extend_once, get_current_os, is_connected_to_internet, parse_library_name_to_path,
@@ -17,7 +18,6 @@ use tauri::{AppHandle, Emitter};
 const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 pub async fn launch_game(app_handle: AppHandle, version: String, config: &Config) {
-    let uid = uuid::Uuid::new_v4();
     let mut versions = config.versions.iter().filter(|x| x.id == version);
     let version = versions.next().unwrap();
     let inherited_version = version.get_inherited();
@@ -31,7 +31,8 @@ pub async fn launch_game(app_handle: AppHandle, version: String, config: &Config
     let inherited_id = &inherited_version.id;
     update_download_status("Reading version metadata...", &app_handle);
     let username = &config.username;
-
+    let profile = get_profile(username).unwrap();
+    let uid = profile.uuid;
     let version_directory = PathBuf::from(&inherited_version.version_path);
     let json: Value = version.load_json();
 

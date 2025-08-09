@@ -5,7 +5,7 @@ import {listen} from '@tauri-apps/api/event';
 import LoginPopup from './LoginPopup';
 
 export default function FalconClient() {
-    const [activeTab, setActiveTab] = useState('home');
+    const [activeTab, setActiveTab] = useState("home");
     const [downloadProgress, setDownloadProgress] = useState(0);
     const [isDownloading, setIsDownloading] = useState(false);
     const [isShowingSnapshots, setShowingSnapshots] = useState(false);
@@ -28,12 +28,14 @@ export default function FalconClient() {
             .catch((e) => console.error("Failed to fetch versions:", e));
     }
 
-    invoke("get_profiles").then((v) => {
-        setProfiles(v);
-        if (profiles.length > 0) {
-            setUsername(v);
-        }
-    });
+    useEffect(() => {
+        invoke("get_profiles").then((v) => {
+            setProfiles(v);
+            if (profiles.length > 0) {
+                setUsername(v[0]);
+            }
+        });
+    })
 
     useEffect(() => {
         load_versions().catch((e) => console.error("Initial version load failed!", e));
@@ -118,7 +120,9 @@ export default function FalconClient() {
                     <h2 className="text-lg font-semibold mb-4">Select a Profile</h2>
                     <select name="Profile"
                             className="w-full mb-2 p-2 bg-gray-900 border border-indigo-500 rounded text-gray-200 focus:outline-none"
-                    >
+                            onChange={event => {
+                                setUsername(event.target.value)
+                            }}>
                         {profiles.map((v) => <option key={v} value={v}>{v}</option>)}
                     </select>
                     <button
@@ -305,6 +309,7 @@ function RamUsageBar({totalRam}) {
     if (ramUsage === 0) invoke("get_ram_usage")
         .then(ramUsage => {
             setRamUsage(ramUsage);
+            setRamUsagePrettified((ramUsage / 1024).toFixed(1) + " GB");
         })
         .catch("Not working fuck");
 
@@ -312,13 +317,11 @@ function RamUsageBar({totalRam}) {
         <h3 className="text-lg font-semibold mb-1">Memory Allocation</h3>
         <p className="text-sm text-gray-400 mb-4">Adjust how much RAM is allocated to Minecraft</p>
         <div className="flex items-center">
-            <input type="range" min="1.0" max={parseInt(totalRam / 1024)} defaultValue={ramUsage}
+            <input type="range" min="1.0" max={parseInt(totalRam / 1024)} value={ramUsage}
                    onInput={event => {
-                       setRamUsage(event.target.valueAsNumber);
-                       setRamUsagePrettified((ramUsage / 1024).toFixed(1) + " GB");
-                       invoke("set_ram_usage", {ramUsage: ramUsage}).catch("").then();
-                       const text = document.getElementById("ram_usage_label");
-                       if (text != null) text.textContent = gRamUsagePrettified
+                       setRamUsage(event.target.value);
+                       setRamUsagePrettified((event.target.value / 1024).toFixed(1) + " GB");
+                       invoke("set_ram_usage", {ramUsage: event.target.value}).catch("").then();
                    }} className="w-64"/>
 
             <data id="ram_usage_label" className="ml-4"

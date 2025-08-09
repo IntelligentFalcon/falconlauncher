@@ -1,11 +1,15 @@
 use crate::config::{dump, load_config, Config};
+use crate::directory_manager::get_profiles_file;
 use crate::game_launcher::launch_game;
+use crate::structs::Profile;
+
 use std::fs::create_dir_all;
 use std::ops::Deref;
 use std::string::ToString;
 use std::sync::LazyLock;
 use tauri::async_runtime::{block_on, Mutex};
-use tauri::{command, AppHandle, LogicalSize, Manager};
+use tauri::utils::config_v1::WindowUrl;
+use tauri::{command, AppHandle, LogicalSize, Manager, WindowBuilder};
 use tauri_plugin_dialog::DialogExt;
 use utils::load_versions;
 mod config;
@@ -13,6 +17,7 @@ mod directory_manager;
 mod downloader;
 mod game_launcher;
 mod jdk_manager;
+mod profile_manager;
 mod structs;
 mod utils;
 mod version_manager;
@@ -30,6 +35,7 @@ static CONFIG: LazyLock<Mutex<Config>> = LazyLock::new(|| {
 
 #[command]
 async fn play_button_handler(app: AppHandle, selected_version: String) {
+
     launch_game(app, selected_version, &*CONFIG.lock().await).await;
 }
 
@@ -102,6 +108,8 @@ pub fn run() {
             reload_versions,
             get_ram_usage,
             save,
+            get_profiles,
+            create_offline_profile
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -154,4 +162,14 @@ async fn set_allow_old_versions(enabled: bool) {
 #[command]
 async fn get_allow_old_versions() -> bool {
     CONFIG.lock().await.show_old_versions
+}
+
+#[command]
+async fn get_profiles() -> Vec<String> {
+    let profiles = profile_manager::get_profiles();
+    profiles.iter().map(|x| x.name.clone()).collect()
+}
+#[command]
+async fn create_offline_profile(username: String) {
+    profile_manager::create_new_profile(username, false);
 }
