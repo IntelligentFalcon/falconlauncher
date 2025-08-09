@@ -1,9 +1,8 @@
 import {useEffect, useState} from 'react';
-import {Settings, Package, Home, Newspaper, Play, X, Minus, ChevronRight} from 'lucide-react';
+import {Settings, Package, Home, Play} from 'lucide-react';
 import {invoke} from "@tauri-apps/api/core";
 import {listen} from '@tauri-apps/api/event';
-import {LogicalSize, getCurrentWindow, currentMonitor} from '@tauri-apps/api/window';
-
+import LoginPopup from './LoginPopup';
 
 export default function FalconClient() {
     const [activeTab, setActiveTab] = useState('home');
@@ -15,73 +14,92 @@ export default function FalconClient() {
     const [selectedVersion, setSelectedVersion] = useState("");
     const [username, setUsername] = useState("");
     const [statusMessage, setStatusMessage] = useState('Ready to play');
+    const [isLoginPopupOpen, setIsLoginPopupOpen] = useState(false);
+    const [profiles, setProfiles] = useState([])
 
     async function load_versions() {
         invoke("get_versions")
             .then((v) => {
-                setVersions(v)
-                setSelectedVersion(v[0])
+                setVersions(v);
+                if (v.length > 0) {
+                    setSelectedVersion(v[0]);
+                }
             })
             .catch((e) => console.error("Failed to fetch versions:", e));
     }
 
-    if (versions.length === 0) load_versions().catch((e) => console.error("Not working!", e))
+    invoke("get_profiles").then((v) => {
+        setProfiles(v);
+        if (profiles.length > 0) {
+            setUsername(v);
+        }
+    });
 
-    invoke("get_username").then((v) => setUsername(v)).catch("Couldn't get the username");
+    useEffect(() => {
+        load_versions().catch((e) => console.error("Initial version load failed!", e));
+        invoke("get_username").then(setUsername).catch(() => console.error("Couldn't get the username"));
 
-    async function registerEvents() {
-        const unlisten = await listen('progress', (event) => {
-            console.log('Progress:', event.payload);
-            setStatusMessage(event.payload);
-        });
+        async function registerEvents() {
+            const unlistenProgress = await listen('progress', (event) => {
+                console.log('Progress:', event.payload);
+                setStatusMessage(event.payload);
+            });
+            const unlistenProgressBar = await listen('progressBar', (event) => {
+                console.log('Progress Bar:', event.payload);
+                if (event.payload >= 100) {
+                    setIsDownloading(false);
+                }
+                setDownloadProgress(event.payload);
+            });
+            // Cleanup on component unmount
+            return () => {
+                unlistenProgress();
+                unlistenProgressBar();
+            };
+        }
 
-        const unlistenbar = await listen('progressBar', (event) => {
-            console.log('Progress:', event.payload);
-            if (event.payload >= 100) {
-                setIsDownloading(false);
-            }
-            setDownloadProgress(event.payload);
-        });
-    }
+        registerEvents().catch((e) => console.error("Failed to register events", e));
+    }, []);
 
-    registerEvents().catch("Failed to register events");
+
     const handlePlay = async () => {
-        if (selectedVersion === "" || selectedVersion === null) {
+        if (!selectedVersion && versions.length > 0) {
             setSelectedVersion(versions[0]);
-            console.log(versions)
         }
         setIsDownloading(true);
-        invoke("set_username", {username: username}).catch("Guess what? i couldn't save your username");
-        invoke("save").catch("Saving configuration failed.");
-        invoke("play_button_handler", {
-            selectedVersion: selectedVersion
-        }).catch((e) => console.error("Failed to launch game:", e));
-        // Simulate download progress
+        try {
+            await invoke("set_username", {username});
+            await invoke("save");
+            await invoke("play_button_handler", {selectedVersion});
+        } catch (e) {
+            console.error("Failed to launch game:", e);
+            setIsDownloading(false);
+        }
+
         if (downloadProgress >= 100) {
             setIsDownloading(false);
             setDownloadProgress(0);
         }
-
     };
 
     const toggleShowingSnapshots = () => {
         const newValue = !isShowingSnapshots;
-
         setShowingSnapshots(newValue);
-        invoke("set_allow_snapshot", {enabled: newValue}).catch("Failed to toggle snapshots");
-        invoke("reload_versions").catch("holy shit")
-        load_versions().catch("Failed to reload versions");
+        invoke("set_allow_snapshot", {enabled: newValue})
+            .then(() => invoke("reload_versions"))
+            .then(() => load_versions())
+            .catch(e => console.error("Failed to toggle snapshots and reload", e));
     };
 
     const toggleShowAlpha = () => {
         const newValue = !isShowingAlpha;
-
-        console.log(newValue)
         setShowingAlpha(newValue);
-        invoke("set_allow_old_versions", {enabled: newValue}).catch("Failed to toggle old versions");
-        invoke("reload_versions").catch("holy shit")
-        load_versions().catch("Failed to reload versions");
+        invoke("set_allow_old_versions", {enabled: newValue})
+            .then(() => invoke("reload_versions"))
+            .then(() => load_versions())
+            .catch(e => console.error("Failed to toggle old versions and reload", e));
     };
+
 
     return (<div className="flex flex-col w-full h-screen bg-gray-900 text-gray-200 overflow-hidden">
         {/* Header */}
@@ -100,45 +118,36 @@ export default function FalconClient() {
                     <h2 className="text-lg font-semibold mb-4">Select a Profile</h2>
                     <select name="Profile"
                             className="w-full mb-2 p-2 bg-gray-900 border border-indigo-500 rounded text-gray-200 focus:outline-none"
-                    ></select>
-                    <input
-                        type="text"
-                        placeholder="Username"
-                        className="w-full mb-2 p-2 bg-gray-900 border border-indigo-500 rounded text-gray-200 focus:outline-none"
-                        defaultValue={username}
-
-                        onInput={event => {
-                            setUsername(event.target.value);
-                            invoke("set_username", {username: event.target.value}).catch("Guess what? i couldn't save your username");
-
-                        }}
-
-                    />
+                    >
+                        {profiles.map((v) => <option key={v} value={v}>{v}</option>)}
+                    </select>
+                    <button
+                        className="w-full mb-2 p-2 bg-gray-900 border border-indigo-500 rounded text-gray-200
+                        focus:outline-none"
+                        onClick={() => setIsLoginPopupOpen(true)}
+                    >
+                        Create a new profile
+                    </button>
                 </div>
 
                 {/* Version selection */}
                 <div className="px-6 pb-4">
                     <label className="block text-sm font-semibold mb-2">Game Version</label>
                     <select className="w-full p-2 bg-gray-900 border border-gray-700 rounded text-gray-200"
-                            onInput={event => {
-                                setSelectedVersion(event.target.value)
-                            }}>
-                        {versions.map((version) => (<option key={version}>{version}</option>))}
+                            value={selectedVersion}
+                            onChange={event => setSelectedVersion(event.target.value)}>
+                        {versions.map((version) => (<option key={version} value={version}>{version}</option>))}
                     </select>
 
                     <div className="flex items-center justify-left mt-6">
                         <button
                             onClick={toggleShowingSnapshots}
-                            className={`relative inline-flex h-6 w-10 items-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                                isShowingSnapshots ? 'bg-blue-600' : 'bg-gray-300'
-                            }`}
+                            className={`relative inline-flex h-6 w-10 items-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${isShowingSnapshots ? 'bg-blue-600' : 'bg-gray-300'}`}
                             role="switch"
                             aria-checked={isShowingSnapshots}
                         >
                             <span
-                                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-lg transition-transform duration-200 ease-in-out ${
-                                    isShowingSnapshots ? 'translate-x-5' : 'translate-x-1'
-                                }`}
+                                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-lg transition-transform duration-200 ease-in-out ${isShowingSnapshots ? 'translate-x-5' : 'translate-x-1'}`}
                             />
                         </button>
                         <label className='ml-2'>Show Snapshots</label>
@@ -147,16 +156,12 @@ export default function FalconClient() {
                     <div className="flex items-center justify-left mt-2">
                         <button
                             onClick={toggleShowAlpha}
-                            className={`relative inline-flex h-6 w-10 items-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                                isShowingAlpha ? 'bg-blue-600' : 'bg-gray-300'
-                            }`}
+                            className={`relative inline-flex h-6 w-10 items-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${isShowingAlpha ? 'bg-blue-600' : 'bg-gray-300'}`}
                             role="switch"
                             aria-checked={isShowingAlpha}
                         >
                             <span
-                                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-lg transition-transform duration-200 ease-in-out ${
-                                    isShowingAlpha ? 'translate-x-5' : 'translate-x-1'
-                                }`}
+                                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-lg transition-transform duration-200 ease-in-out ${isShowingAlpha ? 'translate-x-5' : 'translate-x-1'}`}
                             />
                         </button>
                         <label className='ml-2'>Show Alpha Versions</label>
@@ -188,7 +193,7 @@ export default function FalconClient() {
                 {/* Play button and status */}
                 <div className="p-6 border-t border-gray-700">
                     <button disabled={isDownloading}
-                            className="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded flex items-center justify-center"
+                            className="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded flex items-center justify-center disabled:bg-gray-500"
                             onClick={handlePlay}
                     >
                         <Play size={18} className="mr-2"/>
@@ -207,12 +212,14 @@ export default function FalconClient() {
             {/* Main content */}
             <div className="flex-1 overflow-auto">
                 {activeTab === 'home' && <HomeTab/>}
-                {activeTab === 'mods' && <ModsTab/>}
                 {activeTab === 'settings' && <SettingsTab/>}
+                {activeTab === 'mods' && <ModsTab/>}
             </div>
         </div>
-    </div>);
 
+        <LoginPopup isOpen={isLoginPopupOpen} onClose={() => setIsLoginPopupOpen(false)}/>
+
+    </div>);
 }
 
 function NavItem({icon, title, active, onClick}) {
@@ -252,8 +259,7 @@ function HomeTab() {
                 <p className="text-sm text-indigo-400 italic">{article.date}</p>
             </div>))}
         </div>
-    </div>)
-        ;
+    </div>);
 }
 
 function ModsTab() {
@@ -267,7 +273,7 @@ function ModsTab() {
 
     return (<div className="p-6">
         <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold">Mod Manager</h2>
+            <h2 className="2xl font-bold">Mod Manager</h2>
             <input
                 type="text"
                 placeholder="Search mods..."
@@ -296,12 +302,11 @@ function ModsTab() {
 function RamUsageBar({totalRam}) {
     const [ramUsage, setRamUsage] = useState(0);
     const [ramUsagePretiffied, setRamUsagePrettified] = useState("2GB");
-    if (ramUsage === 0)
-        invoke("get_ram_usage")
-            .then(ramUsage => {
-                setRamUsage(ramUsage);
-            })
-            .catch("Not working fuck");
+    if (ramUsage === 0) invoke("get_ram_usage")
+        .then(ramUsage => {
+            setRamUsage(ramUsage);
+        })
+        .catch("Not working fuck");
 
     return <div className="bg-gray-800 p-6 rounded">
         <h3 className="text-lg font-semibold mb-1">Memory Allocation</h3>
@@ -324,8 +329,7 @@ function RamUsageBar({totalRam}) {
 
 function SettingsTab() {
     const [totalRam, setTotalRam] = useState(0)
-    if (totalRam === 0)
-        invoke("get_total_ram").catch((e) => console.error("I hate things not to work", e)).then(ram => setTotalRam(ram))
+    if (totalRam === 0) invoke("get_total_ram").catch((e) => console.error("I hate things not to work", e)).then(ram => setTotalRam(ram))
 
     function save() {
         invoke("set_ram_usage", {ramUsage: gRamUsage}).catch("Aw man you screwed it up");
@@ -338,19 +342,6 @@ function SettingsTab() {
         <div className="space-y-6">
             {/* Memory Settings */}
             <RamUsageBar totalRam={totalRam}/>
-
-            {/* Java Settings */}
-            <div className="bg-gray-800 p-6 rounded">
-                <h3 className="text-lg font-semibold mb-1">Java Settings</h3>
-                <p className="text-sm text-gray-400 mb-4">Select which Java version to use</p>
-
-                <select className="w-64 p-2 bg-gray-700 border border-gray-600 rounded">
-                    <option>Auto-detect</option>
-                    <option>Java 8</option>
-                    <option>Java 11</option>
-                    <option>Java 17</option>
-                </select>
-            </div>
 
             {/* Launch Options */}
             <div className="bg-gray-800 p-6 rounded">
@@ -381,4 +372,3 @@ function SettingsTab() {
         </div>
     </div>);
 }
-
