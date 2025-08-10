@@ -74,6 +74,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e16d2d3311acee920a9eb8d33b8cbc1787ce4a264e85f964c2404b969bdcd487"
 
 [[package]]
+name = "app_dirs2"
+version = "2.5.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a7e7b35733e3a8c1ccb90385088dd5b6eaa61325cb4d1ad56e683b5224ff352e"
+dependencies = [
+ "jni",
+ "ndk-context",
+ "winapi",
+ "xdg",
+]
+
+[[package]]
 name = "arbitrary"
 version = "1.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -780,6 +792,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "data-encoding"
+version = "2.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2a2330da5de22e8a3cb63252ce2abb30116bf5265e89c0e01bc17015ce30a476"
+
+[[package]]
 name = "deflate64"
 version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -849,6 +867,31 @@ dependencies = [
  "option-ext",
  "redox_users",
  "windows-sys 0.60.2",
+]
+
+[[package]]
+name = "discord-sdk"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "de8f587263d1c13696fb47e885ba81ad3c07412069f66850e7730413f40af2ef"
+dependencies = [
+ "anyhow",
+ "app_dirs2",
+ "async-trait",
+ "bitflags 2.9.0",
+ "crossbeam-channel",
+ "data-encoding",
+ "num-traits",
+ "parking_lot",
+ "serde",
+ "serde_json",
+ "serde_repr",
+ "thiserror 2.0.12",
+ "time",
+ "tokio",
+ "tracing",
+ "url",
+ "winreg",
 ]
 
 [[package]]
@@ -1071,6 +1114,7 @@ dependencies = [
 name = "falcon"
 version = "0.1.0"
 dependencies = [
+ "discord-sdk",
  "reqwest",
  "rust-ini",
  "serde",
@@ -1082,6 +1126,7 @@ dependencies = [
  "tauri-plugin-notification",
  "tauri-plugin-opener",
  "tauri-plugin-prevent-default",
+ "tokio",
  "toml 0.9.4",
  "uuid",
  "zip",
@@ -5852,6 +5897,12 @@ dependencies = [
  "once_cell",
  "pkg-config",
 ]
+
+[[package]]
+name = "xdg"
+version = "2.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "213b7324336b53d2414b2db8537e56544d981803139155afa84f76eeebb7a546"
 
 [[package]]
 name = "yoke"

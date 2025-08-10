@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources lang="fa" region="IR" generated="2025-08-10">
+    <string id="app_name">Falcon Launcher</string>
+    <string id="home_tab">Home</string>
+    <string id="settings_tab">Settings</string>
+    <string id="mods_tab">Mods</string>
+    <string id="play">Play</string>
+    <string id="mod_manager">Mod Manager</string>
+    <string id="mod_search">Search mods...</string>
+    <string id="mem_alloc_title">Memory_Allocation</string>
+    <string id="mem_alloc_description">Adjust how much RAM is allocated to Minecraft</string>
+    <string id="launch_options_title">Launch Options</string>
+    <string id="launch_options_description">Configure how Minecraft starts</string>
+    <string id="lo_fullscreen">Launch in fullscreen</string>
+    <string id="lo_close_on_start">Close launcher when game starts</string>
+    <string id="startup_update_check">Check for updates on startup</string>
+    <string id="cancel">Cancel</string>
+    <string id="minecraft_news">Minecraft News</string>
+    <string id="select_profile">Select a Profile</string>
+    <string id="create_profile">Create a new Profile</string>
+    <string id="game_version">Game Version</string>
+    <string id="show_snapshots">Show Snapshots</string>
+    <string id="show_old_versions">Show Alpha versions</string>
+</resources>

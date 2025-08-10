@@ -1,15 +1,12 @@
 use crate::config::{dump, load_config, Config};
-use crate::directory_manager::get_profiles_file;
 use crate::game_launcher::launch_game;
-use crate::structs::Profile;
 
 use std::fs::create_dir_all;
 use std::ops::Deref;
 use std::string::ToString;
 use std::sync::LazyLock;
 use tauri::async_runtime::{block_on, Mutex};
-use tauri::utils::config_v1::WindowUrl;
-use tauri::{command, AppHandle, LogicalSize, Manager, WindowBuilder};
+use tauri::{command, AppHandle, LogicalSize, Manager};
 use tauri_plugin_dialog::DialogExt;
 use utils::load_versions;
 mod config;
