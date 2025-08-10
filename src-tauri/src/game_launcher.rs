@@ -43,6 +43,8 @@ pub async fn launch_game(app_handle: AppHandle, version: String, config: &Config
 
     let game_directory = get_minecraft_directory().display().to_string();
     let asset_directory = get_assets_directory().display().to_string();
+    // This is a very old argument that is even removed in the newer versions but still required for launching past versions like 1.0
+    let resources_directory = get_minecraft_directory().join("resources").display().to_string();
 
     let asset_index = inherited_json["assetIndex"]["id"]
         .as_str()
@@ -105,14 +107,15 @@ pub async fn launch_game(app_handle: AppHandle, version: String, config: &Config
     let mut run_args_iter = get_launch_args(&json);
     let run_args_iter_inherited = get_launch_args(&inherited_json);
     run_args_iter = extend_once(run_args_iter, run_args_iter_inherited);
-
-    let run_args = run_args_iter
+    run_args_iter = extend_once(vec!["--width".to_string(), "854".to_string(), "--height".to_string(), "480".to_string()], run_args_iter);
+    let mut run_args = run_args_iter
         .iter()
         .map(|v| {
             v.replace("${auth_player_name}", username)
                 .replace("${version_name}", &version.id)
                 .replace("${game_directory}", &game_directory)
                 .replace("${assets_root}", &asset_directory)
+                .replace("${game_assets}", &resources_directory)
                 .replace("${assets_index_name}", &asset_index)
                 .replace("${auth_uuid}", &uid.to_string())
                 .replace("${auth_access_token}", "accessToken123")
@@ -131,6 +134,7 @@ pub async fn launch_game(app_handle: AppHandle, version: String, config: &Config
     let mut child = Command::new(&java)
         .arg(format!("-Djava.library.path={}", natives))
         .arg(format!("-Xmx{}", ram_usage))
+        .current_dir(&game_directory)
         .arg("-Xms2048M")
         .arg("-cp")
         .arg(format!("{}{}{}", class_path, separator, libraries_str))
