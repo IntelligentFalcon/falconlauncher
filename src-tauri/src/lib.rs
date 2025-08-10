@@ -9,6 +9,8 @@ use tauri::async_runtime::{block_on, Mutex};
 use tauri::{command, AppHandle, LogicalSize, Manager};
 use tauri_plugin_dialog::DialogExt;
 use utils::load_versions;
+use version_manager::VersionInfo;
+
 mod config;
 mod directory_manager;
 mod downloader;
@@ -32,7 +34,6 @@ static CONFIG: LazyLock<Mutex<Config>> = LazyLock::new(|| {
 
 #[command]
 async fn play_button_handler(app: AppHandle, selected_version: String) {
-
     launch_game(app, selected_version, &*CONFIG.lock().await).await;
 }
 
@@ -69,6 +70,11 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
+            app.dialog().message("این یک خروجی آزمایشی از لانچر هستش لطفا اگه از جایی این رو دریافت کردین برای اپدیت های جدید حتما عضو چنل @IntelligentFalcon
+در تلگرام بشید چون  که هر چیزی توی این خروجی ممکنه تغییر کنه و یا حذف شده باشه و این که انتظار کار نکردن برخی چیزای داخل لانچر رو داشته باشید.")
+                .title("من را بخوان!")
+                .kind(tauri_plugin_dialog::MessageDialogKind::Info)
+                .blocking_show();
             let handle = app.handle();
             let window = handle.get_window("main").unwrap();
             let independant_multiplier = 1.2;
@@ -106,6 +112,8 @@ pub fn run() {
             get_ram_usage,
             save,
             get_profiles,
+            get_installed_versions,
+            get_non_installed_versions,
             create_offline_profile
         ])
         .run(tauri::generate_context!())
@@ -169,4 +177,22 @@ async fn get_profiles() -> Vec<String> {
 #[command]
 async fn create_offline_profile(username: String) {
     profile_manager::create_new_profile(username, false);
+}
+#[command]
+async fn get_installed_versions() -> Vec<String> {
+    let conf = CONFIG.lock().await;
+    let versions = conf.versions.clone();
+    versions
+        .iter()
+        .filter(|x| x.is_installed())
+        .map(|x| x.id.clone()).collect()
+}
+#[command]
+async fn get_non_installed_versions() -> Vec<String> {
+    let conf = CONFIG.lock().await;
+    let versions = conf.versions.clone();
+    versions
+        .iter()
+        .filter(|x| !x.is_installed())
+        .map(|x| x.id.clone()).collect()
 }

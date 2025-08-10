@@ -140,7 +140,9 @@ export default function FalconClient() {
                     <select className="w-full p-2 bg-gray-900 border border-gray-700 rounded text-gray-200"
                             value={selectedVersion}
                             onChange={event => setSelectedVersion(event.target.value)}>
-                        {versions.map((version) => (<option key={version} value={version}>{version}</option>))}
+                        {versions.map((version) =>
+                            <option key={version} id={version}>{version}</option>
+                        )}
                     </select>
 
                     <div className="flex items-center justify-left mt-6">
