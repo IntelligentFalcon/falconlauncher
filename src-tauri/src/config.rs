@@ -24,7 +24,6 @@ pub fn dump(config: &Config) {
     conf.write_to_file(get_config_directory()).unwrap()
 }
 fn get_ini() -> Ini {
-    println!("Reading Ini File");
     let file = File::open(get_config_directory()).expect("Failed to get the ini file.");
     Ini::read_from(&mut BufReader::new(file)).expect("Reading failed!")
 }

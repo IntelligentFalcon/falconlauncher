@@ -58,31 +58,29 @@ async fn get_versions() -> Vec<String> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    std::panic::set_hook(Box::new(|panic_info| {
-        println!("Panic: {:?}", panic_info);
-
-        let f = std::fs::File::create(get_falcon_launcher_directory().join("crash.txt"));
-        f.unwrap().write_all(format!("Whoopsie launcher just crashed! consider sending this to @IntelligentFalcon on telegram \n {:?}",panic_info).as_bytes()).unwrap()
-    }));
+    // std::panic::set_hook(Box::new(|panic_info| {
+    //     println!("Panic: {:?}", panic_info);
+    //
+    //     let f = std::fs::File::create(get_falcon_launcher_directory().join("crash.txt"));
+    //     f.unwrap().write_all(format!("Whoopsie launcher just crashed! consider sending this to @IntelligentFalcon on telegram \n {:?}",panic_info).as_bytes()).unwrap()
+    // }));
     tauri::Builder::default()
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_log::Builder::new()
-            .target(tauri_plugin_log::Target::new(
-                tauri_plugin_log::TargetKind::LogDir {
-                    file_name: Some("logs".to_string()),
-                },
-            ))
-            .build())
+        // .plugin(tauri_plugin_log::Builder::new()
+        // // .target(tauri_plugin_log::Target::new(
+        // //     tauri_plugin_log::TargetKind::LogDir {
+        // //         file_name: Some("logs".to_string()),
+        // //     },
+        // // ))
+        // // .build())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
 
-            println!("Launcher has started.");
-            let fl_path = directory_manager::get_falcon_launcher_directory();
+            let fl_path = get_falcon_launcher_directory();
             let jdk_path = directory_manager::get_launcher_java_directory();
             create_dir_all(fl_path).unwrap();
             create_dir_all(jdk_path).unwrap();
-            println!("Created launcher directories");
 
             block_on(async move {
                 load_config(&mut *CONFIG.lock().await).await;

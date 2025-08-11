@@ -200,7 +200,7 @@ impl MinecraftVersion {
     }
     pub fn get_libraries(&self) -> Vec<String> {
         let mut libraries = self.get_library_paths();
-        let libraries_2 = self.get_library_paths();
+        let libraries_2 = self.get_inherited().get_library_paths();
         libraries = libraries
             .into_iter()
             .filter(|x| {
