@@ -96,14 +96,25 @@ impl MinecraftVersion {
         MinecraftVersion::new(id.clone(), id)
     }
     pub fn from_folder(directory: PathBuf) -> MinecraftVersion {
-        let ignored_jsons = vec!["TLauncherAdditional"];
+        let ignored_jsons = vec!["tlauncheradditional.json"];
         let file: PathBuf = directory
             .read_dir()
             .unwrap()
             .map(|x| x.unwrap().path())
-            .find(|x| x.is_file() && x.extension().unwrap() == "json").unwrap();
-        let json: Value =
-            serde_json::from_str(fs::read_to_string(file).unwrap().as_str()).unwrap();
+            .find(|x| {
+                x.is_file()
+                    && (x.extension().unwrap() == "json"
+                        && !ignored_jsons.contains(
+                            &x.file_name()
+                                .unwrap()
+                                .to_str()
+                                .unwrap()
+                                .to_lowercase()
+                                .as_str(),
+                        ))
+            })
+            .unwrap();
+        let json: Value = serde_json::from_str(fs::read_to_string(file).unwrap().as_str()).unwrap();
         let name = json["id"].as_str().unwrap().to_string();
         Self {
             id: name,
