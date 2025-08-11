@@ -35,6 +35,7 @@ static CONFIG: LazyLock<Mutex<Config>> = LazyLock::new(|| {
 #[command]
 async fn play_button_handler(app: AppHandle, selected_version: String) {
     launch_game(app, selected_version, &*CONFIG.lock().await).await;
+    //
 }
 
 #[command]
