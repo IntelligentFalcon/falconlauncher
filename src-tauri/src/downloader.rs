@@ -284,7 +284,7 @@ pub async fn get_available_forge_versions(version_id: &String) -> Vec<String> {
     let url = "https://files.minecraftforge.net/net/minecraftforge/forge/maven-metadata.json";
     let map: HashMap<String, Vec<String>> = reqwest::get(url).await.unwrap().json().await.unwrap();
     map.iter()
-        .find(|(&key, &value)| &key == version_id)
+        .find(|(key, _)| key.clone() == version_id)
         .map(|(key, val)| val.clone())
         .unwrap_or(Vec::new())
 }
