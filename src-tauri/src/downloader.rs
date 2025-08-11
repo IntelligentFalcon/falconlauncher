@@ -1,17 +1,21 @@
 use crate::directory_manager::{
-    get_assets_directory, get_libraries_directory, get_natives_folder, get_version_directory,
-    get_versions_directory,
+    get_assets_directory, get_falcon_launcher_directory, get_launcher_java_directory,
+    get_libraries_directory, get_natives_folder, get_version_directory, get_versions_directory,
 };
 use crate::game_launcher::{update_download, update_download_bar, update_download_status};
+use crate::jdk_manager::get_java;
 use crate::structs::{library_from_value, LibraryRules, MinecraftVersion};
 use crate::utils::{get_current_os, verify_file_existence};
 use crate::version_manager::load_version_manifest;
 use serde_json::Value;
+use std::collections::HashMap;
+use std::fmt::format;
 use std::fs;
 use std::fs::{create_dir_all, exists, File};
-use std::io::Write;
+use std::io::{BufRead, BufReader, Write};
 use std::ops::Index;
 use std::path::PathBuf;
+use std::process::Command;
 use tauri::async_runtime::block_on;
 use tauri::AppHandle;
 use zip_extract::extract;
@@ -71,7 +75,6 @@ pub async fn download_file_if_not_exists(path: &PathBuf, url: String, size: u64)
 pub async fn download_version(version: &MinecraftVersion, app_handle: &AppHandle) {
     let id = &version.id;
 
-    println!("Downloading version {} process started.", id);
     let manifest = load_version_manifest().await;
     if !version.is_installed() {
         match manifest {
@@ -146,7 +149,12 @@ async fn download_libraries(libraries: &Value, version: &String, app_handle: &Ap
                 ];
                 for url in urls {
                     let full_path = get_libraries_directory().join(&path);
-                    if reqwest::get(url.clone()).await.unwrap().status().is_success() {
+                    if reqwest::get(url.clone())
+                        .await
+                        .unwrap()
+                        .status()
+                        .is_success()
+                    {
                         download_file_if_not_exists(&full_path, url, 0).await;
                     }
                 }
@@ -271,4 +279,58 @@ async fn download_file(url: String, dest: String) {
         File::create(&dest).expect(format!("Unable to create file. at {}", dest.as_str()).as_str());
     out.write_all(&resp.bytes().await.unwrap())
         .expect("Writing file failed.");
+}
+pub async fn get_available_forge_versions(version_id: &String) -> Vec<String> {
+    let url = "https://files.minecraftforge.net/net/minecraftforge/forge/maven-metadata.json";
+    let map: HashMap<String, Vec<String>> = reqwest::get(url).await.unwrap().json().await.unwrap();
+    map.iter()
+        .find(|(&key, &value)| &key == version_id)
+        .map(|(key, val)| val.clone())
+        .unwrap_or(Vec::new())
+}
+
+pub async fn download_forge_version(version: &String) {
+    let url = format!("https://maven.minecraftforge.net/net/minecraftforge/forge/{version}/forge-{version}-installer.jar");
+    let launcher_dir = get_falcon_launcher_directory();
+
+    let path = launcher_dir
+        .join("temp")
+        .join(format!("forge-{version}-installer.jar"));
+    let path_str = path.to_str().unwrap();
+
+    if !path.exists() {
+        create_dir_all(path_str).unwrap();
+    }
+    download_file_async(url, path_str.to_string());
+
+    let mut cmd = Command::new(
+        get_java("8".to_string())
+            .await
+            .to_str()
+            .unwrap()
+            .to_string(),
+    )
+    .arg("-jar")
+    .arg(path_str)
+    .arg("--installClient")
+    .spawn()
+    .unwrap();
+    let stderr = cmd.stderr.take().unwrap();
+    std::thread::spawn(move || {
+        let reader = BufReader::new(stderr);
+        for line in reader.lines().flatten() {
+            println!("[stderr] {}", line);
+        }
+    });
+
+    let stdout = cmd.stdout.take().expect("Failed to open stdout");
+    std::thread::spawn(move || {
+        let reader = BufReader::new(stdout);
+        for line in reader.lines() {
+            if let Ok(line) = line {
+                println!("[java stdout] {}", line);
+            }
+        }
+    });
+    fs::remove_dir_all(path_str).unwrap()
 }

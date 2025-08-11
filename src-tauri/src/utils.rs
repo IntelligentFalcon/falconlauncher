@@ -2,7 +2,7 @@ use crate::directory_manager::{get_libraries_directory, get_versions_directory};
 use crate::structs;
 use crate::structs::MinecraftVersion;
 use crate::version_manager::{
-    download_version_manifest, load_version_manifest, load_version_manifest_local,
+    download_version_manifest, load_version_manifest_local,
 };
 use reqwest::Client;
 use serde_json::Value;

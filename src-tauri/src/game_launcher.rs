@@ -1,6 +1,6 @@
 use crate::config::Config;
 use crate::directory_manager::*;
-use crate::downloader::download_version;
+use crate::downloader::{download_forge_version, download_version};
 use crate::jdk_manager::get_java;
 use crate::profile_manager::get_profile;
 use crate::structs::library_from_value;
@@ -22,6 +22,10 @@ pub async fn launch_game(app_handle: AppHandle, version: String, config: &Config
     let version = versions.next().unwrap();
     let inherited_version = version.get_inherited();
     let inherited_json = inherited_version.load_json();
+    if version.is_forge() && !version.is_installed(){
+        println!("DEBUG: Forge version detected! {} installing it rn!", version);
+        download_forge_version(&version.id).await;
+    }
     if is_connected_to_internet().await {
         update_download_status("Downloading version...", &app_handle);
         download_version(&version, &app_handle).await;
@@ -49,6 +53,7 @@ pub async fn launch_game(app_handle: AppHandle, version: String, config: &Config
         .display()
         .to_string();
 
+    let libraries = version.get_libraries();
     let asset_index = inherited_json["assetIndex"]["id"]
         .as_str()
         .unwrap()
@@ -59,41 +64,6 @@ pub async fn launch_game(app_handle: AppHandle, version: String, config: &Config
         .to_str()
         .unwrap()
         .to_string();
-    let mut libraries = get_library_paths(&inherited_json["libraries"]);
-    let libraries_2 = get_library_paths(&json["libraries"]);
-    libraries = libraries
-        .into_iter()
-        .filter(|x| {
-            let path = PathBuf::from(x);
-            let parent = path.parent().unwrap();
-            let artifact = parent
-                .parent()
-                .unwrap()
-                .file_name()
-                .unwrap()
-                .to_str()
-                .unwrap();
-
-            !libraries_2
-                .iter()
-                .map(|x| {
-                    PathBuf::from(x)
-                        .parent()
-                        .unwrap()
-                        .parent()
-                        .unwrap()
-                        .file_name()
-                        .unwrap()
-                        .to_str()
-                        .unwrap()
-                        .to_lowercase()
-                        .to_string()
-                })
-                .collect::<Vec<String>>()
-                .contains(&artifact.to_string())
-        })
-        .collect::<Vec<String>>();
-    libraries = extend_once(libraries, libraries_2);
     let libraries_str = vec_to_string(libraries, ";".to_string());
     let natives = get_natives_folder(&inherited_version.id)
         .to_str()
@@ -110,7 +80,7 @@ pub async fn launch_game(app_handle: AppHandle, version: String, config: &Config
     let mut run_args_iter = get_launch_args(&json);
     let run_args_iter_inherited = get_launch_args(&inherited_json);
     run_args_iter = extend_once(run_args_iter, run_args_iter_inherited);
-    let mut run_args = run_args_iter
+    let run_args = run_args_iter
         .iter()
         .map(|v| {
             v.replace("${auth_player_name}", username)
@@ -196,55 +166,4 @@ pub fn update_download(progress: i64, text: &str, app_handle: &AppHandle) {
     app_handle.emit("progress", text).unwrap();
     app_handle.emit("progressBar", progress).unwrap();
 }
-fn get_library_paths(value: &Value) -> Vec<String> {
-    let libraries_path = get_libraries_directory();
-    let mut libraries = vec![];
 
-    for library in value.as_array().unwrap() {
-        if library.get("downloads").is_none() {
-            let library_name = library["name"].as_str().unwrap();
-            let library_path_str =
-                parse_library_name_to_path(library_name.to_string()).replace("/", "\\");
-            let library_path = PathBuf::from(&library_path_str);
-            if library_path.exists() && !libraries.contains(&library_path_str) {
-                libraries.push(library_path_str);
-            }
-            continue;
-        } else if library["downloads"].get("artifact").is_none() {
-            let classifiers = &library["downloads"].get("classifiers");
-            let os = get_current_os();
-            match classifiers {
-                None => {}
-                Some(val) => {
-                    let natives = val.get(format!("natives-{os}"));
-                    match natives {
-                        None => {}
-                        Some(_) => {
-                            let path = libraries_path
-                                .join(natives.unwrap().get("path").unwrap().as_str().unwrap())
-                                .to_str()
-                                .unwrap()
-                                .to_string();
-                            libraries.push(path.replace("/", "\\"));
-                        }
-                    }
-                }
-            }
-            continue;
-        }
-        let library_info = library_from_value(library);
-        let os = get_current_os();
-        let path = libraries_path
-            .join(&library_info.path.as_str().replace("/", "\\"))
-            .to_str()
-            .unwrap()
-            .to_string()
-            .to_string();
-
-        if !libraries.contains(&path) {
-            libraries.push(path);
-        }
-    }
-
-    libraries
-}
