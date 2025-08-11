@@ -24,7 +24,8 @@ pub fn dump(config: &Config) {
     conf.write_to_file(get_config_directory()).unwrap()
 }
 fn get_ini() -> Ini {
-    let file = File::open(get_config_directory()).unwrap();
+    println!("Reading Ini File");
+    let file = File::open(get_config_directory()).expect("Failed to get the ini file.");
     Ini::read_from(&mut BufReader::new(file)).expect("Reading failed!")
 }
 pub async fn load_config(config: &mut Config) {
@@ -67,7 +68,7 @@ fn default_config() -> Ini {
     conf
 }
 fn initialize_configuration_file() {
-    if !exists(get_config_directory()).unwrap() {
+    if !get_config_directory().exists() {
         create_dir_all(get_config_directory().parent().unwrap()).unwrap();
         default_config()
             .write_to_file(get_config_directory())

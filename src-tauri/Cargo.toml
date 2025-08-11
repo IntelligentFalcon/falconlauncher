@@ -1,9 +1,10 @@
 [package]
-name = "falcon"
+name = "falconlauncher"
 version = "0.1.0"
 description = "Iranian opensource minecraft launcher"
-authors = ["Mmd4J"]
+authors = ["Mmd4J", "Maploop", "MrRsd"]
 edition = "2021"
+
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -34,3 +35,4 @@ zip = "*"
 toml = "0.9.4"
 discord-sdk = "0.4.0"
 tokio = "1.44.2"
+tauri-plugin-log = "*"

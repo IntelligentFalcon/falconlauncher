@@ -95,25 +95,20 @@ impl MinecraftVersion {
     pub fn from_id(id: String) -> Self {
         MinecraftVersion::new(id.clone(), id)
     }
-    pub fn from_folder(directory: PathBuf) -> Option<Self> {
-        let mut filtered_file: Vec<PathBuf> = directory
+    pub fn from_folder(directory: PathBuf) -> MinecraftVersion {
+        let ignored_jsons = vec!["TLauncherAdditional"];
+        let file: PathBuf = directory
             .read_dir()
             .unwrap()
             .map(|x| x.unwrap().path())
-            .filter(|x| x.is_file() && x.extension().unwrap() == "json")
-            .collect();
-        let count = &filtered_file.len();
-        if count == &1 {
-            let next = &filtered_file[0];
-            let json: Value =
-                serde_json::from_str(fs::read_to_string(next).unwrap().as_str()).unwrap();
-            let name = json["id"].as_str().unwrap().to_string();
-            return Some(Self {
-                id: name,
-                version_path: directory.as_path().to_str().unwrap().to_string(),
-            });
+            .find(|x| x.is_file() && x.extension().unwrap() == "json").unwrap();
+        let json: Value =
+            serde_json::from_str(fs::read_to_string(file).unwrap().as_str()).unwrap();
+        let name = json["id"].as_str().unwrap().to_string();
+        Self {
+            id: name,
+            version_path: directory.as_path().to_str().unwrap().to_string(),
         }
-        None
     }
     pub fn is_forge(&self) -> bool {
         self.id.contains("forge")

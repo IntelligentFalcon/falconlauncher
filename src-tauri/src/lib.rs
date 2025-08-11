@@ -2,6 +2,7 @@ use crate::config::{dump, load_config, Config};
 use crate::game_launcher::launch_game;
 
 use std::fs::create_dir_all;
+use std::io::Write;
 use std::ops::Deref;
 use std::string::ToString;
 use std::sync::LazyLock;
@@ -10,6 +11,7 @@ use tauri::{command, AppHandle, LogicalSize, Manager};
 use tauri_plugin_dialog::DialogExt;
 use utils::load_versions;
 use version_manager::VersionInfo;
+use crate::directory_manager::get_falcon_launcher_directory;
 
 mod config;
 mod directory_manager;
@@ -56,20 +58,36 @@ async fn get_versions() -> Vec<String> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let fl_path = directory_manager::get_falcon_launcher_directory();
-    let jdk_path = directory_manager::get_launcher_java_directory();
-    create_dir_all(fl_path).unwrap();
+    std::panic::set_hook(Box::new(|panic_info| {
+        println!("Panic: {:?}", panic_info);
 
-    create_dir_all(jdk_path).unwrap();
-    block_on(async move {
-        load_config(&mut *CONFIG.lock().await).await;
-    });
-
+        let f = std::fs::File::create(get_falcon_launcher_directory().join("crash.txt"));
+        f.unwrap().write_all(format!("Whoopsie launcher just crashed! consider sending this to @IntelligentFalcon on telegram \n {:?}",panic_info).as_bytes()).unwrap()
+    }));
     tauri::Builder::default()
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_log::Builder::new()
+            .target(tauri_plugin_log::Target::new(
+                tauri_plugin_log::TargetKind::LogDir {
+                    file_name: Some("logs".to_string()),
+                },
+            ))
+            .build())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
+
+            println!("Launcher has started.");
+            let fl_path = directory_manager::get_falcon_launcher_directory();
+            let jdk_path = directory_manager::get_launcher_java_directory();
+            create_dir_all(fl_path).unwrap();
+            create_dir_all(jdk_path).unwrap();
+            println!("Created launcher directories");
+
+            block_on(async move {
+                load_config(&mut *CONFIG.lock().await).await;
+            });
+
             app.dialog().message("این یک خروجی آزمایشی از لانچر هستش لطفا اگه از جایی این رو دریافت کردین برای اپدیت های جدید حتما عضو چنل @IntelligentFalcon
 در تلگرام بشید چون  که هر چیزی توی این خروجی ممکنه تغییر کنه و یا حذف شده باشه و این که انتظار کار نکردن برخی چیزای داخل لانچر رو داشته باشید.")
                 .title("من را بخوان!")
@@ -185,7 +203,8 @@ async fn get_installed_versions() -> Vec<String> {
     versions
         .iter()
         .filter(|x| x.is_installed())
-        .map(|x| x.id.clone()).collect()
+        .map(|x| x.id.clone())
+        .collect()
 }
 #[command]
 async fn get_non_installed_versions() -> Vec<String> {
@@ -194,5 +213,6 @@ async fn get_non_installed_versions() -> Vec<String> {
     versions
         .iter()
         .filter(|x| !x.is_installed())
-        .map(|x| x.id.clone()).collect()
+        .map(|x| x.id.clone())
+        .collect()
 }

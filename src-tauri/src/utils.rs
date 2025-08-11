@@ -1,9 +1,7 @@
 use crate::directory_manager::{get_libraries_directory, get_versions_directory};
 use crate::structs;
 use crate::structs::MinecraftVersion;
-use crate::version_manager::{
-    download_version_manifest, load_version_manifest_local,
-};
+use crate::version_manager::{download_version_manifest, load_version_manifest_local};
 use reqwest::Client;
 use serde_json::Value;
 use std::fs::File;
@@ -63,7 +61,6 @@ pub async fn load_versions(snapshots: bool, old_versions: bool) -> Vec<Minecraft
             MinecraftVersion::from_folder(
                 get_versions_directory().join(v.file_name().to_str().unwrap().to_string()),
             )
-            .unwrap()
         })
         .collect();
     if is_connected_to_internet().await {
@@ -78,7 +75,7 @@ pub async fn load_versions(snapshots: bool, old_versions: bool) -> Vec<Minecraft
             None => Vec::new(),
             Some(v) => load_versions_through_json(v, filtered_types),
         };
-        versions = extend_once(versions,founded_versions);
+        versions = extend_once(versions, founded_versions);
     }
     versions
 }
