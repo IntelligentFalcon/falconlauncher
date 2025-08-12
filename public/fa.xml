@@ -8,14 +8,14 @@
     <string id="mod_manager">ماد منیجر</string>
     <string id="mod_search">جستوجوی ماد...</string>
     <string id="mem_alloc_title">اختصاص میزان رم</string>
-    <string id="mem_alloc_description">تنظیم میزان رم اختصاص داده شده به ماینکرافت</string>
+    <string id="mem_alloc_description">تنظیم میزان رم اختصاص داده شده به ماینکرفت</string>
     <string id="launch_options_title">گزینه‌های اجرا</string>
-    <string id="launch_options_description">تنظیم نحوه‌ی شروع ماینکرافت</string>
+    <string id="launch_options_description">تنظیم نحوه‌ی شروع ماینکرفت</string>
     <string id="lo_fullscreen">اجرا در تمام صفحه</string>
     <string id="lo_close_on_start">بستن لانچر هنگام شروع بازی</string>
     <string id="startup_update_check">بررسی آپدیت‌ها در زمان اجرای لانجر</string>
     <string id="cancel">لغو</string>
-    <string id="minecraft_news">اخبار ماینکرافت</string>
+    <string id="minecraft_news">اخبار ماینکرفت</string>
     <string id="select_profile">انتخاب یک پروفایل</string>
     <string id="create_profile">ایجاد یک پروفایل جدید</string>
     <string id="game_version">نسخه بازی</string>

@@ -27,12 +27,10 @@ reqwest = { version = "0.12.22", features = ["stream", "json"] }
 sys-info = "*"
 zip-extract = "0.4.1"
 uuid = { version = "1.17.0", features = ["v4"] }
-tauri-plugin-prevent-default = "3.0.0"
 rust-ini = "0.21.2"
-tauri-plugin-dialog = "2.3.2"
 tauri-plugin-notification = "2"
 zip = "*"
 toml = "0.9.4"
 discord-sdk = "0.4.0"
 tokio = "1.44.2"
-tauri-plugin-log = "*"
+native-dialog = "*"

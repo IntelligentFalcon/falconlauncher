@@ -1,17 +1,16 @@
 use crate::config::{dump, load_config, Config};
 use crate::game_launcher::launch_game;
 
+use crate::directory_manager::get_falcon_launcher_directory;
 use std::fs::create_dir_all;
 use std::io::Write;
 use std::ops::Deref;
 use std::string::ToString;
 use std::sync::LazyLock;
+use native_dialog::{DialogBuilder, MessageLevel};
 use tauri::async_runtime::{block_on, Mutex};
 use tauri::{command, AppHandle, LogicalSize, Manager};
-use tauri_plugin_dialog::DialogExt;
 use utils::load_versions;
-use version_manager::VersionInfo;
-use crate::directory_manager::get_falcon_launcher_directory;
 
 mod config;
 mod directory_manager;
@@ -58,22 +57,19 @@ async fn get_versions() -> Vec<String> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    // std::panic::set_hook(Box::new(|panic_info| {
-    //     println!("Panic: {:?}", panic_info);
-    //
-    //     let f = std::fs::File::create(get_falcon_launcher_directory().join("crash.txt"));
-    //     f.unwrap().write_all(format!("Whoopsie launcher just crashed! consider sending this to @IntelligentFalcon on telegram \n {:?}",panic_info).as_bytes()).unwrap()
-    // }));
+
+
+
+    std::panic::set_hook(Box::new(|panic_info| {
+        println!("Panic: {:?}", panic_info);
+
+        let f = std::fs::File::create(get_falcon_launcher_directory().join("crash.txt"));
+        let dialog = DialogBuilder::message()
+            .set_level(MessageLevel::Info).set_title("Whoopsie").set_text(format!("{} \n", panic_info.to_string()));
+        f.unwrap().write_all(format!("Whoopsie launcher just crashed! consider sending this to @IntelligentFalcon on telegram \n {:?}",panic_info).as_bytes()).unwrap()
+    }));
     tauri::Builder::default()
         .plugin(tauri_plugin_notification::init())
-        .plugin(tauri_plugin_dialog::init())
-        // .plugin(tauri_plugin_log::Builder::new()
-        // // .target(tauri_plugin_log::Target::new(
-        // //     tauri_plugin_log::TargetKind::LogDir {
-        // //         file_name: Some("logs".to_string()),
-        // //     },
-        // // ))
-        // // .build())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
 
@@ -85,20 +81,23 @@ pub fn run() {
             block_on(async move {
                 load_config(&mut *CONFIG.lock().await).await;
             });
-
-            app.dialog().message("این یک خروجی آزمایشی از لانچر هستش لطفا اگه از جایی این رو دریافت کردین برای اپدیت های جدید حتما عضو چنل @IntelligentFalcon
-در تلگرام بشید چون  که هر چیزی توی این خروجی ممکنه تغییر کنه و یا حذف شده باشه و این که انتظار کار نکردن برخی چیزای داخل لانچر رو داشته باشید.")
-                .title("من را بخوان!")
-                .kind(tauri_plugin_dialog::MessageDialogKind::Info)
-                .blocking_show();
+            let dialog = DialogBuilder::message()
+                .set_level(MessageLevel::Info)
+                .set_title("من را بخوان")
+                .set_text("این یک خروجی آزمایشی از لانچر هستش لطفا اگه از جایی این رو دریافت کردین برای اپدیت های جدید حتما عضو چنل @IntelligentFalcon
+در تلگرام بشید چون  که هر چیزی توی این خروجی ممکنه تغییر کنه و یا حذف شده باشه و این که انتظار کار نکردن برخی چیزای داخل لانچر رو داشته باشید.").alert()
+                .show()
+                .unwrap();
             let handle = app.handle();
             let window = handle.get_window("main").unwrap();
             let independant_multiplier = 1.2;
             let monitor = window.primary_monitor().unwrap().unwrap();
             let size = monitor.size();
-            let aspect_ratio = size.width as f64 / size.height as f64;
-            let width = (size.width as f64 / aspect_ratio) * independant_multiplier;
-            let height = (size.height as f64 / aspect_ratio) * independant_multiplier;
+            let width = size.width;
+            let height = size.height;
+            let aspect_ratio = width as f64 / height as f64;
+            let width = (width as f64 / aspect_ratio) * independant_multiplier;
+            let height = (height as f64 / aspect_ratio) * independant_multiplier;
 
             window
                 .set_size(LogicalSize::new(width, height))

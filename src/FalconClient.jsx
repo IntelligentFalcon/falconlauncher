@@ -3,6 +3,8 @@ import {Settings, Package, Home, Play} from 'lucide-react';
 import {invoke} from "@tauri-apps/api/core";
 import {listen} from '@tauri-apps/api/event';
 import LoginPopup from './LoginPopup';
+import { t, loadLanguage } from "./i18n";
+
 
 export default function FalconClient() {
     const [activeTab, setActiveTab] = useState("home");
@@ -16,7 +18,9 @@ export default function FalconClient() {
     const [statusMessage, setStatusMessage] = useState('Ready to play');
     const [isLoginPopupOpen, setIsLoginPopupOpen] = useState(false);
     const [profiles, setProfiles] = useState([])
-
+    useEffect(() => {
+        loadLanguage("fa").catch(console.error);
+    }, []);
     async function load_versions() {
         invoke("get_versions")
             .then((v) => {
@@ -104,128 +108,135 @@ export default function FalconClient() {
 
 
     return (<div className="flex flex-col w-full h-screen bg-gray-900 text-gray-200 overflow-hidden">
-        {/* Header */}
-        <div className="flex justify-between items-center px-6 py-3 bg-gray-800 border-b border-gray-700">
-            <div className="flex items-center">
-                <h1 className="text-xl font-bold text-indigo-400">Falcon Launcher</h1>
-                <span className="ml-2 text-xs text-gray-400">v1.0.0</span>
-            </div>
-        </div>
-
-        <div className="flex flex-1 overflow-hidden">
-            {/* Sidebar */}
-            <div className="w-64 bg-gray-800 flex flex-col">
-                {/*User profile */}
-                <div className="p-6 flex flex-col items-center">
-                    <h2 className="text-lg font-semibold mb-4">Select a Profile</h2>
-                    <select name="Profile"
-                            className="w-full mb-2 p-2 bg-gray-900 border border-indigo-500 rounded text-gray-200 focus:outline-none"
-                            onChange={event => {
-                                setUsername(event.target.value)
-                            }}>
-                        {profiles.map((v) => <option key={v} value={v}>{v}</option>)}
-                    </select>
-                    <button
-                        className="w-full mb-2 p-2 bg-gray-900 border border-indigo-500 rounded text-gray-200
-                        focus:outline-none"
-                        onClick={() => setIsLoginPopupOpen(true)}
-                    >
-                        Create a new profile
-                    </button>
+            {/* Header */}
+            <div className="flex justify-between items-center px-4 sm:px-6 py-3 bg-gray-800 border-b border-gray-700">
+                <div className="flex items-center flex-wrap gap-2">
+                    <h1 className="text-lg sm:text-xl font-bold text-indigo-400">{t("app_name")}</h1>
+                    <span className="text-xs text-gray-400">v1.0.0</span>
                 </div>
+            </div>
 
-                {/* Version selection */}
-                <div className="px-6 pb-4">
-                    <label className="block text-sm font-semibold mb-2">Game Version</label>
-                    <select className="w-full p-2 bg-gray-900 border border-gray-700 rounded text-gray-200"
-                            value={selectedVersion}
-                            onChange={event => setSelectedVersion(event.target.value)}>
-                        {versions.map((version) =>
-                            <option key={version} id={version}>{version}</option>
-                        )}
-                    </select>
-
-                    <div className="flex items-center justify-left mt-6">
-                        <button
-                            onClick={toggleShowingSnapshots}
-                            className={`relative inline-flex h-6 w-10 items-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${isShowingSnapshots ? 'bg-blue-600' : 'bg-gray-300'}`}
-                            role="switch"
-                            aria-checked={isShowingSnapshots}
+            <div className="flex flex-1 flex-col lg:flex-row overflow-hidden">
+                {/* Sidebar */}
+                <div className="w-full lg:w-64 md:w-48 bg-gray-800 flex flex-col">
+                    {/* Profile selection */}
+                    <div className="p-4 sm:p-6 flex flex-col items-center">
+                        <h2 className="text-base sm:text-lg font-semibold mb-4">{t("select_profile")}</h2>
+                        <select
+                            name="Profile"
+                            className="w-full mb-2 p-2 bg-gray-900 border border-indigo-500 rounded text-gray-200 focus:outline-none text-sm sm:text-base"
+                            onChange={(e) => setUsername(e.target.value)}
                         >
+                            {profiles.map((v) => <option key={v} value={v}>{v}</option>)}
+                        </select>
+                        <button
+                            className="w-full mb-2 p-2 bg-gray-900 border border-indigo-500 rounded text-gray-200 focus:outline-none text-sm sm:text-base"
+                            onClick={() => setIsLoginPopupOpen(true)}
+                        >
+                            {t("create_profile")}
+                        </button>
+                    </div>
+
+                    {/* Version selection */}
+                    <div className="px-4 sm:px-6 pb-4">
+                        <label className="block text-sm font-semibold mb-2">{t("game_version")}</label>
+                        <select
+                            className="w-full p-2 bg-gray-900 border border-gray-700 rounded text-gray-200 text-sm sm:text-base"
+                            value={selectedVersion}
+                            onChange={(e) => setSelectedVersion(e.target.value)}
+                        >
+                            {versions.map((version) =>
+                                <option key={version} id={version}>{version}</option>
+                            )}
+                        </select>
+                        <div className="flex items-center justify-left mt-6">
+                            <button
+                                onClick={toggleShowingSnapshots}
+                                className={`relative inline-flex h-6 w-10 items-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${isShowingSnapshots ? 'bg-blue-600' : 'bg-gray-300'}`}
+                                role="switch"
+                                aria-checked={isShowingSnapshots}
+                            >
                             <span
                                 className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-lg transition-transform duration-200 ease-in-out ${isShowingSnapshots ? 'translate-x-5' : 'translate-x-1'}`}
                             />
-                        </button>
-                        <label className='ml-2'>Show Snapshots</label>
-                    </div>
+                            </button>
+                            <label className='ml-2'>{t("show_snapshots")}</label>
+                        </div>
 
-                    <div className="flex items-center justify-left mt-2">
-                        <button
-                            onClick={toggleShowAlpha}
-                            className={`relative inline-flex h-6 w-10 items-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${isShowingAlpha ? 'bg-blue-600' : 'bg-gray-300'}`}
-                            role="switch"
-                            aria-checked={isShowingAlpha}
-                        >
+                        <div className="flex items-center justify-left mt-2">
+                            <button
+                                onClick={toggleShowAlpha}
+                                className={`relative inline-flex h-6 w-10 items-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${isShowingAlpha ? 'bg-blue-600' : 'bg-gray-300'}`}
+                                role="switch"
+                                aria-checked={isShowingAlpha}
+                            >
                             <span
                                 className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-lg transition-transform duration-200 ease-in-out ${isShowingAlpha ? 'translate-x-5' : 'translate-x-1'}`}
                             />
+                            </button>
+                            <label className='ml-2'>{t("show_old_versions")}</label>
+                        </div>
+                    </div>
+
+
+
+
+
+                {/* Navigation */}
+                    <div className="flex-1 py-4">
+                        <NavItem
+                            icon={<Home size={18}/>}
+                            title={t("home_tab")}
+                            active={activeTab === 'home'}
+                            onClick={() => setActiveTab('home')}
+                        />
+                        <NavItem
+                            icon={<Package size={18}/>}
+                            title={t("mods_tab")}
+                            active={activeTab === 'mods'}
+                            onClick={() => setActiveTab('mods')}
+                        />
+                        <NavItem
+                            icon={<Settings size={18}/>}
+                            title={t("settings_tab")}
+                            active={activeTab === 'settings'}
+                            onClick={() => setActiveTab('settings')}
+                        />
+                    </div>
+
+                    {/* Play button */}
+                    <div className="p-4 sm:p-6 border-t border-gray-700">
+                        <button
+                            disabled={isDownloading}
+                            className="w-full py-2 sm:py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded flex items-center justify-center disabled:bg-gray-500 text-sm sm:text-base"
+                            onClick={handlePlay}
+                        >
+                            <Play size={18} className="mr-2"/>
+                            {t("play")}
                         </button>
-                        <label className='ml-2'>Show Alpha Versions</label>
+                        {isDownloading && (
+                            <div className="w-full bg-gray-700 rounded-full h-2 mt-4">
+                                <div
+                                    className="bg-indigo-500 h-2 rounded-full"
+                                    style={{width: `${downloadProgress}%`}}
+                                ></div>
+                            </div>
+                        )}
+                        <p className="text-xs mt-2 text-gray-400">{statusMessage}</p>
                     </div>
                 </div>
 
-                {/* Navigation */}
-                <div className="flex-1 py-4">
-                    <NavItem
-                        icon={<Home size={18}/>}
-                        title="Home"
-                        active={activeTab === 'home'}
-                        onClick={() => setActiveTab('home')}
-                    />
-                    <NavItem
-                        icon={<Package size={18}/>}
-                        title="Mods"
-                        active={activeTab === 'mods'}
-                        onClick={() => setActiveTab('mods')}
-                    />
-                    <NavItem
-                        icon={<Settings size={18}/>}
-                        title="Settings"
-                        active={activeTab === 'settings'}
-                        onClick={() => setActiveTab('settings')}
-                    />
-                </div>
-
-                {/* Play button and status */}
-                <div className="p-6 border-t border-gray-700">
-                    <button disabled={isDownloading}
-                            className="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded flex items-center justify-center disabled:bg-gray-500"
-                            onClick={handlePlay}
-                    >
-                        <Play size={18} className="mr-2"/>
-                        PLAY
-                    </button>
-                    {isDownloading && (<div className="w-full bg-gray-700 rounded-full h-2 mt-4">
-                        <div
-                            className="bg-indigo-500 h-2 rounded-full"
-                            style={{width: `${downloadProgress}%`}}
-                        ></div>
-                    </div>)}
-                    <p className="text-xs mt-2 text-gray-400">{statusMessage}</p>
+                {/* Main content */}
+                <div className="flex-1 overflow-auto p-4 sm:p-6">
+                    {activeTab === 'home' && <HomeTab/>}
+                    {activeTab === 'settings' && <SettingsTab/>}
+                    {activeTab === 'mods' && <ModsTab/>}
                 </div>
             </div>
 
-            {/* Main content */}
-            <div className="flex-1 overflow-auto">
-                {activeTab === 'home' && <HomeTab/>}
-                {activeTab === 'settings' && <SettingsTab/>}
-                {activeTab === 'mods' && <ModsTab/>}
-            </div>
+            <LoginPopup isOpen={isLoginPopupOpen} onClose={() => setIsLoginPopupOpen(false)}/>
         </div>
-
-        <LoginPopup isOpen={isLoginPopupOpen} onClose={() => setIsLoginPopupOpen(false)}/>
-
-    </div>);
+    );
 }
 
 function NavItem({icon, title, active, onClick}) {
@@ -256,7 +267,7 @@ function HomeTab() {
     }];
 
     return (<div className="p-8">
-        <h2 className="text-2xl font-bold mb-6">Minecraft News</h2>
+        <h2 className="text-2xl font-bold mb-6">{t("minecraft_news")}</h2>
 
         <div className="space-y-4">
             {newsArticles.map((article, index) => (<div key={index} className="bg-gray-800 p-6 rounded">
@@ -279,10 +290,10 @@ function ModsTab() {
 
     return (<div className="p-6">
         <div className="flex justify-between items-center mb-6">
-            <h2 className="2xl font-bold">Mod Manager</h2>
+            <h2 className="2xl font-bold">{t("mod_manager")}</h2>
             <input
                 type="text"
-                placeholder="Search mods..."
+                placeholder={t("mod_search")}
                 className="w-64 p-2 bg-gray-800 border border-gray-700 rounded"
             />
         </div>
@@ -316,8 +327,8 @@ function RamUsageBar({totalRam}) {
         .catch("Not working fuck");
 
     return <div className="bg-gray-800 p-6 rounded">
-        <h3 className="text-lg font-semibold mb-1">Memory Allocation</h3>
-        <p className="text-sm text-gray-400 mb-4">Adjust how much RAM is allocated to Minecraft</p>
+        <h3 className="text-lg font-semibold mb-1">{t("mem_alloc_title")}</h3>
+        <p className="text-sm text-gray-400 mb-4">{t("mem_alloc_description")}</p>
         <div className="flex items-center">
             <input type="range" min="1.0" max={parseInt(totalRam / 1024)} value={ramUsage}
                    onInput={event => {
@@ -350,21 +361,21 @@ function SettingsTab() {
 
             {/* Launch Options */}
             <div className="bg-gray-800 p-6 rounded">
-                <h3 className="text-lg font-semibold mb-1">Launch Options</h3>
-                <p className="text-sm text-gray-400 mb-4">Configure how Minecraft starts</p>
+                <h3 className="text-lg font-semibold mb-1">{t("launch_options_title")}</h3>
+                <p className="text-sm text-gray-400 mb-4">{t("launch_options_description")}</p>
 
                 <div className="space-y-3">
                     <div className="flex items-center">
                         <input type="checkbox" id="fullscreen" className="mr-2"/>
-                        <label htmlFor="fullscreen">Launch in fullscreen</label>
+                        <label htmlFor="fullscreen">{t("lo_fullscreen")}</label>
                     </div>
                     <div className="flex items-center">
                         <input type="checkbox" id="close-launcher" className="mr-2"/>
-                        <label htmlFor="close-launcher">Close launcher when game starts</label>
+                        <label htmlFor="close-launcher">{t("lo_close_on_start")}</label>
                     </div>
                     <div className="flex items-center">
                         <input type="checkbox" id="check-updates" className="mr-2"/>
-                        <label htmlFor="check-updates">Check for updates on startup</label>
+                        <label htmlFor="check-updates">{t("startup_update_check")}</label>
                     </div>
                 </div>
             </div>
