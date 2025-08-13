@@ -3,7 +3,7 @@ import {Settings, Package, Home, Play} from 'lucide-react';
 import {invoke} from "@tauri-apps/api/core";
 import {listen} from '@tauri-apps/api/event';
 import LoginPopup from './LoginPopup';
-import { t, loadLanguage } from "./i18n";
+import {t, loadLanguage} from "./i18n";
 
 
 export default function FalconClient() {
@@ -16,11 +16,15 @@ export default function FalconClient() {
     const [selectedVersion, setSelectedVersion] = useState("");
     const [username, setUsername] = useState("");
     const [statusMessage, setStatusMessage] = useState('Ready to play');
-    const [isLoginPopupOpen, setIsLoginPopupOpen] = useState(false);
+    const [isLoginPopupOpen, setIsLoginPopupPopupOpen] = useState(false);
     const [profiles, setProfiles] = useState([])
+    const [currentLanguage, setCurrentLanguage] = useState("fa");
+
     useEffect(() => {
-        loadLanguage("fa").catch(console.error);
+        invoke("get_language").then(lang => setCurrentLanguage(lang)).catch("Failed to change the default language");
+        loadLanguage(currentLanguage).catch(console.error);
     }, []);
+
     async function load_versions() {
         invoke("get_versions")
             .then((v) => {
@@ -106,6 +110,13 @@ export default function FalconClient() {
             .catch(e => console.error("Failed to toggle old versions and reload", e));
     };
 
+    // New function to handle language change
+    const handleLanguageChange = async (lang) => {
+        setCurrentLanguage(lang);
+        invoke("set_language", {lang: lang}).catch("Failed to change language!")
+        await loadLanguage(lang);
+    };
+
 
     return (<div className="flex flex-col w-full h-screen bg-gray-900 text-gray-200 overflow-hidden">
             {/* Header */}
@@ -113,6 +124,15 @@ export default function FalconClient() {
                 <div className="flex items-center flex-wrap gap-2">
                     <h1 className="text-lg sm:text-xl font-bold text-indigo-400">{t("app_name")}</h1>
                     <span className="text-xs text-gray-400">v1.0.0</span>
+                </div>
+                {/* Language Change Button */}
+                <div className="flex items-center">
+                    <button
+                        className="px-3 py-1 bg-yellow-400 hover:bg-yellow-500 text-white font-bold rounded text-sm"
+                        onClick={() => handleLanguageChange(currentLanguage === 'fa' ? 'en' : 'fa')}
+                    >
+                        {currentLanguage === 'fa' ? 'English' : 'فارسی'}
+                    </button>
                 </div>
             </div>
 
@@ -131,7 +151,7 @@ export default function FalconClient() {
                         </select>
                         <button
                             className="w-full mb-2 p-2 bg-gray-900 border border-indigo-500 rounded text-gray-200 focus:outline-none text-sm sm:text-base"
-                            onClick={() => setIsLoginPopupOpen(true)}
+                            onClick={() => setIsLoginPopupPopupOpen(true)}
                         >
                             {t("create_profile")}
                         </button>
@@ -179,10 +199,7 @@ export default function FalconClient() {
                     </div>
 
 
-
-
-
-                {/* Navigation */}
+                    {/* Navigation */}
                     <div className="flex-1 py-4">
                         <NavItem
                             icon={<Home size={18}/>}
@@ -234,7 +251,7 @@ export default function FalconClient() {
                 </div>
             </div>
 
-            <LoginPopup isOpen={isLoginPopupOpen} onClose={() => setIsLoginPopupOpen(false)}/>
+            <LoginPopup isOpen={isLoginPopupOpen} onClose={() => setIsLoginPopupPopupOpen(false)}/>
         </div>
     );
 }

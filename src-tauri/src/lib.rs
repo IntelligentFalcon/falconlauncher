@@ -2,12 +2,12 @@ use crate::config::{dump, load_config, Config};
 use crate::game_launcher::launch_game;
 
 use crate::directory_manager::get_falcon_launcher_directory;
+use native_dialog::{DialogBuilder, MessageLevel};
 use std::fs::create_dir_all;
 use std::io::Write;
 use std::ops::Deref;
 use std::string::ToString;
 use std::sync::LazyLock;
-use native_dialog::{DialogBuilder, MessageLevel};
 use tauri::async_runtime::{block_on, Mutex};
 use tauri::{command, AppHandle, LogicalSize, Manager};
 use utils::load_versions;
@@ -29,6 +29,7 @@ static CONFIG: LazyLock<Mutex<Config>> = LazyLock::new(|| {
         java_path: "java".to_string(),
         versions: Vec::new(),
         show_old_versions: true,
+        language: "en".to_string(),
         show_snapshots: true,
     })
 });
@@ -57,15 +58,14 @@ async fn get_versions() -> Vec<String> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-
-
-
     std::panic::set_hook(Box::new(|panic_info| {
         println!("Panic: {:?}", panic_info);
 
         let f = std::fs::File::create(get_falcon_launcher_directory().join("crash.txt"));
         let dialog = DialogBuilder::message()
-            .set_level(MessageLevel::Info).set_title("Whoopsie").set_text(format!("{} \n", panic_info.to_string()));
+            .set_level(MessageLevel::Info)
+            .set_title("Whoopsie")
+            .set_text(format!("{} \n", panic_info.to_string()));
         f.unwrap().write_all(format!("Whoopsie launcher just crashed! consider sending this to @IntelligentFalcon on telegram \n {:?}",panic_info).as_bytes()).unwrap()
     }));
     tauri::Builder::default()
@@ -81,13 +81,7 @@ pub fn run() {
             block_on(async move {
                 load_config(&mut *CONFIG.lock().await).await;
             });
-            let dialog = DialogBuilder::message()
-                .set_level(MessageLevel::Info)
-                .set_title("من را بخوان")
-                .set_text("این یک خروجی آزمایشی از لانچر هستش لطفا اگه از جایی این رو دریافت کردین برای اپدیت های جدید حتما عضو چنل @IntelligentFalcon
-در تلگرام بشید چون  که هر چیزی توی این خروجی ممکنه تغییر کنه و یا حذف شده باشه و این که انتظار کار نکردن برخی چیزای داخل لانچر رو داشته باشید.").alert()
-                .show()
-                .unwrap();
+
             let handle = app.handle();
             let window = handle.get_window("main").unwrap();
             let independant_multiplier = 1.2;
@@ -110,6 +104,13 @@ pub fn run() {
                 .set_maximizable(false)
                 .expect("Failed to remove maximizablity");
             window.set_focus().expect("Failed to set window on focus");
+            let dialog = DialogBuilder::message()
+                .set_level(MessageLevel::Info)
+                .set_title("من را بخوان")
+                .set_text("این یک خروجی آزمایشی از لانچر هستش لطفا اگه از جایی این رو دریافت کردین برای اپدیت های جدید حتما عضو چنل @IntelligentFalcon
+در تلگرام بشید چون  که هر چیزی توی این خروجی ممکنه تغییر کنه و یا حذف شده باشه و این که انتظار کار نکردن برخی چیزای داخل لانچر رو داشته باشید.").alert()
+                .show()
+                .unwrap();
             return Ok(());
         })
         .invoke_handler(tauri::generate_handler![
@@ -129,7 +130,9 @@ pub fn run() {
             get_profiles,
             get_installed_versions,
             get_non_installed_versions,
-            create_offline_profile
+            create_offline_profile,
+            set_language,
+            get_language
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -212,4 +215,14 @@ async fn get_non_installed_versions() -> Vec<String> {
         .filter(|x| !x.is_installed())
         .map(|x| x.id.clone())
         .collect()
+}
+
+#[command]
+async fn set_language(lang: String) {
+    let mut config = CONFIG.lock().await;
+    config.language = lang;
+}
+#[command]
+async fn get_language() -> String {
+    CONFIG.lock().await.language.clone()
 }

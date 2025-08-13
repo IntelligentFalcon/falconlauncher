@@ -14,6 +14,7 @@ pub struct Config {
     pub versions: Vec<MinecraftVersion>,
     pub show_old_versions: bool,
     pub show_snapshots: bool,
+    pub language: String,
 }
 
 pub fn dump(config: &Config) {
@@ -21,6 +22,8 @@ pub fn dump(config: &Config) {
     conf.with_section(Some("LaunchOptions"))
         .set("ram_usage", &config.ram_usage.to_string())
         .set("username", &config.username);
+    conf.with_section(Some("LauncherSettings"))
+        .set("language", &config.language);
     conf.write_to_file(get_config_directory()).unwrap()
 }
 fn get_ini() -> Ini {
@@ -32,6 +35,9 @@ pub async fn load_config(config: &mut Config) {
     config.username = conf.username;
     config.ram_usage = conf.ram_usage;
     config.versions = conf.versions;
+    config.show_old_versions = conf.show_old_versions;
+    config.show_snapshots = conf.show_snapshots;
+    config.language = conf.language;
 }
 async fn load() -> Config {
     initialize_configuration_file();
@@ -47,7 +53,12 @@ async fn load() -> Config {
         .expect("Could not find ram usage")
         .parse::<u64>()
         .unwrap();
-
+    let language = conf
+        .with_section(Some("LauncherSettings"))
+        .get("language")
+        .unwrap_or("en")
+        .parse::<String>()
+        .expect("Could not parse language");
     let mut versions = Vec::<MinecraftVersion>::new();
     versions = load_versions(false, false).await;
     Config {
@@ -57,6 +68,7 @@ async fn load() -> Config {
         versions,
         show_old_versions: false,
         show_snapshots: false,
+        language,
     }
 }
 fn default_config() -> Ini {
@@ -64,6 +76,9 @@ fn default_config() -> Ini {
     conf.with_section(Some("LaunchOptions"))
         .set("ram_usage", "2048")
         .set("username", "Steve");
+    conf.with_section(Some("LauncherSettings"))
+        .set("language", "en");
+
     conf
 }
 fn initialize_configuration_file() {
