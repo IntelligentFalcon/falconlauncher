@@ -21,4 +21,12 @@
     <string id="game_version">نسخه بازی</string>
     <string id="show_snapshots">نمایش نسخه‌های اسنپ شات</string>
     <string id="show_old_versions">نمایش نسخه‌های آلفا</string>
+    <string id="install_forge">فورج</string>
+    <string id="install_fabric">فابریک</string>
+    <string id="install_neoforge">نئوفورج</string>
+    <string id="install_liteloader">لایت لودر</string>
+    <string id="install_selected">نصب</string>
+    <string id="mod_loaders">ماد لودر ها</string>
+    <string id="install_new_version">نصب ورژن جدید</string>
+    <string id="minecraft_version">ماینکرفت</string>
 </resources>

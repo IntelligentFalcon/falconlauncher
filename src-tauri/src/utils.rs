@@ -1,7 +1,9 @@
 use crate::directory_manager::{get_libraries_directory, get_versions_directory};
 use crate::structs;
 use crate::structs::MinecraftVersion;
-use crate::version_manager::{download_version_manifest, load_version_manifest_local};
+use crate::version_manager::{
+    download_version_manifest, load_version_manifest_local, Manifest, VersionType,
+};
 use reqwest::Client;
 use serde_json::Value;
 use std::fs::File;
@@ -28,20 +30,44 @@ fn load_downloaded_versions() {
             .for_each(|x| {})
     }
 }
+pub fn get_downloaded_versions() -> Vec<MinecraftVersion> {
+    get_versions_directory()
+        .read_dir()
+        .unwrap()
+        .map(|x| x.unwrap())
+        .filter(|x| {
+            if x.path().is_file() {
+                return false;
+            }
+            let children_files = x.path().read_dir().unwrap();
+            return children_files
+                .map(|f| f.unwrap())
+                .filter(|f| f.path().is_file() && f.path().extension().unwrap() == "json")
+                .count()
+                > 0;
+        })
+        .map(|v| {
+            MinecraftVersion::from_folder(
+                get_versions_directory().join(v.file_name().to_str().unwrap().to_string()),
+            )
+        })
+        .collect()
+}
 /// Loads downloaded versions and non-downloaded versions (if it is connected to the internet)
 pub async fn load_versions(snapshots: bool, old_versions: bool) -> Vec<MinecraftVersion> {
     let mut versions = Vec::new();
     if !get_versions_directory().exists() {
         std::fs::create_dir(get_versions_directory()).unwrap();
     }
-    let mut filtered_types = vec!["release"];
+    let mut filtered_types = vec![VersionType::Release];
     if snapshots {
-        filtered_types.push("snapshot");
+        filtered_types.push(VersionType::Snapshot);
     }
     if old_versions {
-        filtered_types.push("old_beta");
-        filtered_types.push("old_alpha");
+        filtered_types.push(VersionType::OldAlpha);
+        filtered_types.push(VersionType::OldBeta);
     }
+
     versions = get_versions_directory()
         .read_dir()
         .unwrap()
@@ -80,12 +106,12 @@ pub async fn load_versions(snapshots: bool, old_versions: bool) -> Vec<Minecraft
     versions
 }
 
-fn load_versions_through_json(v: Value, types: Vec<&str>) -> Vec<MinecraftVersion> {
-    let versions = v.get("versions").unwrap().as_array().unwrap();
+fn load_versions_through_json(v: Manifest, types: Vec<VersionType>) -> Vec<MinecraftVersion> {
+    let versions = v.versions;
     versions
         .iter()
-        .filter(|ver| types.contains(&ver.get("type").unwrap().as_str().unwrap()))
-        .map(|ver| MinecraftVersion::from_id(ver.get("id").unwrap().as_str().unwrap().to_string()))
+        .filter(|ver| types.contains(&ver.version_type))
+        .map(|x| MinecraftVersion::from_id(x.id.clone()))
         .collect()
 }
 

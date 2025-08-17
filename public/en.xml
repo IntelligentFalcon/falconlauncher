@@ -21,4 +21,12 @@
     <string id="game_version">Game Version</string>
     <string id="show_snapshots">Show Snapshots</string>
     <string id="show_old_versions">Show Alpha versions</string>
+    <string id="install_forge">Install Forge</string>
+    <string id="install_fabric">Install Fabric</string>
+    <string id="install_neoforge">Install NeoForge</string>
+    <string id="install_liteloader">Install LiteLoader</string>
+    <string id="install_selected">Install Selected</string>
+    <string id="mod_loaders">Mod Loaders</string>
+    <string id="install_new_version">Install New Version</string>
+    <string id="minecraft_version">Minecraft</string>
 </resources>

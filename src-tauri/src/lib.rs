@@ -1,7 +1,10 @@
 use crate::config::{dump, load_config, Config};
 use crate::game_launcher::launch_game;
+use std::collections::HashMap;
 
 use crate::directory_manager::get_falcon_launcher_directory;
+use crate::structs::VersionCategory;
+use crate::version_manager::get_categorized_versions;
 use native_dialog::{DialogBuilder, MessageLevel};
 use std::fs::create_dir_all;
 use std::io::Write;
@@ -26,11 +29,8 @@ static CONFIG: LazyLock<Mutex<Config>> = LazyLock::new(|| {
     Mutex::new(Config {
         username: "Steve".to_string(),
         ram_usage: 1024,
-        java_path: "java".to_string(),
         versions: Vec::new(),
-        show_old_versions: true,
         language: "en".to_string(),
-        show_snapshots: true,
     })
 });
 
@@ -38,11 +38,9 @@ static CONFIG: LazyLock<Mutex<Config>> = LazyLock::new(|| {
 async fn play_button_handler(app: AppHandle, selected_version: String) {
     launch_game(app, selected_version, &*CONFIG.lock().await).await;
 }
-
 #[command]
-async fn reload_versions() {
-    let mut config = CONFIG.lock().await;
-    config.versions = load_versions(config.show_snapshots, config.show_old_versions).await;
+async fn load_categorized_versions() -> Vec<VersionCategory> {
+    get_categorized_versions().await
 }
 #[command]
 async fn get_versions() -> Vec<String> {
@@ -55,24 +53,31 @@ async fn get_versions() -> Vec<String> {
         .clone()
         .collect()
 }
-
+#[command]
+async fn reload_versions() {}
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    std::panic::set_hook(Box::new(|panic_info| {
-        println!("Panic: {:?}", panic_info);
-
-        let f = std::fs::File::create(get_falcon_launcher_directory().join("crash.txt"));
-        let dialog = DialogBuilder::message()
-            .set_level(MessageLevel::Info)
-            .set_title("Whoopsie")
-            .set_text(format!("{} \n", panic_info.to_string()));
-        f.unwrap().write_all(format!("Whoopsie launcher just crashed! consider sending this to @IntelligentFalcon on telegram \n {:?}",panic_info).as_bytes()).unwrap()
-    }));
+    // std::panic::set_hook(Box::new(|panic_info| {
+    //     println!("Panic: {:?}", panic_info);
+    //
+    //     let f = std::fs::File::create(get_falcon_launcher_directory().join("crash.txt"));
+    //     let dialog = DialogBuilder::message()
+    //         .set_level(MessageLevel::Info)
+    //         .set_title("Whoopsie")
+    //         .set_text(format!("{} \n", panic_info.to_string()));
+    //     f.unwrap().write_all(format!("Whoopsie launcher just crashed! consider sending this to @IntelligentFalcon on telegram \n {:?}", panic_info).as_bytes()).unwrap()
+    // }));
     tauri::Builder::default()
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
-
+//             let dialog = DialogBuilder::message()
+//                 .set_level(MessageLevel::Info)
+//                 .set_title("من را بخوان")
+//                 .set_text("این یک خروجی آزمایشی از لانچر هستش لطفا اگه از جایی این رو دریافت کردین برای اپدیت های جدید حتما عضو چنل @IntelligentFalcon
+// در تلگرام بشید چون  که هر چیزی توی این خروجی ممکنه تغییر کنه و یا حذف شده باشه و این که انتظار کار نکردن برخی چیزای داخل لانچر رو داشته باشید.").alert()
+//                 .show()
+//                 .unwrap();
             let fl_path = get_falcon_launcher_directory();
             let jdk_path = directory_manager::get_launcher_java_directory();
             create_dir_all(fl_path).unwrap();
@@ -104,13 +109,7 @@ pub fn run() {
                 .set_maximizable(false)
                 .expect("Failed to remove maximizablity");
             window.set_focus().expect("Failed to set window on focus");
-            let dialog = DialogBuilder::message()
-                .set_level(MessageLevel::Info)
-                .set_title("من را بخوان")
-                .set_text("این یک خروجی آزمایشی از لانچر هستش لطفا اگه از جایی این رو دریافت کردین برای اپدیت های جدید حتما عضو چنل @IntelligentFalcon
-در تلگرام بشید چون  که هر چیزی توی این خروجی ممکنه تغییر کنه و یا حذف شده باشه و این که انتظار کار نکردن برخی چیزای داخل لانچر رو داشته باشید.").alert()
-                .show()
-                .unwrap();
+
             return Ok(());
         })
         .invoke_handler(tauri::generate_handler![
@@ -119,10 +118,6 @@ pub fn run() {
             get_total_ram,
             set_username,
             set_ram_usage,
-            set_allow_snapshot,
-            set_allow_old_versions,
-            get_allow_old_versions,
-            get_allow_snapshot,
             get_username,
             reload_versions,
             get_ram_usage,
@@ -132,6 +127,7 @@ pub fn run() {
             get_non_installed_versions,
             create_offline_profile,
             set_language,
+            load_categorized_versions,
             get_language
         ])
         .run(tauri::generate_context!())
@@ -164,27 +160,6 @@ async fn get_ram_usage() -> u64 {
 #[command]
 async fn get_username() -> String {
     CONFIG.lock().await.username.clone()
-}
-#[command]
-async fn set_allow_snapshot(enabled: bool) {
-    let mut config = CONFIG.lock().await;
-    config.show_snapshots = enabled;
-}
-
-#[command]
-async fn get_allow_snapshot() -> bool {
-    CONFIG.lock().await.show_snapshots
-}
-
-#[command]
-async fn set_allow_old_versions(enabled: bool) {
-    let mut config = CONFIG.lock().await;
-    config.show_old_versions = enabled;
-}
-
-#[command]
-async fn get_allow_old_versions() -> bool {
-    CONFIG.lock().await.show_old_versions
 }
 
 #[command]

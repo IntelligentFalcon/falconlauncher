@@ -64,7 +64,7 @@ pub struct LibraryRules {
     pub allowed_oses: Vec<String>,
     pub disallowed_oses: Vec<String>,
 }
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Serialize)]
 pub struct MinecraftVersion {
     pub id: String,
     pub version_path: String,
@@ -259,4 +259,10 @@ pub struct Profile {
     pub name: String,
     pub online: bool,
     pub uuid: uuid::Uuid,
+}
+
+#[derive(Serialize)]
+pub struct VersionCategory {
+    pub versions: Vec<MinecraftVersion>,
+    pub name: String,
 }

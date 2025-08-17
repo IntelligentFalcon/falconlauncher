@@ -1,81 +1,280 @@
-import {useEffect, useState} from 'react';
-import {Settings, Package, Home, Play} from 'lucide-react';
+import {useCallback, useEffect, useState} from 'react';
+import {Grid, Home, List, Package, Play, Settings, X} from 'lucide-react';
 import {invoke} from "@tauri-apps/api/core";
 import {listen} from '@tauri-apps/api/event';
 import LoginPopup from './LoginPopup';
-import {t, loadLanguage} from "./i18n";
+import {getCurrentLang, loadLanguage, t} from "./i18n";
+
+const FlagIran = ({className}) => (
+    <svg viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="img" className={className}
+         preserveAspectRatio="xMidYMid meet">
+        <path fill="#DA0001" d="M0 27a4 4 0 0 0 4 4h28a4 4 0 0 0 4-4v-4H0v4z"></path>
+        <path fill="#EEE" d="M0 13h36v10H0z"></path>
+        <path fill="#239F40" d="M36 13V9a4 4 0 0 0-4-4H4a4 4 0 0 0-4 4v4h36z"></path>
+        <path fill="#E96667" d="M0 23h36v1H0z"></path>
+        <g fill="#BE1931">
+            <path
+                d="M19.465 14.969c.957.49 3.038 2.953.798 5.731c1.391-.308 3.162-4.408-.798-5.731zm-2.937 0c-3.959 1.323-2.189 5.423-.798 5.731c-2.24-2.778-.159-5.241.798-5.731zm1.453-.143c.04.197 1.101.436.974-.573c-.168.408-.654.396-.968.207c-.432.241-.835.182-.988-.227c-.148.754.587.975.982.593z"></path>
+            <path
+                d="M20.538 17.904c-.015-1.248-.677-2.352-1.329-2.799c.43.527 1.752 3.436-.785 5.351l.047-5.097l-.475-.418l-.475.398l.08 5.146l-.018-.015c-2.563-1.914-1.233-4.837-.802-5.365c-.652.447-1.315 1.551-1.329 2.799c-.013 1.071.477 2.243 1.834 3.205a6.375 6.375 0 0 1-1.678.201c.464.253 1.34.192 2.007.131l.001.068l.398.437l.4-.455v-.052c.672.062 1.567.129 2.039-.128a6.302 6.302 0 0 1-1.732-.213c1.344-.961 1.83-2.127 1.817-3.194z"></path>
+        </g>
+        <path fill="#7BC58C" d="M0 12h36v1H0z"></path>
+    </svg>);
+
+// === UPDATED FLAG COMPONENT (UK) ===
+const FlagUK = ({className}) => (
+    <svg height="200px" width="200px" version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg"
+         xmlnsXlink="http://www.w3.org/1999/xlink" viewBox="0 0 512 512" xmlSpace="preserve" className={className}>
+        <path style={{fill: "#41479B"}}
+              d="M473.655,88.276H38.345C17.167,88.276,0,105.443,0,126.621V385.38 c0,21.177,17.167,38.345,38.345,38.345h435.31c21.177,0,38.345-17.167,38.345-38.345V126.621 C512,105.443,494.833,88.276,473.655,88.276z"></path>
+        <path style={{fill: "#F5F5F5"}}
+              d="M511.469,120.282c-3.022-18.159-18.797-32.007-37.814-32.007h-9.977l-163.54,107.147V88.276h-88.276 v107.147L48.322,88.276h-9.977c-19.017,0-34.792,13.847-37.814,32.007l139.778,91.58H0v88.276h140.309L0.531,391.717 c3.022,18.159,18.797,32.007,37.814,32.007h9.977l163.54-107.147v107.147h88.276V316.577l163.54,107.147h9.977 c19.017,0,34.792-13.847,37.814-32.007l-139.778-91.58H512v-88.276H371.691L511.469,120.282z"></path>
+        <g>
+            <polygon style={{fill: "#FF4B55"}}
+                     points="282.483,88.276 229.517,88.276 229.517,229.517 0,229.517 0,282.483 229.517,282.483 229.517,423.724 282.483,423.724 282.483,282.483 512,282.483 512,229.517 282.483,229.517 "></polygon>
+            <path style={{fill: "#FF4B55"}}
+                  d="M24.793,421.252l186.583-121.114h-32.428L9.224,410.31 C13.377,415.157,18.714,418.955,24.793,421.252z"></path>
+            <path style={{fill: "#FF4B55"}}
+                  d="M346.388,300.138H313.96l180.716,117.305c5.057-3.321,9.277-7.807,12.287-13.075L346.388,300.138z"></path>
+            <path style={{fill: "#FF4B55"}}
+                  d="M4.049,109.475l157.73,102.387h32.428L15.475,95.842C10.676,99.414,6.749,104.084,4.049,109.475z"></path>
+            <path style={{fill: "#FF4B55"}}
+                  d="M332.566,211.862l170.035-110.375c-4.199-4.831-9.578-8.607-15.699-10.86L300.138,211.862H332.566z"></path>
+        </g>
+    </svg>);
+
+
+function VersionSelectorPopup({isOpen, onClose, onVersionSelect, currentLanguage = 'fa'}) {
+    const [viewMode, setViewMode] = useState('grid');
+    const [activeMajor, setActiveMajor] = useState('1.21');
+    const [activeSpecific, setActiveSpecific] = useState(null);
+
+    const [versionsData, setVersionsData] = useState({        // {
+        // '1.21': [{v: '1.21.8', d: '07/17/25'}, {v: '1.21.7', d: '06/30/25'}, {v: '1.21.6', d: '06/17/25'}],
+        // '1.20': [{v: '1.20.4', d: '12/07/23'}, {v: '1.20.2', d: '09/15/23'}, {v: '1.20.1', d: '06/12/23'}],
+        // '1.19': [{v: '1.19.4', d: '03/14/23'}, {v: '1.19.3', d: '12/07/22'}],
+        // '1.18': [{v: '1.18.2', d: '02/28/22'}],
+        // '1.17': [{v: '1.17.1', d: '07/06/21'}],
+        // '1.16': [{v: '1.16.5', d: '01/15/21'}],
+        // '1.12': [{v: '1.12.2', d: '09/18/17'}],
+        // '1.8': [{v: '1.8.9', d: '12/09/15'}],
+        // '1.7': [{v: '1.7.10', d: '06/26/14'}],
+    });
+
+    const majorVersions = Object.keys(versionsData);
+    useEffect(() => {
+        if (Object.keys(versionsData).length === 0) {
+            console.log(versionsData);
+            invoke("load_categorized_versions").then(categories => {
+                const versionsData = {}
+                for (const category in categories) {
+                    console.log(category.name);
+                    versionsData[category.name] = category.versions.map((x) => {
+                        return {v: x.id, d: "07/17/25"};
+                    })
+                }
+                setVersionsData(versionsData)
+            }).catch("Error!")
+
+        }
+        if (versionsData[activeMajor] && versionsData[activeMajor].length > 0) {
+            setActiveSpecific(versionsData[activeMajor][0].v);
+        }
+    }, [activeMajor]);
+
+    if (!isOpen) return null;
+
+    const handleInstall = () => {
+        if (activeSpecific) {
+            onVersionSelect(activeSpecific);
+        }
+        onClose();
+    };
+
+    const SpecificVersionItem = ({version, date, type}) => {
+        const isActive = activeSpecific === version;
+        const baseClasses = "cursor-pointer transition-all duration-200 ease-in-out rounded-lg";
+        const activeClasses = "bg-indigo-600 border-indigo-400 text-white";
+        const hoverClasses = "hover:bg-zinc-700";
+
+        if (type === 'grid') {
+            return (<div onClick={() => setActiveSpecific(version)}
+                         className={`${baseClasses} p-4 text-center border ${isActive ? activeClasses : 'bg-zinc-800 border-zinc-700 ' + hoverClasses}`}>
+                    <div className="font-bold text-lg">{version}</div>
+                    <div className={`text-sm ${isActive ? 'text-gray-200' : 'text-zinc-400'}`}>{date}</div>
+                </div>);
+        }
+        return (<div onClick={() => setActiveSpecific(version)}
+                     className={`${baseClasses} flex justify-between items-center p-4 border border-transparent ${isActive ? activeClasses : hoverClasses}`}>
+                <div className="font-bold">{version}</div>
+                <div className={`text-sm ${isActive ? 'text-gray-200' : 'text-zinc-400'}`}>{date}</div>
+            </div>);
+    };
+
+    const directionClass = currentLanguage === 'fa' ? 'rtl' : 'ltr';
+    const fontClass = currentLanguage === 'fa' ? 'font-vazir' : 'font-inter';
+
+    return (<>
+            <style>{`
+                @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap');
+                @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
+                .font-vazir { font-family: 'Vazirmatn', sans-serif; }
+                .font-inter { font-family: 'Inter', sans-serif; }
+            `}</style>
+            <div
+                className={`fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0'} ${fontClass}`}
+                dir={directionClass}
+            >
+                <div
+                    className={`w-[1200px] h-[750px] max-w-[95vw] max-h-[90vh] bg-zinc-900 rounded-lg flex overflow-hidden border border-zinc-700 shadow-2xl text-gray-200 transition-transform duration-300 ${isOpen ? 'scale-100' : 'scale-95'}`}>
+                    <aside className="w-[280px] bg-gray-800 p-6 border-l border-zinc-700 flex flex-col">
+                        <h2 className="text-xl font-bold mb-6">{t('mod_loaders', currentLanguage)}</h2>
+                        <div className="space-y-3">
+                            <div className="flex items-center bg-zinc-700 p-3 rounded-md">
+                                <input type="checkbox" id="forge" className="w-5 h-5 accent-indigo-500 cursor-pointer"/>
+                                <label htmlFor="forge"
+                                       className="mx-3 text-base cursor-pointer flex-grow">{t('install_forge', currentLanguage)}</label>
+                            </div>
+                            <div className="flex items-center bg-zinc-700 p-3 rounded-md">
+                                <input type="checkbox" id="fabric"
+                                       className="w-5 h-5 accent-indigo-500 cursor-pointer"/>
+                                <label htmlFor="fabric"
+                                       className="mx-3 text-base cursor-pointer flex-grow">{t('install_fabric', currentLanguage)}</label>
+                            </div>
+                            <div className="flex items-center bg-zinc-700 p-3 rounded-md">
+                                <input type="checkbox" id="liteloader"
+                                       className="w-5 h-5 accent-indigo-500 cursor-pointer"/>
+                                <label htmlFor="liteloader"
+                                       className="mx-3 text-base cursor-pointer flex-grow">{t('install_liteloader', currentLanguage)}</label>
+                            </div>
+                            <div className="flex items-center bg-zinc-700 p-3 rounded-md">
+                                <input type="checkbox" id="neoforge"
+                                       className="w-5 h-5 accent-indigo-500 cursor-pointer"/>
+                                <label htmlFor="neoforge"
+                                       className="mx-3 text-base cursor-pointer flex-grow">{t('install_neoforge', currentLanguage)}</label>
+                            </div>
+                        </div>
+                        <button onClick={handleInstall}
+                                className="w-full mt-auto bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg transition-colors">
+                            {t('install_selected', currentLanguage)}
+                        </button>
+                    </aside>
+                    <main className="flex-grow p-6 flex flex-col overflow-y-auto">
+                        <header className="flex justify-between items-center mb-6">
+                            <h1 className="text-3xl font-bold">{t('minecraft_version', currentLanguage)} {activeMajor}</h1>
+                            <div className="flex space-x-2">
+                                <button onClick={() => setViewMode('grid')}
+                                        className={`p-2 rounded-md transition-colors ${viewMode === 'grid' ? 'bg-indigo-600 text-white' : 'bg-zinc-700 text-zinc-400 hover:bg-zinc-600'}`}>
+                                    <Grid size={20}/>
+                                </button>
+                                <button onClick={() => setViewMode('list')}
+                                        className={`p-2 rounded-md transition-colors ${viewMode === 'list' ? 'bg-indigo-600 text-white' : 'bg-zinc-700 text-zinc-400 hover:bg-zinc-600'}`}>
+                                    <List size={20}/>
+                                </button>
+                            </div>
+                        </header>
+                        {viewMode === 'grid' ? (
+                            <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-4">
+                                {versionsData[activeMajor].map(item => <SpecificVersionItem key={item.v}
+                                                                                            version={item.v}
+                                                                                            date={item.d}
+                                                                                            type="grid"/>)}
+                            </div>) : (<div className="flex flex-col space-y-2">
+                                {versionsData[activeMajor].map(item => <SpecificVersionItem key={item.v}
+                                                                                            version={item.v}
+                                                                                            date={item.d}
+                                                                                            type="list"/>)}
+                            </div>)}
+                    </main>
+                    <aside className="w-[120px] bg-gray-800 p-2 border-r border-zinc-700 overflow-y-auto">
+                        <ul className="space-y-1">
+                            {majorVersions.map(v => (<li key={v} onClick={() => setActiveMajor(v)}
+                                                         className={`px-3 py-4 text-center font-bold text-lg rounded-md cursor-pointer transition-colors ${activeMajor === v ? 'bg-zinc-900 text-white' : 'text-zinc-400 hover:bg-zinc-700'}`}>
+                                    {v}
+                                </li>))}
+                        </ul>
+                    </aside>
+                    <button onClick={onClose}
+                            className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors">
+                        <X size={24}/>
+                    </button>
+                </div>
+            </div>
+        </>);
+}
 
 
 export default function FalconClient() {
     const [activeTab, setActiveTab] = useState("home");
     const [downloadProgress, setDownloadProgress] = useState(0);
     const [isDownloading, setIsDownloading] = useState(false);
-    const [isShowingSnapshots, setShowingSnapshots] = useState(false);
-    const [isShowingAlpha, setShowingAlpha] = useState(false);
     const [versions, setVersions] = useState([]);
     const [selectedVersion, setSelectedVersion] = useState("");
     const [username, setUsername] = useState("");
     const [statusMessage, setStatusMessage] = useState('Ready to play');
     const [isLoginPopupOpen, setIsLoginPopupPopupOpen] = useState(false);
-    const [profiles, setProfiles] = useState([])
+    const [isVersionSelectorOpen, setIsVersionSelectorOpen] = useState(false);
+    const [profiles, setProfiles] = useState([]);
     const [currentLanguage, setCurrentLanguage] = useState("fa");
 
-    useEffect(() => {
-        invoke("get_language").then(lang => setCurrentLanguage(lang)).catch("Failed to change the default language");
-        loadLanguage(currentLanguage).catch(console.error);
-    }, []);
-
-    async function load_versions() {
-        invoke("get_versions")
-            .then((v) => {
-                setVersions(v);
-                if (v.length > 0) {
-                    setSelectedVersion(v[0]);
-                }
-            })
-            .catch((e) => console.error("Failed to fetch versions:", e));
-    }
+    const loadVersions = useCallback(async () => {
+        try {
+            const v = await invoke("get_versions");
+            setVersions(v);
+            if (v.length > 0 && !selectedVersion) {
+                setSelectedVersion(v[0]);
+            }
+        } catch (e) {
+            console.error("Failed to fetch versions:", e);
+        }
+    }, [selectedVersion]);
 
     useEffect(() => {
+        // // Mock translations for popup
+        // const newTranslations = {
+        //     en: { ...t.en, install_new_version: 'Install New Version', mod_loaders: 'Mod Loaders', install_selected: 'Install Selected', minecraft_version: 'Minecraft', install_forge: 'Install Forge', install_fabric: 'Install Fabric', install_liteloader: 'Install LiteLoader', install_neoforge: 'Install NeoForge' },
+        //     fa: { ...t.fa, install_new_version: 'نصب نسخه جدید', mod_loaders: 'ماد لودرها', install_selected: 'نصب نسخه انتخابی', minecraft_version: 'ماینکرفت', install_forge: 'نصب Forge', install_fabric: 'نصب Fabric', install_liteloader: 'نصب LiteLoader', install_neoforge: 'نصب NeoForge' }
+        // };
+        // Object.assign(t, newTranslations);
+
+        invoke("get_language").then(lang => {
+            setCurrentLanguage(lang);
+            loadLanguage(lang).catch("Failed to load the language");
+        }).catch(console.error);
+
         invoke("get_profiles").then((v) => {
             setProfiles(v);
-            if (profiles.length > 0) {
-                setUsername(v[0]);
+            if (v.length > 0) {
+                invoke("get_username").then(setUsername).catch(console.error);
             }
-        });
-    })
+        }).catch(console.error);
 
-    useEffect(() => {
-        load_versions().catch((e) => console.error("Initial version load failed!", e));
-        invoke("get_username").then(setUsername).catch(() => console.error("Couldn't get the username"));
+        loadVersions();
 
-        async function registerEvents() {
-            const unlistenProgress = await listen('progress', (event) => {
-                console.log('Progress:', event.payload);
-                setStatusMessage(event.payload);
-            });
-            const unlistenProgressBar = await listen('progressBar', (event) => {
-                console.log('Progress Bar:', event.payload);
-                if (event.payload >= 100) {
-                    setIsDownloading(false);
-                }
+        let unlistenProgress, unlistenProgressBar;
+        const registerEvents = async () => {
+            unlistenProgress = await listen('progress', (event) => setStatusMessage(event.payload));
+            unlistenProgressBar = await listen('progressBar', (event) => {
+                if (event.payload >= 100) setIsDownloading(false);
                 setDownloadProgress(event.payload);
             });
-            // Cleanup on component unmount
-            return () => {
-                unlistenProgress();
-                unlistenProgressBar();
-            };
-        }
+        };
 
-        registerEvents().catch((e) => console.error("Failed to register events", e));
-    }, []);
+        registerEvents();
 
+        return () => {
+            unlistenProgress?.();
+            unlistenProgressBar?.();
+        };
+    }, [loadVersions]);
+
+    useEffect(() => {
+        document.body.className = '';
+        document.body.classList.add(`lang-${currentLanguage}`);
+    }, [currentLanguage]);
 
     const handlePlay = async () => {
-        if (!selectedVersion && versions.length > 0) {
-            setSelectedVersion(versions[0]);
-        }
+        if (!selectedVersion && versions.length > 0) setSelectedVersion(versions[0]);
         setIsDownloading(true);
         try {
             await invoke("set_username", {username});
@@ -85,122 +284,72 @@ export default function FalconClient() {
             console.error("Failed to launch game:", e);
             setIsDownloading(false);
         }
-
-        if (downloadProgress >= 100) {
-            setIsDownloading(false);
-            setDownloadProgress(0);
-        }
     };
 
-    const toggleShowingSnapshots = () => {
-        const newValue = !isShowingSnapshots;
-        setShowingSnapshots(newValue);
-        invoke("set_allow_snapshot", {enabled: newValue})
-            .then(() => invoke("reload_versions"))
-            .then(() => load_versions())
-            .catch(e => console.error("Failed to toggle snapshots and reload", e));
-    };
-
-    const toggleShowAlpha = () => {
-        const newValue = !isShowingAlpha;
-        setShowingAlpha(newValue);
-        invoke("set_allow_old_versions", {enabled: newValue})
-            .then(() => invoke("reload_versions"))
-            .then(() => load_versions())
-            .catch(e => console.error("Failed to toggle old versions and reload", e));
-    };
-
-    // New function to handle language change
     const handleLanguageChange = async (lang) => {
         setCurrentLanguage(lang);
-        invoke("set_language", {lang: lang}).catch("Failed to change language!")
-        await loadLanguage(lang);
+        await invoke("set_language", {lang});
+        await invoke("save");
+        loadLanguage(lang).catch(console.error);
+        window.location.reload();
     };
 
-
     return (<div className="flex flex-col w-full h-screen bg-gray-900 text-gray-200 overflow-hidden">
-            {/* Header */}
             <div className="flex justify-between items-center px-4 sm:px-6 py-3 bg-gray-800 border-b border-gray-700">
                 <div className="flex items-center flex-wrap gap-2">
                     <h1 className="text-lg sm:text-xl font-bold text-indigo-400">{t("app_name")}</h1>
                     <span className="text-xs text-gray-400">v1.0.0</span>
                 </div>
-                {/* Language Change Button */}
                 <div className="flex items-center">
                     <button
-                        className="px-3 py-1 bg-yellow-400 hover:bg-yellow-500 text-white font-bold rounded text-sm"
+                        className="p-1 rounded-full hover:bg-gray-700 transition-colors"
                         onClick={() => handleLanguageChange(currentLanguage === 'fa' ? 'en' : 'fa')}
+                        title="Change Language"
                     >
-                        {currentLanguage === 'fa' ? 'English' : 'فارسی'}
+                        {currentLanguage === "fa" ? <FlagUK className="w-8 h-6 rounded-sm"/> :
+                            <FlagIran className="w-8 h-6 rounded-sm"/>}
                     </button>
                 </div>
             </div>
 
             <div className="flex flex-1 flex-col lg:flex-row overflow-hidden">
-                {/* Sidebar */}
                 <div className="w-full lg:w-64 md:w-48 bg-gray-800 flex flex-col">
-                    {/* Profile selection */}
-                    <div className="p-4 sm:p-6 flex flex-col items-center">
-                        <h2 className="text-base sm:text-lg font-semibold mb-4">{t("select_profile")}</h2>
+                    <div className="p-4 sm:p-6 flex flex-col">
                         <select
                             name="Profile"
                             className="w-full mb-2 p-2 bg-gray-900 border border-indigo-500 rounded text-gray-200 focus:outline-none text-sm sm:text-base"
+                            value={username}
                             onChange={(e) => setUsername(e.target.value)}
                         >
+                            <option value="" disabled>{t("select_profile")}</option>
                             {profiles.map((v) => <option key={v} value={v}>{v}</option>)}
                         </select>
                         <button
-                            className="w-full mb-2 p-2 bg-gray-900 border border-indigo-500 rounded text-gray-200 focus:outline-none text-sm sm:text-base"
+                            className="w-full mb-4 p-2 bg-gray-900 border border-indigo-500 rounded text-gray-200 focus:outline-none text-sm sm:text-base"
                             onClick={() => setIsLoginPopupPopupOpen(true)}
                         >
                             {t("create_profile")}
                         </button>
-                    </div>
 
-                    {/* Version selection */}
-                    <div className="px-4 sm:px-6 pb-4">
-                        <label className="block text-sm font-semibold mb-2">{t("game_version")}</label>
-                        <select
-                            className="w-full p-2 bg-gray-900 border border-gray-700 rounded text-gray-200 text-sm sm:text-base"
-                            value={selectedVersion}
-                            onChange={(e) => setSelectedVersion(e.target.value)}
-                        >
-                            {versions.map((version) =>
-                                <option key={version} id={version}>{version}</option>
-                            )}
-                        </select>
-                        <div className="flex items-center justify-left mt-6">
-                            <button
-                                onClick={toggleShowingSnapshots}
-                                className={`relative inline-flex h-6 w-10 items-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${isShowingSnapshots ? 'bg-blue-600' : 'bg-gray-300'}`}
-                                role="switch"
-                                aria-checked={isShowingSnapshots}
+                        <div className="border-t border-gray-700 pt-4">
+                            <h3 className="text-sm font-semibold mb-2 text-gray-400">{t("game_version")}</h3>
+                            <select
+                                className="w-full p-2 bg-gray-900 border border-gray-700 rounded text-gray-200 text-sm sm:text-base mb-2"
+                                value={selectedVersion}
+                                onChange={(e) => setSelectedVersion(e.target.value)}
                             >
-                            <span
-                                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-lg transition-transform duration-200 ease-in-out ${isShowingSnapshots ? 'translate-x-5' : 'translate-x-1'}`}
-                            />
-                            </button>
-                            <label className='ml-2'>{t("show_snapshots")}</label>
-                        </div>
-
-                        <div className="flex items-center justify-left mt-2">
+                                {versions.map((version) => <option key={version} value={version}>{version}</option>)}
+                            </select>
                             <button
-                                onClick={toggleShowAlpha}
-                                className={`relative inline-flex h-6 w-10 items-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${isShowingAlpha ? 'bg-blue-600' : 'bg-gray-300'}`}
-                                role="switch"
-                                aria-checked={isShowingAlpha}
+                                className="w-full p-2 bg-gray-900 border border-indigo-500 rounded text-gray-200 hover:bg-gray-700 focus:outline-none text-sm sm:text-base"
+                                onClick={() => setIsVersionSelectorOpen(true)}
                             >
-                            <span
-                                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-lg transition-transform duration-200 ease-in-out ${isShowingAlpha ? 'translate-x-5' : 'translate-x-1'}`}
-                            />
+                                {t('install_new_version', currentLanguage)}
                             </button>
-                            <label className='ml-2'>{t("show_old_versions")}</label>
                         </div>
                     </div>
 
-
-                    {/* Navigation */}
-                    <div className="flex-1 py-4">
+                    <nav className="flex-1 py-4 mt-auto">
                         <NavItem
                             icon={<Home size={18}/>}
                             title={t("home_tab")}
@@ -219,9 +368,8 @@ export default function FalconClient() {
                             active={activeTab === 'settings'}
                             onClick={() => setActiveTab('settings')}
                         />
-                    </div>
+                    </nav>
 
-                    {/* Play button */}
                     <div className="p-4 sm:p-6 border-t border-gray-700">
                         <button
                             disabled={isDownloading}
@@ -229,43 +377,47 @@ export default function FalconClient() {
                             onClick={handlePlay}
                         >
                             <Play size={18} className="mr-2"/>
-                            {t("play")}
+                            {isDownloading ? t('downloading') : t("play")}
                         </button>
-                        {isDownloading && (
-                            <div className="w-full bg-gray-700 rounded-full h-2 mt-4">
+                        {isDownloading && (<div className="w-full bg-gray-700 rounded-full h-2 mt-4">
                                 <div
                                     className="bg-indigo-500 h-2 rounded-full"
                                     style={{width: `${downloadProgress}%`}}
                                 ></div>
-                            </div>
-                        )}
-                        <p className="text-xs mt-2 text-gray-400">{statusMessage}</p>
+                            </div>)}
+                        <p className="text-xs mt-2 text-gray-400 text-center">{statusMessage}</p>
                     </div>
                 </div>
 
-                {/* Main content */}
-                <div className="flex-1 overflow-auto p-4 sm:p-6">
+                <main className="flex-1 overflow-auto p-4 sm:p-6">
                     {activeTab === 'home' && <HomeTab/>}
                     {activeTab === 'settings' && <SettingsTab/>}
                     {activeTab === 'mods' && <ModsTab/>}
-                </div>
+                </main>
             </div>
 
             <LoginPopup isOpen={isLoginPopupOpen} onClose={() => setIsLoginPopupPopupOpen(false)}/>
-        </div>
-    );
+            <VersionSelectorPopup
+                isOpen={isVersionSelectorOpen}
+                onClose={() => setIsVersionSelectorOpen(false)}
+                onVersionSelect={(version) => setSelectedVersion(version)}
+                currentLanguage={currentLanguage}
+            />
+        </div>);
 }
 
+// Other components (NavItem, HomeTab, ModsTab, SettingsTab, etc.) remain the same
 function NavItem({icon, title, active, onClick}) {
+    const langClass = getCurrentLang() === "fa" ? 'font-vazir' : 'font-inter';
     return (<div
-        className={`flex items-center px-6 py-3 cursor-pointer ${active ? 'bg-gray-700 border-l-4 border-indigo-500' : 'hover:bg-gray-700'}`}
-        onClick={onClick}
-    >
-        <div className={`mr-3 ${active ? 'text-indigo-400' : 'text-gray-400'}`}>
-            {icon}
-        </div>
-        <span className={active ? 'font-semibold' : ''}>{title}</span>
-    </div>);
+            className={`flex items-center px-6 py-3 cursor-pointer ${active ? 'bg-gray-700 border-r-4 border-indigo-500' : 'hover:bg-gray-700'}`}
+            onClick={onClick}
+        >
+            <div className={`ml-3 ${active ? 'text-indigo-400' : 'text-gray-400'}`}>
+                {icon}
+            </div>
+            <span className={`${active ? 'font-semibold' : ''} ${langClass}`}>{title}</span>
+        </div>);
 }
 
 function HomeTab() {
@@ -281,19 +433,23 @@ function HomeTab() {
         title: 'New Mod Spotlight: Enhanced Biomes',
         content: 'Discover incredible new biomes with this mod',
         date: '2 weeks ago'
+    }, {
+        title: 'New Mod Spotlight: Enhanced Biomes',
+        content: 'Discover incredible new biomes with this mod',
+        date: '2 weeks ago'
     }];
 
     return (<div className="p-8">
-        <h2 className="text-2xl font-bold mb-6">{t("minecraft_news")}</h2>
+            <h2 className="text-2xl font-bold mb-6">{t("minecraft_news")}</h2>
 
-        <div className="space-y-4">
-            {newsArticles.map((article, index) => (<div key={index} className="bg-gray-800 p-6 rounded">
-                <h3 className="text-xl font-semibold mb-2">{article.title}</h3>
-                <p className="text-gray-300 mb-3">{article.content}</p>
-                <p className="text-sm text-indigo-400 italic">{article.date}</p>
-            </div>))}
-        </div>
-    </div>);
+            <div className="space-y-4">
+                {newsArticles.map((article, index) => (<div key={index} className="bg-gray-800 p-6 rounded">
+                        <h3 className="text-xl font-semibold mb-2">{article.title}</h3>
+                        <p className="text-gray-300 mb-3">{article.content}</p>
+                        <p className="text-sm text-indigo-400 italic">{article.date}</p>
+                    </div>))}
+            </div>
+        </div>);
 }
 
 function ModsTab() {
@@ -306,102 +462,116 @@ function ModsTab() {
     },];
 
     return (<div className="p-6">
-        <div className="flex justify-between items-center mb-6">
-            <h2 className="2xl font-bold">{t("mod_manager")}</h2>
-            <input
-                type="text"
-                placeholder={t("mod_search")}
-                className="w-64 p-2 bg-gray-800 border border-gray-700 rounded"
-            />
-        </div>
+            <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold">{t("mod_manager")}</h2>
+                <input
+                    type="text"
+                    placeholder={t("mod_search")}
+                    className="w-64 p-2 bg-gray-800 border border-gray-700 rounded"
+                />
+            </div>
 
-        <div className="space-y-3">
-            {mods.map((mod, index) => (
-                <div key={index} className="bg-gray-800 p-4 rounded flex justify-between items-center">
-                    <div>
-                        <h3 className="font-semibold">{mod.name}</h3>
-                        <p className="text-sm text-gray-400">{mod.description}</p>
-                    </div>
-                    <div className="flex items-center">
-                        <span className="text-xs text-indigo-400 mr-3">{mod.version}</span>
-                        <button className="px-3 py-1 bg-indigo-500 hover:bg-indigo-600 rounded text-sm">
-                            Install
-                        </button>
-                    </div>
-                </div>))}
-        </div>
-    </div>);
+            <div className="space-y-3">
+                {mods.map((mod, index) => (
+                    <div key={index} className="bg-gray-800 p-4 rounded flex justify-between items-center">
+                        <div>
+                            <h3 className="font-semibold">{mod.name}</h3>
+                            <p className="text-sm text-gray-400">{mod.description}</p>
+                        </div>
+                        <div className="flex items-center">
+                            <span className="text-xs text-indigo-400 mr-3">{mod.version}</span>
+                            <button className="px-3 py-1 bg-indigo-500 hover:bg-indigo-600 rounded text-sm">
+                                Install
+                            </button>
+                        </div>
+                    </div>))}
+            </div>
+        </div>);
 }
 
-function RamUsageBar({totalRam}) {
-    const [ramUsage, setRamUsage] = useState(0);
-    const [ramUsagePretiffied, setRamUsagePrettified] = useState("2GB");
-    if (ramUsage === 0) invoke("get_ram_usage")
-        .then(ramUsage => {
-            setRamUsage(ramUsage);
-            setRamUsagePrettified((ramUsage / 1024).toFixed(1) + " GB");
-        })
-        .catch("Not working fuck");
+function RamUsageBar({totalRam, ramUsage, setRamUsage}) {
+    const ramUsageGB = (ramUsage / 1024).toFixed(1);
 
-    return <div className="bg-gray-800 p-6 rounded">
-        <h3 className="text-lg font-semibold mb-1">{t("mem_alloc_title")}</h3>
-        <p className="text-sm text-gray-400 mb-4">{t("mem_alloc_description")}</p>
-        <div className="flex items-center">
-            <input type="range" min="1.0" max={parseInt(totalRam / 1024)} value={ramUsage}
-                   onInput={event => {
-                       setRamUsage(event.target.value);
-                       setRamUsagePrettified((event.target.value / 1024).toFixed(1) + " GB");
-                       invoke("set_ram_usage", {ramUsage: event.target.value}).catch("").then();
-                   }} className="w-64"/>
+    const handleRamChange = (event) => {
+        const newRamValue = parseInt(event.target.value, 10);
+        setRamUsage(newRamValue);
+    };
 
-            <data id="ram_usage_label" className="ml-4"
-                  value={ramUsagePretiffied}>{ramUsagePretiffied}</data>
-        </div>
-    </div>
+    const handleRamChangeEnd = () => {
+        invoke("set_ram_usage", {ram_usage: ramUsage}).catch(console.error);
+    }
+
+    return (<div className="bg-gray-800 p-6 rounded">
+            <h3 className="text-lg font-semibold mb-1">{t("mem_alloc_title")}</h3>
+            <p className="text-sm text-gray-400 mb-4">{t("mem_alloc_description")}</p>
+            <div className="flex items-center">
+                <input type="range"
+                       min="1024"
+                       max={totalRam > 1024 ? totalRam : 8192}
+                       step="512"
+                       value={ramUsage}
+                       onInput={handleRamChange}
+                       onMouseUp={handleRamChangeEnd}
+                       className="w-64"
+                />
+                <data id="ram_usage_label" className="ml-4 tabular-nums" value={ramUsageGB}>
+                    {ramUsageGB} GB
+                </data>
+            </div>
+        </div>);
 }
 
 function SettingsTab() {
-    const [totalRam, setTotalRam] = useState(0)
-    if (totalRam === 0) invoke("get_total_ram").catch((e) => console.error("I hate things not to work", e)).then(ram => setTotalRam(ram))
+    const [totalRam, setTotalRam] = useState(0);
+    const [ramUsage, setRamUsage] = useState(2048);
 
-    function save() {
-        invoke("set_ram_usage", {ramUsage: gRamUsage}).catch("Aw man you screwed it up");
-        invoke("save").catch("Couldn't save file.")
+    useEffect(() => {
+        invoke("get_total_ram").then(setTotalRam).catch(console.error);
+        invoke("get_ram_usage").then(ram => {
+            if (ram) setRamUsage(ram);
+        }).catch(console.error);
+    }, []);
+
+    function saveSettings() {
+        invoke("set_ram_usage", {ram_usage: ramUsage}).catch(console.error);
+        invoke("save").catch(e => console.error("Couldn't save settings.", e));
+        console.log("Settings Saved!");
     }
 
     return (<div className="p-6">
-        <h2 className="text-2xl font-bold mb-6">Settings</h2>
+            <h2 className="text-2xl font-bold mb-6">{t("settings_tab")}</h2>
 
-        <div className="space-y-6">
-            {/* Memory Settings */}
-            <RamUsageBar totalRam={totalRam}/>
+            <div className="space-y-6">
+                <RamUsageBar
+                    totalRam={totalRam}
+                    ramUsage={ramUsage}
+                    setRamUsage={setRamUsage}
+                />
 
-            {/* Launch Options */}
-            <div className="bg-gray-800 p-6 rounded">
-                <h3 className="text-lg font-semibold mb-1">{t("launch_options_title")}</h3>
-                <p className="text-sm text-gray-400 mb-4">{t("launch_options_description")}</p>
-
-                <div className="space-y-3">
-                    <div className="flex items-center">
-                        <input type="checkbox" id="fullscreen" className="mr-2"/>
-                        <label htmlFor="fullscreen">{t("lo_fullscreen")}</label>
-                    </div>
-                    <div className="flex items-center">
-                        <input type="checkbox" id="close-launcher" className="mr-2"/>
-                        <label htmlFor="close-launcher">{t("lo_close_on_start")}</label>
-                    </div>
-                    <div className="flex items-center">
-                        <input type="checkbox" id="check-updates" className="mr-2"/>
-                        <label htmlFor="check-updates">{t("startup_update_check")}</label>
+                <div className="bg-gray-800 p-6 rounded">
+                    <h3 className="text-lg font-semibold mb-1">{t("launch_options_title")}</h3>
+                    <p className="text-sm text-gray-400 mb-4">{t("launch_options_description")}</p>
+                    <div className="space-y-3">
+                        <div className="flex items-center">
+                            <input type="checkbox" id="fullscreen" className="mr-2"/>
+                            <label htmlFor="fullscreen">{t("lo_fullscreen")}</label>
+                        </div>
+                        <div className="flex items-center">
+                            <input type="checkbox" id="close-launcher" className="mr-2"/>
+                            <label htmlFor="close-launcher">{t("lo_close_on_start")}</label>
+                        </div>
+                        <div className="flex items-center">
+                            <input type="checkbox" id="check-updates" className="mr-2"/>
+                            <label htmlFor="check-updates">{t("startup_update_check")}</label>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <div className="flex justify-end">
-                <button className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded" onClick={save}>
-                    Save Settings
-                </button>
+                <div className="flex justify-end">
+                    <button className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded" onClick={saveSettings}>
+                        {t("save_settings")}
+                    </button>
+                </div>
             </div>
-        </div>
-    </div>);
+        </div>);
 }

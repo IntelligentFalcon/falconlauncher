@@ -1,6 +1,6 @@
 use crate::directory_manager::get_falcon_launcher_directory;
 use crate::structs::MinecraftVersion;
-use crate::utils::load_versions;
+use crate::utils::{get_downloaded_versions, load_versions};
 use ini::Ini;
 use std::fs::{create_dir_all, exists, File};
 use std::io::{BufReader, Read};
@@ -10,10 +10,7 @@ use tauri::async_runtime::block_on;
 pub struct Config {
     pub username: String,
     pub ram_usage: u64,
-    pub java_path: String,
     pub versions: Vec<MinecraftVersion>,
-    pub show_old_versions: bool,
-    pub show_snapshots: bool,
     pub language: String,
 }
 
@@ -35,8 +32,6 @@ pub async fn load_config(config: &mut Config) {
     config.username = conf.username;
     config.ram_usage = conf.ram_usage;
     config.versions = conf.versions;
-    config.show_old_versions = conf.show_old_versions;
-    config.show_snapshots = conf.show_snapshots;
     config.language = conf.language;
 }
 async fn load() -> Config {
@@ -60,14 +55,11 @@ async fn load() -> Config {
         .parse::<String>()
         .expect("Could not parse language");
     let mut versions = Vec::<MinecraftVersion>::new();
-    versions = load_versions(false, false).await;
+    versions = get_downloaded_versions();
     Config {
         username,
         ram_usage,
-        java_path: "java".to_string(),
         versions,
-        show_old_versions: false,
-        show_snapshots: false,
         language,
     }
 }

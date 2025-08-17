@@ -43,7 +43,7 @@ export default function LoginPopup({isOpen, onClose}) {
                     className="w-full mb-4 p-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded transition-colors"
                     onClick={event => {
                         invoke("create_offline_profile", {username: username}).catch("Oh failed to create profile!");
-                        onClose
+                        onClose();
                     }}
                 >
                     Log in

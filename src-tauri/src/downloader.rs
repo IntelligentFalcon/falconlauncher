@@ -289,6 +289,13 @@ pub async fn get_available_forge_versions(version_id: &String) -> Vec<String> {
         .unwrap_or(Vec::new())
 }
 
+// pub async fn get_forge_versions() -> Vec<String> {
+//     let url = "https://files.minecraftforge.net/net/minecraftforge/forge/maven-metadata.json";
+//     let map: HashMap<String, Vec<String>> = reqwest::get(url).await.unwrap().json().await.unwrap();
+//     map.iter()
+//         .map(|(key, val)| val[0].clone())
+//         .unwrap_or(Vec::new())
+// }
 pub async fn download_forge_version(version: &String) {
     let url = format!("https://maven.minecraftforge.net/net/minecraftforge/forge/{version}/forge-{version}-installer.jar");
     let launcher_dir = get_falcon_launcher_directory();
