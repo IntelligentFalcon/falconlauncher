@@ -1,4 +1,5 @@
 use crate::directory_manager::{get_libraries_directory, get_versions_directory};
+use crate::structs::VersionBase::{FABRIC, FORGE, LITELOADER, NEOFORGE, VANILLA};
 use crate::utils::{extend_once, get_current_os, parse_library_name_to_path};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -64,10 +65,19 @@ pub struct LibraryRules {
     pub allowed_oses: Vec<String>,
     pub disallowed_oses: Vec<String>,
 }
-#[derive(Clone, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct MinecraftVersion {
     pub id: String,
     pub version_path: String,
+    pub base: VersionBase,
+}
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub enum VersionBase {
+    VANILLA,
+    FORGE,
+    NEOFORGE,
+    FABRIC,
+    LITELOADER,
 }
 struct Library {
     pub name: String,
@@ -78,8 +88,20 @@ impl MinecraftVersion {
     pub fn is_installed(&self) -> bool {
         PathBuf::from(self.get_json()).exists()
     }
+
     pub fn new(id: String, version_folder: String) -> Self {
         let versions_dir = get_versions_directory();
+        let base = if version_folder.to_lowercase().contains("forge") {
+            FORGE
+        } else if version_folder.to_lowercase().contains("fabric") {
+            FABRIC
+        } else if version_folder.to_lowercase().contains("liteloader") {
+            LITELOADER
+        } else if version_folder.to_lowercase().contains("neoforge") {
+            NEOFORGE
+        } else {
+            VANILLA
+        };
         Self {
             id,
             version_path: versions_dir
@@ -87,6 +109,7 @@ impl MinecraftVersion {
                 .to_str()
                 .unwrap()
                 .to_string(),
+            base,
         }
     }
     pub fn get_json(&self) -> String {
@@ -116,9 +139,22 @@ impl MinecraftVersion {
             .unwrap();
         let json: Value = serde_json::from_str(fs::read_to_string(file).unwrap().as_str()).unwrap();
         let name = json["id"].as_str().unwrap().to_string();
+        let version_folder = directory.to_str().unwrap().to_string();
+        let base = if version_folder.to_lowercase().contains("forge") {
+            FORGE
+        } else if version_folder.to_lowercase().contains("fabric") {
+            FABRIC
+        } else if version_folder.to_lowercase().contains("liteloader") {
+            LITELOADER
+        } else if version_folder.to_lowercase().contains("neoforge") {
+            NEOFORGE
+        } else {
+            VANILLA
+        };
         Self {
             id: name,
             version_path: directory.as_path().to_str().unwrap().to_string(),
+            base
         }
     }
     pub fn is_forge(&self) -> bool {

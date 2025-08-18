@@ -1,6 +1,5 @@
-use crate::config::{dump, load_config, Config};
+use crate::config::{load_config, Config};
 use crate::game_launcher::{launch_game, update_download_status};
-use std::collections::HashMap;
 
 use crate::directory_manager::get_falcon_launcher_directory;
 use crate::downloader::download_forge_version;
@@ -8,6 +7,7 @@ use crate::structs::{MinecraftVersion, VersionCategory};
 use crate::utils::is_connected_to_internet;
 use crate::version_manager::{download_version_manifest, get_categorized_versions};
 use native_dialog::{DialogBuilder, MessageLevel};
+use serde::de::value::BoolDeserializer;
 use std::fs::create_dir_all;
 use std::io::Write;
 use std::ops::Deref;
@@ -16,6 +16,7 @@ use std::sync::LazyLock;
 use tauri::async_runtime::{block_on, Mutex};
 use tauri::{command, AppHandle, LogicalSize, Manager};
 use utils::load_versions;
+use crate::structs::VersionBase::FORGE;
 
 mod config;
 mod directory_manager;
@@ -27,22 +28,20 @@ mod structs;
 mod utils;
 mod version_manager;
 
-static CONFIG: LazyLock<Mutex<Config>> = LazyLock::new(|| {
-    Mutex::new(Config {
-        username: "Steve".to_string(),
-        ram_usage: 1024,
-        versions: Vec::new(),
-        language: "en".to_string(),
-    })
-});
+static CONFIG: LazyLock<Mutex<Config>> = LazyLock::new(|| Mutex::new(config::default_config()));
 
 #[command]
 async fn play_button_handler(app: AppHandle, selected_version: String) {
     launch_game(app, selected_version, &*CONFIG.lock().await).await;
 }
 #[command]
-async fn load_categorized_versions() -> Vec<VersionCategory> {
-    get_categorized_versions().await
+async fn load_categorized_versions(
+    fabric: bool,
+    forge: bool,
+    neo_forge: bool,
+    lite_loader: bool,
+) -> Vec<VersionCategory> {
+    get_categorized_versions(fabric, forge, neo_forge, lite_loader).await
 }
 #[command]
 async fn get_versions() -> Vec<String> {
@@ -146,25 +145,25 @@ async fn get_total_ram() -> u64 {
 #[command]
 async fn save() {
     let cfg = CONFIG.lock().await;
-    dump(&cfg);
+    cfg.write_to_file()
 }
 #[command]
 async fn set_username(username: String) {
     let mut config = CONFIG.lock().await;
-    config.username = username;
+    config.launch_options.username = username;
 }
 #[command]
 async fn set_ram_usage(ram_usage: u64) {
     let mut config = CONFIG.lock().await;
-    config.ram_usage = ram_usage;
+    config.launch_options.ram_usage = ram_usage;
 }
 #[command]
 async fn get_ram_usage() -> u64 {
-    CONFIG.lock().await.ram_usage
+    CONFIG.lock().await.launch_options.ram_usage
 }
 #[command]
 async fn get_username() -> String {
-    CONFIG.lock().await.username.clone()
+    CONFIG.lock().await.launch_options.username.clone()
 }
 
 #[command]
@@ -200,18 +199,18 @@ async fn get_non_installed_versions() -> Vec<String> {
 #[command]
 async fn set_language(lang: String) {
     let mut config = CONFIG.lock().await;
-    config.language = lang;
+    config.launcher_settings.language = lang;
 }
 #[command]
 async fn get_language() -> String {
-    CONFIG.lock().await.language.clone()
+    CONFIG.lock().await.launcher_settings.language.clone()
 }
 
 #[command]
 async fn download_version(app_handle: AppHandle, version_id: String) {
     let version = MinecraftVersion::from_id(version_id);
     let inherited_version = version.get_inherited();
-    if version.is_forge() && !version.is_installed() {
+    if version.base == FORGE && !version.is_installed() {
         println!(
             "DEBUG: Forge version detected! {} installing it rn!",
             version.id
@@ -222,7 +221,12 @@ async fn download_version(app_handle: AppHandle, version_id: String) {
         update_download_status("Downloading version...", &app_handle);
         downloader::download_version(&version, &app_handle).await;
         downloader::download_version(&inherited_version, &app_handle).await;
-        let dialog = DialogBuilder::message().set_title("Done!").set_text("Successfully installed the selected version you can now play it").alert().show().unwrap();
+        let dialog = DialogBuilder::message()
+            .set_title("Done!")
+            .set_text("Successfully installed the selected version you can now play it")
+            .alert()
+            .show()
+            .unwrap();
         let mut conf = CONFIG.lock().await;
         conf.versions.push(version);
     }

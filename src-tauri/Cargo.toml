@@ -27,7 +27,7 @@ reqwest = { version = "0.12.22", features = ["stream", "json"] }
 sys-info = "*"
 zip-extract = "0.4.1"
 uuid = { version = "1.17.0", features = ["v4"] }
-rust-ini = "0.21.2"
+serde_ini = "*"
 tauri-plugin-notification = "2"
 zip = "*"
 toml = "0.9.4"

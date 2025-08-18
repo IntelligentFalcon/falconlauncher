@@ -48,28 +48,32 @@ function VersionSelectorPopup({isOpen, onClose, onVersionSelect, currentLanguage
     const [viewMode, setViewMode] = useState('grid');
     const [activeMajor, setActiveMajor] = useState('1.21');
     const [activeSpecific, setActiveSpecific] = useState(null);
+    const [showForge, setShowForge] = useState(false);
+    const [showNeoForge, setShowNeoForge] = useState(false);
+    const [showLiteLoader, setShowLiteLoader] = useState(false);
+    const [showFabric, setShowFabric] = useState(false);
+    const [versionsData, setVersionsData] = useState({});
 
-    const [versionsData, setVersionsData] = useState({        // {
-        // '1.21': [{v: '1.21.8', d: '07/17/25'}, {v: '1.21.7', d: '06/30/25'}, {v: '1.21.6', d: '06/17/25'}],
-        // '1.20': [{v: '1.20.4', d: '12/07/23'}, {v: '1.20.2', d: '09/15/23'}, {v: '1.20.1', d: '06/12/23'}],
-        // '1.19': [{v: '1.19.4', d: '03/14/23'}, {v: '1.19.3', d: '12/07/22'}],
-        // '1.18': [{v: '1.18.2', d: '02/28/22'}],
-        // '1.17': [{v: '1.17.1', d: '07/06/21'}],
-        // '1.16': [{v: '1.16.5', d: '01/15/21'}],
-        // '1.12': [{v: '1.12.2', d: '09/18/17'}],
-        // '1.8': [{v: '1.8.9', d: '12/09/15'}],
-        // '1.7': [{v: '1.7.10', d: '06/26/14'}],
-    });
-    if (Object.keys(versionsData).length === 0) {
-        invoke("load_categorized_versions")
+    const updateVersions = (forge, fabric, neoforge, liteloader) => {
+        invoke("load_categorized_versions", {
+            fabric: fabric,
+            forge: forge,
+            neoForge: neoforge,
+            liteLoader: liteloader
+        })
             .then(categories => {
                 const v = {};
                 for (const category of categories) {
                     v[category.name] = category.versions.map(x => ({v: x.id, d: "07/17/25"}));
+
                 }
                 setVersionsData(v);
             })
             .catch(err => console.error("Error loading versions:", err));
+    }
+
+    if (Object.keys(versionsData).length === 0) {
+        updateVersions(showForge, showFabric, showNeoForge, showLiteLoader);
     }
     const majorVersions = Object.keys(versionsData);
     useEffect(() => {
@@ -128,7 +132,17 @@ function VersionSelectorPopup({isOpen, onClose, onVersionSelect, currentLanguage
                     <h2 className="text-xl font-bold mb-6">{t('mod_loaders', currentLanguage)}</h2>
                     <div className="space-y-3">
                         <div className="flex items-center bg-zinc-700 p-3 rounded-md">
-                            <input type="checkbox" id="forge" className="w-5 h-5 accent-indigo-500 cursor-pointer"/>
+                            <input type="checkbox" id="forge" className="w-5 h-5 accent-indigo-500 cursor-pointer"
+                                   checked={showForge} onChange={e => {
+                                // HERE
+                                setShowForge(prev => {
+                                    const newValue = !prev;
+                                    console.log(newValue);
+                                    updateVersions(newValue, showFabric, showNeoForge, showLiteLoader);
+
+                                    return newValue;
+                                });
+                            }}/>
                             <label htmlFor="forge"
                                    className="mx-3 text-base cursor-pointer flex-grow">{t('install_forge', currentLanguage)}</label>
                         </div>
@@ -170,18 +184,32 @@ function VersionSelectorPopup({isOpen, onClose, onVersionSelect, currentLanguage
                             </button>
                         </div>
                     </header>
-                    {viewMode === 'grid' ? (
+                    {!versionsData[activeMajor] || versionsData[activeMajor].length === 0 ? (
+                        <p>Loading versions...</p>
+                    ) : viewMode === 'grid' ? (
                         <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-4">
-                            {versionsData[activeMajor].map(item => <SpecificVersionItem key={item.v}
-                                                                                        version={item.v}
-                                                                                        date={item.d}
-                                                                                        type="grid"/>)}
-                        </div>) : (<div className="flex flex-col space-y-2">
-                        {versionsData[activeMajor].map(item => <SpecificVersionItem key={item.v}
-                                                                                    version={item.v}
-                                                                                    date={item.d}
-                                                                                    type="list"/>)}
-                    </div>)}
+                            {versionsData[activeMajor].map(item => (
+                                <SpecificVersionItem
+                                    key={item.v}
+                                    version={item.v}
+                                    date={item.d}
+                                    type="grid"
+                                />
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="flex flex-col space-y-2">
+                            {versionsData[activeMajor].map(item => (
+                                <SpecificVersionItem
+                                    key={item.v}
+                                    version={item.v}
+                                    date={item.d}
+                                    type="list"
+                                />
+                            ))}
+                        </div>
+                    )}
+
                 </main>
                 <aside className="w-[120px] bg-gray-800 p-2 border-r border-zinc-700 overflow-y-auto">
                     <ul className="space-y-1">
@@ -397,7 +425,7 @@ export default function FalconClient() {
         <VersionSelectorPopup
             isOpen={isVersionSelectorOpen}
             onClose={() => setIsVersionSelectorOpen(false)}
-            onVersionSelect={(version) => invoke("download_version", {versionId : version}).catch("Failed to download version")
+            onVersionSelect={(version) => invoke("download_version", {versionId: version}).catch("Failed to download version")
                 .then(() => {
                     window.location.reload();
                 })}
@@ -498,7 +526,7 @@ function RamUsageBar({totalRam, ramUsage, setRamUsage}) {
     };
 
     const handleRamChangeEnd = () => {
-        invoke("set_ram_usage", {ram_usage: ramUsage}).catch(console.error);
+        invoke("set_ram_usage", {ramUsage: ramUsage}).catch(console.error);
     }
 
     return (<div className="bg-gray-800 p-6 rounded">
@@ -506,9 +534,9 @@ function RamUsageBar({totalRam, ramUsage, setRamUsage}) {
         <p className="text-sm text-gray-400 mb-4">{t("mem_alloc_description")}</p>
         <div className="flex items-center">
             <input type="range"
-                   min="1024"
-                   max={totalRam > 1024 ? totalRam : 8192}
-                   step="512"
+                   min="1.0"
+                   max={totalRam > 1024 ? Math.round(totalRam * 10 / 1024) / 10 : 8}
+                   step="0.5"
                    value={ramUsage}
                    onInput={handleRamChange}
                    onMouseUp={handleRamChangeEnd}
@@ -533,7 +561,7 @@ function SettingsTab() {
     }, []);
 
     function saveSettings() {
-        invoke("set_ram_usage", {ram_usage: ramUsage}).catch(console.error);
+        invoke("set_ram_usage", {ramUsage: ramUsage}).catch(console.error);
         invoke("save").catch(e => console.error("Couldn't save settings.", e));
         console.log("Settings Saved!");
     }

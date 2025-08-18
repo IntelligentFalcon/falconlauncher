@@ -1,7 +1,7 @@
 use crate::directory_manager::get_versions_directory;
-use crate::downloader::{download_file, download_file_if_not_exists};
+use crate::downloader::{download_file, download_file_if_not_exists, get_available_forge_versions};
 use crate::structs::{MinecraftVersion, VersionCategory};
-use crate::utils::{is_connected_to_internet, load_json_url};
+use crate::utils::{extend_once, is_connected_to_internet, load_json_url};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::cmp::PartialEq;
@@ -24,8 +24,12 @@ pub async fn load_version_manifest_local() -> Option<Manifest> {
 //     }
 // }
 
-pub async fn get_categorized_versions() -> Vec<VersionCategory> {
-
+pub async fn get_categorized_versions(
+    fabric: bool,
+    forge: bool,
+    neo_forge: bool,
+    lite_loader: bool,
+) -> Vec<VersionCategory> {
     let manifest = load_version_manifest_local()
         .await
         .expect("Failed to parse the manifest version");
@@ -41,19 +45,44 @@ pub async fn get_categorized_versions() -> Vec<VersionCategory> {
         let category = format!("{}.{}", id_args[0], id_args[1]);
         if let Some(cat) = result.iter_mut().find(|x| x.name == category) {
             cat.versions.push(MinecraftVersion::from_id(ver.id.clone()));
+            if forge {
+                cat.versions.extend(
+                    get_available_forge_versions(&id)
+                        .await
+                        .iter()
+                        .map(|x| MinecraftVersion::from_id(x.clone()))
+                        .collect::<Vec<_>>(),
+                );
+            }
         } else {
+            let mut v = vec![MinecraftVersion::from_id(id.clone())];
+            if forge {
+                v.extend(
+                    get_available_forge_versions(&id)
+                        .await
+                        .iter()
+                        .map(|x| MinecraftVersion::from_id(x.clone()))
+                        .collect::<Vec<_>>(),
+                );
+            }
             result.push(VersionCategory {
                 name: category,
-                versions: vec![MinecraftVersion::from_id(ver.id.clone())],
+                versions: v,
             });
         }
     }
+
     result
 }
 pub async fn download_version_manifest() {
     let url = "https://launchermeta.mojang.com/mc/game/version_manifest.json";
-    download_file(url.to_string(),
-                  get_versions_directory().join("version_manifest_v2.json").to_str().unwrap().to_string()
+    download_file(
+        url.to_string(),
+        get_versions_directory()
+            .join("version_manifest_v2.json")
+            .to_str()
+            .unwrap()
+            .to_string(),
     )
     .await;
 }

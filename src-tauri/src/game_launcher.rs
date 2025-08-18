@@ -35,7 +35,7 @@ pub async fn launch_game(app_handle: AppHandle, version: String, config: &Config
     let version_id = &version.id;
     let inherited_id = &inherited_version.id;
     update_download_status("Reading version metadata...", &app_handle);
-    let username = &config.username;
+    let username = &config.launch_options.username;
     let profile = get_profile(username).unwrap();
     let uid = profile.uuid;
     let version_directory = PathBuf::from(&inherited_version.version_path);
@@ -72,7 +72,7 @@ pub async fn launch_game(app_handle: AppHandle, version: String, config: &Config
         .to_string();
     update_download(100, "Launching game...", &app_handle);
 
-    let ram_usage = config.ram_usage.to_string() + "M";
+    let ram_usage = config.launch_options.ram_usage.to_string() + "M";
     let java = get_java(java_version.to_string())
         .await
         .display()

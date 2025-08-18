@@ -1,84 +1,67 @@
 use crate::directory_manager::get_falcon_launcher_directory;
 use crate::structs::MinecraftVersion;
 use crate::utils::{get_downloaded_versions, load_versions};
-use ini::Ini;
+use serde::{Deserialize, Serialize};
+use std::fs;
 use std::fs::{create_dir_all, exists, File};
 use std::io::{BufReader, Read};
 use std::path::PathBuf;
 use tauri::async_runtime::block_on;
-
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Config {
+    #[serde(rename = "LaunchOptions")]
+    pub launch_options: LaunchOptions,
+    #[serde(skip)]
+    pub versions: Vec<MinecraftVersion>,
+    #[serde(rename = "LauncherSettings")]
+    pub launcher_settings: LauncherSettings,
+}
+
+impl Config {
+    pub fn write_to_file(&self) {
+        let text = serde_ini::to_string(self).unwrap();
+        fs::write(get_config_directory(), text).unwrap();
+    }
+}
+pub async fn load_config(cfg: &mut Config) {
+    let conf = load().await;
+    cfg.launch_options = conf.launch_options;
+    cfg.versions = conf.versions;
+    cfg.launcher_settings = conf.launcher_settings;
+}
+#[derive(Debug, Serialize, Deserialize)]
+pub struct LaunchOptions {
     pub username: String,
     pub ram_usage: u64,
-    pub versions: Vec<MinecraftVersion>,
+}
+#[derive(Debug, Serialize, Deserialize)]
+pub struct LauncherSettings {
     pub language: String,
-}
-
-pub fn dump(config: &Config) {
-    let mut conf = Ini::new();
-    conf.with_section(Some("LaunchOptions"))
-        .set("ram_usage", &config.ram_usage.to_string())
-        .set("username", &config.username);
-    conf.with_section(Some("LauncherSettings"))
-        .set("language", &config.language);
-    conf.write_to_file(get_config_directory()).unwrap()
-}
-fn get_ini() -> Ini {
-    let file = File::open(get_config_directory()).expect("Failed to get the ini file.");
-    Ini::read_from(&mut BufReader::new(file)).expect("Reading failed!")
-}
-pub async fn load_config(config: &mut Config) {
-    let conf = load().await;
-    config.username = conf.username;
-    config.ram_usage = conf.ram_usage;
-    config.versions = conf.versions;
-    config.language = conf.language;
 }
 async fn load() -> Config {
     initialize_configuration_file();
-    let mut conf = get_ini();
-    let username = conf
-        .with_section(Some("LaunchOptions"))
-        .get("username")
-        .expect("Could not find username")
-        .to_string();
-    let ram_usage = conf
-        .with_section(Some("LaunchOptions"))
-        .get("ram_usage")
-        .expect("Could not find ram usage")
-        .parse::<u64>()
-        .unwrap();
-    let language = conf
-        .with_section(Some("LauncherSettings"))
-        .get("language")
-        .unwrap_or("en")
-        .parse::<String>()
-        .expect("Could not parse language");
-    let mut versions = Vec::<MinecraftVersion>::new();
-    versions = get_downloaded_versions();
-    Config {
-        username,
-        ram_usage,
-        versions,
-        language,
-    }
-}
-fn default_config() -> Ini {
-    let mut conf = Ini::new();
-    conf.with_section(Some("LaunchOptions"))
-        .set("ram_usage", "2048")
-        .set("username", "Steve");
-    conf.with_section(Some("LauncherSettings"))
-        .set("language", "en");
+    let content = fs::read_to_string(get_config_directory());
+    let mut config: Config = serde_ini::from_str(content.unwrap().as_str()).unwrap();
+    config.versions = get_downloaded_versions();
 
-    conf
+    config
+}
+pub fn default_config() -> Config {
+    Config {
+        launch_options: LaunchOptions {
+            username: "Steve".to_string(),
+            ram_usage: 2048,
+        },
+        versions: vec![],
+        launcher_settings: LauncherSettings {
+            language: "en".to_string(),
+        },
+    }
 }
 fn initialize_configuration_file() {
     if !get_config_directory().exists() {
         create_dir_all(get_config_directory().parent().unwrap()).unwrap();
-        default_config()
-            .write_to_file(get_config_directory())
-            .expect("Writing ini file failed");
+        default_config().write_to_file()
     }
 }
 fn get_config_directory() -> PathBuf {

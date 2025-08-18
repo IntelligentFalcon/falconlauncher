@@ -5,7 +5,8 @@ use crate::directory_manager::get_minecraft_directory;
 use crate::jdk_manager::{download_java, get_java};
 use crate::mod_manager::load_mods;
 use crate::version_manager::{
-    download_version_manifest, load_version_manifest_local, VersionInfo, VersionType,
+    download_version_manifest, get_categorized_versions, load_version_manifest_local, VersionInfo,
+    VersionType,
 };
 use discord_sdk::activity::{Activity, ActivityBuilder, Assets};
 use discord_sdk::wheel::WheelHandler;
@@ -102,15 +103,5 @@ fn test_activity() {
 }
 #[test]
 pub fn test_manifest_struct() {
-    block_on(async {
-        let manifest = load_version_manifest_local().await.unwrap();
-        println!("Versions count: {}", manifest.versions.len());
-        println!("Latest release: {}", manifest.latest.release);
-        let releases: Vec<_> = manifest
-            .versions
-            .iter()
-            .filter(|x| x.version_type == VersionType::Release)
-            .collect();
-        println!("{}", releases[0].id);
-    })
+    block_on(async { get_categorized_versions(true, true, true, true).await });
 }
