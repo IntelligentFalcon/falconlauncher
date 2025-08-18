@@ -1,10 +1,12 @@
 use crate::config::{dump, load_config, Config};
-use crate::game_launcher::launch_game;
+use crate::game_launcher::{launch_game, update_download_status};
 use std::collections::HashMap;
 
 use crate::directory_manager::get_falcon_launcher_directory;
-use crate::structs::VersionCategory;
-use crate::version_manager::get_categorized_versions;
+use crate::downloader::download_forge_version;
+use crate::structs::{MinecraftVersion, VersionCategory};
+use crate::utils::is_connected_to_internet;
+use crate::version_manager::{download_version_manifest, get_categorized_versions};
 use native_dialog::{DialogBuilder, MessageLevel};
 use std::fs::create_dir_all;
 use std::io::Write;
@@ -57,27 +59,28 @@ async fn get_versions() -> Vec<String> {
 async fn reload_versions() {}
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    // std::panic::set_hook(Box::new(|panic_info| {
-    //     println!("Panic: {:?}", panic_info);
-    //
-    //     let f = std::fs::File::create(get_falcon_launcher_directory().join("crash.txt"));
-    //     let dialog = DialogBuilder::message()
-    //         .set_level(MessageLevel::Info)
-    //         .set_title("Whoopsie")
-    //         .set_text(format!("{} \n", panic_info.to_string()));
-    //     f.unwrap().write_all(format!("Whoopsie launcher just crashed! consider sending this to @IntelligentFalcon on telegram \n {:?}", panic_info).as_bytes()).unwrap()
-    // }));
+    std::panic::set_hook(Box::new(|panic_info| {
+        println!("Panic: {:?}", panic_info);
+
+        let f = std::fs::File::create(get_falcon_launcher_directory().join("crash.txt"));
+        let dialog = DialogBuilder::message()
+            .set_level(MessageLevel::Info)
+            .set_title("Whoopsie")
+            .set_text(format!("{} \n", panic_info.to_string()));
+        f.unwrap().write_all(format!("Whoopsie launcher just crashed! consider sending this to @IntelligentFalcon on telegram \n {:?}", panic_info).as_bytes()).unwrap()
+    }));
+
     tauri::Builder::default()
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
-//             let dialog = DialogBuilder::message()
-//                 .set_level(MessageLevel::Info)
-//                 .set_title("من را بخوان")
-//                 .set_text("این یک خروجی آزمایشی از لانچر هستش لطفا اگه از جایی این رو دریافت کردین برای اپدیت های جدید حتما عضو چنل @IntelligentFalcon
-// در تلگرام بشید چون  که هر چیزی توی این خروجی ممکنه تغییر کنه و یا حذف شده باشه و این که انتظار کار نکردن برخی چیزای داخل لانچر رو داشته باشید.").alert()
-//                 .show()
-//                 .unwrap();
+            //             let dialog = DialogBuilder::message()
+            //                 .set_level(MessageLevel::Info)
+            //                 .set_title("من را بخوان")
+            //                 .set_text("این یک خروجی آزمایشی از لانچر هستش لطفا اگه از جایی این رو دریافت کردین برای اپدیت های جدید حتما عضو چنل @IntelligentFalcon
+            // در تلگرام بشید چون  که هر چیزی توی این خروجی ممکنه تغییر کنه و یا حذف شده باشه و این که انتظار کار نکردن برخی چیزای داخل لانچر رو داشته باشید.").alert()
+            //                 .show()
+            //                 .unwrap();
             let fl_path = get_falcon_launcher_directory();
             let jdk_path = directory_manager::get_launcher_java_directory();
             create_dir_all(fl_path).unwrap();
@@ -85,6 +88,7 @@ pub fn run() {
 
             block_on(async move {
                 load_config(&mut *CONFIG.lock().await).await;
+                download_version_manifest();
             });
 
             let handle = app.handle();
@@ -122,6 +126,7 @@ pub fn run() {
             reload_versions,
             get_ram_usage,
             save,
+            download_version,
             get_profiles,
             get_installed_versions,
             get_non_installed_versions,
@@ -200,4 +205,25 @@ async fn set_language(lang: String) {
 #[command]
 async fn get_language() -> String {
     CONFIG.lock().await.language.clone()
+}
+
+#[command]
+async fn download_version(app_handle: AppHandle, version_id: String) {
+    let version = MinecraftVersion::from_id(version_id);
+    let inherited_version = version.get_inherited();
+    if version.is_forge() && !version.is_installed() {
+        println!(
+            "DEBUG: Forge version detected! {} installing it rn!",
+            version.id
+        );
+        download_forge_version(&version.id).await;
+    }
+    if is_connected_to_internet().await {
+        update_download_status("Downloading version...", &app_handle);
+        downloader::download_version(&version, &app_handle).await;
+        downloader::download_version(&inherited_version, &app_handle).await;
+        let dialog = DialogBuilder::message().set_title("Done!").set_text("Successfully installed the selected version you can now play it").alert().show().unwrap();
+        let mut conf = CONFIG.lock().await;
+        conf.versions.push(version);
+    }
 }

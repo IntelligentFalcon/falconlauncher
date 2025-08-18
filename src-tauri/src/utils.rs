@@ -89,9 +89,6 @@ pub async fn load_versions(snapshots: bool, old_versions: bool) -> Vec<Minecraft
             )
         })
         .collect();
-    if is_connected_to_internet().await {
-        download_version_manifest().await;
-    }
     if get_versions_directory()
         .join("version_manifest_v2.json")
         .exists()

@@ -60,23 +60,20 @@ function VersionSelectorPopup({isOpen, onClose, onVersionSelect, currentLanguage
         // '1.8': [{v: '1.8.9', d: '12/09/15'}],
         // '1.7': [{v: '1.7.10', d: '06/26/14'}],
     });
-
+    if (Object.keys(versionsData).length === 0) {
+        invoke("load_categorized_versions")
+            .then(categories => {
+                const v = {};
+                for (const category of categories) {
+                    v[category.name] = category.versions.map(x => ({v: x.id, d: "07/17/25"}));
+                }
+                setVersionsData(v);
+            })
+            .catch(err => console.error("Error loading versions:", err));
+    }
     const majorVersions = Object.keys(versionsData);
     useEffect(() => {
-        if (Object.keys(versionsData).length === 0) {
-            console.log(versionsData);
-            invoke("load_categorized_versions").then(categories => {
-                const versionsData = {}
-                for (const category in categories) {
-                    console.log(category.name);
-                    versionsData[category.name] = category.versions.map((x) => {
-                        return {v: x.id, d: "07/17/25"};
-                    })
-                }
-                setVersionsData(versionsData)
-            }).catch("Error!")
 
-        }
         if (versionsData[activeMajor] && versionsData[activeMajor].length > 0) {
             setActiveSpecific(versionsData[activeMajor][0].v);
         }
@@ -100,107 +97,107 @@ function VersionSelectorPopup({isOpen, onClose, onVersionSelect, currentLanguage
         if (type === 'grid') {
             return (<div onClick={() => setActiveSpecific(version)}
                          className={`${baseClasses} p-4 text-center border ${isActive ? activeClasses : 'bg-zinc-800 border-zinc-700 ' + hoverClasses}`}>
-                    <div className="font-bold text-lg">{version}</div>
-                    <div className={`text-sm ${isActive ? 'text-gray-200' : 'text-zinc-400'}`}>{date}</div>
-                </div>);
+                <div className="font-bold text-lg">{version}</div>
+                <div className={`text-sm ${isActive ? 'text-gray-200' : 'text-zinc-400'}`}>{date}</div>
+            </div>);
         }
         return (<div onClick={() => setActiveSpecific(version)}
                      className={`${baseClasses} flex justify-between items-center p-4 border border-transparent ${isActive ? activeClasses : hoverClasses}`}>
-                <div className="font-bold">{version}</div>
-                <div className={`text-sm ${isActive ? 'text-gray-200' : 'text-zinc-400'}`}>{date}</div>
-            </div>);
+            <div className="font-bold">{version}</div>
+            <div className={`text-sm ${isActive ? 'text-gray-200' : 'text-zinc-400'}`}>{date}</div>
+        </div>);
     };
 
     const directionClass = currentLanguage === 'fa' ? 'rtl' : 'ltr';
     const fontClass = currentLanguage === 'fa' ? 'font-vazir' : 'font-inter';
 
     return (<>
-            <style>{`
+        <style>{`
                 @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap');
                 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
                 .font-vazir { font-family: 'Vazirmatn', sans-serif; }
                 .font-inter { font-family: 'Inter', sans-serif; }
             `}</style>
+        <div
+            className={`fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0'} ${fontClass}`}
+            dir={directionClass}
+        >
             <div
-                className={`fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0'} ${fontClass}`}
-                dir={directionClass}
-            >
-                <div
-                    className={`w-[1200px] h-[750px] max-w-[95vw] max-h-[90vh] bg-zinc-900 rounded-lg flex overflow-hidden border border-zinc-700 shadow-2xl text-gray-200 transition-transform duration-300 ${isOpen ? 'scale-100' : 'scale-95'}`}>
-                    <aside className="w-[280px] bg-gray-800 p-6 border-l border-zinc-700 flex flex-col">
-                        <h2 className="text-xl font-bold mb-6">{t('mod_loaders', currentLanguage)}</h2>
-                        <div className="space-y-3">
-                            <div className="flex items-center bg-zinc-700 p-3 rounded-md">
-                                <input type="checkbox" id="forge" className="w-5 h-5 accent-indigo-500 cursor-pointer"/>
-                                <label htmlFor="forge"
-                                       className="mx-3 text-base cursor-pointer flex-grow">{t('install_forge', currentLanguage)}</label>
-                            </div>
-                            <div className="flex items-center bg-zinc-700 p-3 rounded-md">
-                                <input type="checkbox" id="fabric"
-                                       className="w-5 h-5 accent-indigo-500 cursor-pointer"/>
-                                <label htmlFor="fabric"
-                                       className="mx-3 text-base cursor-pointer flex-grow">{t('install_fabric', currentLanguage)}</label>
-                            </div>
-                            <div className="flex items-center bg-zinc-700 p-3 rounded-md">
-                                <input type="checkbox" id="liteloader"
-                                       className="w-5 h-5 accent-indigo-500 cursor-pointer"/>
-                                <label htmlFor="liteloader"
-                                       className="mx-3 text-base cursor-pointer flex-grow">{t('install_liteloader', currentLanguage)}</label>
-                            </div>
-                            <div className="flex items-center bg-zinc-700 p-3 rounded-md">
-                                <input type="checkbox" id="neoforge"
-                                       className="w-5 h-5 accent-indigo-500 cursor-pointer"/>
-                                <label htmlFor="neoforge"
-                                       className="mx-3 text-base cursor-pointer flex-grow">{t('install_neoforge', currentLanguage)}</label>
-                            </div>
+                className={`w-[1200px] h-[750px] max-w-[95vw] max-h-[90vh] bg-zinc-900 rounded-lg flex overflow-hidden border border-zinc-700 shadow-2xl text-gray-200 transition-transform duration-300 ${isOpen ? 'scale-100' : 'scale-95'}`}>
+                <aside className="w-[280px] bg-gray-800 p-6 border-l border-zinc-700 flex flex-col">
+                    <h2 className="text-xl font-bold mb-6">{t('mod_loaders', currentLanguage)}</h2>
+                    <div className="space-y-3">
+                        <div className="flex items-center bg-zinc-700 p-3 rounded-md">
+                            <input type="checkbox" id="forge" className="w-5 h-5 accent-indigo-500 cursor-pointer"/>
+                            <label htmlFor="forge"
+                                   className="mx-3 text-base cursor-pointer flex-grow">{t('install_forge', currentLanguage)}</label>
                         </div>
-                        <button onClick={handleInstall}
-                                className="w-full mt-auto bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg transition-colors">
-                            {t('install_selected', currentLanguage)}
-                        </button>
-                    </aside>
-                    <main className="flex-grow p-6 flex flex-col overflow-y-auto">
-                        <header className="flex justify-between items-center mb-6">
-                            <h1 className="text-3xl font-bold">{t('minecraft_version', currentLanguage)} {activeMajor}</h1>
-                            <div className="flex space-x-2">
-                                <button onClick={() => setViewMode('grid')}
-                                        className={`p-2 rounded-md transition-colors ${viewMode === 'grid' ? 'bg-indigo-600 text-white' : 'bg-zinc-700 text-zinc-400 hover:bg-zinc-600'}`}>
-                                    <Grid size={20}/>
-                                </button>
-                                <button onClick={() => setViewMode('list')}
-                                        className={`p-2 rounded-md transition-colors ${viewMode === 'list' ? 'bg-indigo-600 text-white' : 'bg-zinc-700 text-zinc-400 hover:bg-zinc-600'}`}>
-                                    <List size={20}/>
-                                </button>
-                            </div>
-                        </header>
-                        {viewMode === 'grid' ? (
-                            <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-4">
-                                {versionsData[activeMajor].map(item => <SpecificVersionItem key={item.v}
-                                                                                            version={item.v}
-                                                                                            date={item.d}
-                                                                                            type="grid"/>)}
-                            </div>) : (<div className="flex flex-col space-y-2">
-                                {versionsData[activeMajor].map(item => <SpecificVersionItem key={item.v}
-                                                                                            version={item.v}
-                                                                                            date={item.d}
-                                                                                            type="list"/>)}
-                            </div>)}
-                    </main>
-                    <aside className="w-[120px] bg-gray-800 p-2 border-r border-zinc-700 overflow-y-auto">
-                        <ul className="space-y-1">
-                            {majorVersions.map(v => (<li key={v} onClick={() => setActiveMajor(v)}
-                                                         className={`px-3 py-4 text-center font-bold text-lg rounded-md cursor-pointer transition-colors ${activeMajor === v ? 'bg-zinc-900 text-white' : 'text-zinc-400 hover:bg-zinc-700'}`}>
-                                    {v}
-                                </li>))}
-                        </ul>
-                    </aside>
-                    <button onClick={onClose}
-                            className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors">
-                        <X size={24}/>
+                        <div className="flex items-center bg-zinc-700 p-3 rounded-md">
+                            <input type="checkbox" id="fabric"
+                                   className="w-5 h-5 accent-indigo-500 cursor-pointer"/>
+                            <label htmlFor="fabric"
+                                   className="mx-3 text-base cursor-pointer flex-grow">{t('install_fabric', currentLanguage)}</label>
+                        </div>
+                        <div className="flex items-center bg-zinc-700 p-3 rounded-md">
+                            <input type="checkbox" id="liteloader"
+                                   className="w-5 h-5 accent-indigo-500 cursor-pointer"/>
+                            <label htmlFor="liteloader"
+                                   className="mx-3 text-base cursor-pointer flex-grow">{t('install_liteloader', currentLanguage)}</label>
+                        </div>
+                        <div className="flex items-center bg-zinc-700 p-3 rounded-md">
+                            <input type="checkbox" id="neoforge"
+                                   className="w-5 h-5 accent-indigo-500 cursor-pointer"/>
+                            <label htmlFor="neoforge"
+                                   className="mx-3 text-base cursor-pointer flex-grow">{t('install_neoforge', currentLanguage)}</label>
+                        </div>
+                    </div>
+                    <button onClick={handleInstall}
+                            className="w-full mt-auto bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg transition-colors">
+                        {t('install_selected', currentLanguage)}
                     </button>
-                </div>
+                </aside>
+                <main className="flex-grow p-6 flex flex-col overflow-y-auto">
+                    <header className="flex justify-between items-center mb-6">
+                        <h1 className="text-3xl font-bold">{t('minecraft_version', currentLanguage)} {activeMajor}</h1>
+                        <div className="flex space-x-2">
+                            <button onClick={() => setViewMode('grid')}
+                                    className={`p-2 rounded-md transition-colors ${viewMode === 'grid' ? 'bg-indigo-600 text-white' : 'bg-zinc-700 text-zinc-400 hover:bg-zinc-600'}`}>
+                                <Grid size={20}/>
+                            </button>
+                            <button onClick={() => setViewMode('list')}
+                                    className={`p-2 rounded-md transition-colors ${viewMode === 'list' ? 'bg-indigo-600 text-white' : 'bg-zinc-700 text-zinc-400 hover:bg-zinc-600'}`}>
+                                <List size={20}/>
+                            </button>
+                        </div>
+                    </header>
+                    {viewMode === 'grid' ? (
+                        <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-4">
+                            {versionsData[activeMajor].map(item => <SpecificVersionItem key={item.v}
+                                                                                        version={item.v}
+                                                                                        date={item.d}
+                                                                                        type="grid"/>)}
+                        </div>) : (<div className="flex flex-col space-y-2">
+                        {versionsData[activeMajor].map(item => <SpecificVersionItem key={item.v}
+                                                                                    version={item.v}
+                                                                                    date={item.d}
+                                                                                    type="list"/>)}
+                    </div>)}
+                </main>
+                <aside className="w-[120px] bg-gray-800 p-2 border-r border-zinc-700 overflow-y-auto">
+                    <ul className="space-y-1">
+                        {majorVersions.map(v => (<li key={v} onClick={() => setActiveMajor(v)}
+                                                     className={`px-3 py-4 text-center font-bold text-lg rounded-md cursor-pointer transition-colors ${activeMajor === v ? 'bg-zinc-900 text-white' : 'text-zinc-400 hover:bg-zinc-700'}`}>
+                            {v}
+                        </li>))}
+                    </ul>
+                </aside>
+                <button onClick={onClose}
+                        className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors">
+                    <X size={24}/>
+                </button>
             </div>
-        </>);
+        </div>
+    </>);
 }
 
 
@@ -295,129 +292,132 @@ export default function FalconClient() {
     };
 
     return (<div className="flex flex-col w-full h-screen bg-gray-900 text-gray-200 overflow-hidden">
-            <div className="flex justify-between items-center px-4 sm:px-6 py-3 bg-gray-800 border-b border-gray-700">
-                <div className="flex items-center flex-wrap gap-2">
-                    <h1 className="text-lg sm:text-xl font-bold text-indigo-400">{t("app_name")}</h1>
-                    <span className="text-xs text-gray-400">v1.0.0</span>
-                </div>
-                <div className="flex items-center">
-                    <button
-                        className="p-1 rounded-full hover:bg-gray-700 transition-colors"
-                        onClick={() => handleLanguageChange(currentLanguage === 'fa' ? 'en' : 'fa')}
-                        title="Change Language"
-                    >
-                        {currentLanguage === "fa" ? <FlagUK className="w-8 h-6 rounded-sm"/> :
-                            <FlagIran className="w-8 h-6 rounded-sm"/>}
-                    </button>
-                </div>
+        <div className="flex justify-between items-center px-4 sm:px-6 py-3 bg-gray-800 border-b border-gray-700">
+            <div className="flex items-center flex-wrap gap-2">
+                <h1 className="text-lg sm:text-xl font-bold text-indigo-400">{t("app_name")}</h1>
+                <span className="text-xs text-gray-400">v1.0.0</span>
             </div>
+            <div className="flex items-center">
+                <button
+                    className="p-1 rounded-full hover:bg-gray-700 transition-colors"
+                    onClick={() => handleLanguageChange(currentLanguage === 'fa' ? 'en' : 'fa')}
+                    title="Change Language"
+                >
+                    {currentLanguage === "fa" ? <FlagUK className="w-8 h-6 rounded-sm"/> :
+                        <FlagIran className="w-8 h-6 rounded-sm"/>}
+                </button>
+            </div>
+        </div>
 
-            <div className="flex flex-1 flex-col lg:flex-row overflow-hidden">
-                <div className="w-full lg:w-64 md:w-48 bg-gray-800 flex flex-col">
-                    <div className="p-4 sm:p-6 flex flex-col">
+        <div className="flex flex-1 flex-col lg:flex-row overflow-hidden">
+            <div className="w-full lg:w-64 md:w-48 bg-gray-800 flex flex-col">
+                <div className="p-4 sm:p-6 flex flex-col">
+                    <select
+                        name="Profile"
+                        className="w-full mb-2 p-2 bg-gray-900 border border-indigo-500 rounded text-gray-200 focus:outline-none text-sm sm:text-base"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                    >
+                        <option value="" disabled>{t("select_profile")}</option>
+                        {profiles.map((v) => <option key={v} value={v}>{v}</option>)}
+                    </select>
+                    <button
+                        className="w-full mb-4 p-2 bg-gray-900 border border-indigo-500 rounded text-gray-200 focus:outline-none text-sm sm:text-base"
+                        onClick={() => setIsLoginPopupPopupOpen(true)}
+                    >
+                        {t("create_profile")}
+                    </button>
+
+                    <div className="border-t border-gray-700 pt-4">
+                        <h3 className="text-sm font-semibold mb-2 text-gray-400">{t("game_version")}</h3>
                         <select
-                            name="Profile"
-                            className="w-full mb-2 p-2 bg-gray-900 border border-indigo-500 rounded text-gray-200 focus:outline-none text-sm sm:text-base"
-                            value={username}
-                            onChange={(e) => setUsername(e.target.value)}
+                            className="w-full p-2 bg-gray-900 border border-gray-700 rounded text-gray-200 text-sm sm:text-base mb-2"
+                            value={selectedVersion}
+                            onChange={(e) => setSelectedVersion(e.target.value)}
                         >
-                            <option value="" disabled>{t("select_profile")}</option>
-                            {profiles.map((v) => <option key={v} value={v}>{v}</option>)}
+                            {versions.map((version) => <option key={version} value={version}>{version}</option>)}
                         </select>
                         <button
-                            className="w-full mb-4 p-2 bg-gray-900 border border-indigo-500 rounded text-gray-200 focus:outline-none text-sm sm:text-base"
-                            onClick={() => setIsLoginPopupPopupOpen(true)}
+                            className="w-full p-2 bg-gray-900 border border-indigo-500 rounded text-gray-200 hover:bg-gray-700 focus:outline-none text-sm sm:text-base"
+                            onClick={() => setIsVersionSelectorOpen(true)}
                         >
-                            {t("create_profile")}
+                            {t('install_new_version', currentLanguage)}
                         </button>
-
-                        <div className="border-t border-gray-700 pt-4">
-                            <h3 className="text-sm font-semibold mb-2 text-gray-400">{t("game_version")}</h3>
-                            <select
-                                className="w-full p-2 bg-gray-900 border border-gray-700 rounded text-gray-200 text-sm sm:text-base mb-2"
-                                value={selectedVersion}
-                                onChange={(e) => setSelectedVersion(e.target.value)}
-                            >
-                                {versions.map((version) => <option key={version} value={version}>{version}</option>)}
-                            </select>
-                            <button
-                                className="w-full p-2 bg-gray-900 border border-indigo-500 rounded text-gray-200 hover:bg-gray-700 focus:outline-none text-sm sm:text-base"
-                                onClick={() => setIsVersionSelectorOpen(true)}
-                            >
-                                {t('install_new_version', currentLanguage)}
-                            </button>
-                        </div>
-                    </div>
-
-                    <nav className="flex-1 py-4 mt-auto">
-                        <NavItem
-                            icon={<Home size={18}/>}
-                            title={t("home_tab")}
-                            active={activeTab === 'home'}
-                            onClick={() => setActiveTab('home')}
-                        />
-                        <NavItem
-                            icon={<Package size={18}/>}
-                            title={t("mods_tab")}
-                            active={activeTab === 'mods'}
-                            onClick={() => setActiveTab('mods')}
-                        />
-                        <NavItem
-                            icon={<Settings size={18}/>}
-                            title={t("settings_tab")}
-                            active={activeTab === 'settings'}
-                            onClick={() => setActiveTab('settings')}
-                        />
-                    </nav>
-
-                    <div className="p-4 sm:p-6 border-t border-gray-700">
-                        <button
-                            disabled={isDownloading}
-                            className="w-full py-2 sm:py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded flex items-center justify-center disabled:bg-gray-500 text-sm sm:text-base"
-                            onClick={handlePlay}
-                        >
-                            <Play size={18} className="mr-2"/>
-                            {isDownloading ? t('downloading') : t("play")}
-                        </button>
-                        {isDownloading && (<div className="w-full bg-gray-700 rounded-full h-2 mt-4">
-                                <div
-                                    className="bg-indigo-500 h-2 rounded-full"
-                                    style={{width: `${downloadProgress}%`}}
-                                ></div>
-                            </div>)}
-                        <p className="text-xs mt-2 text-gray-400 text-center">{statusMessage}</p>
                     </div>
                 </div>
 
-                <main className="flex-1 overflow-auto p-4 sm:p-6">
-                    {activeTab === 'home' && <HomeTab/>}
-                    {activeTab === 'settings' && <SettingsTab/>}
-                    {activeTab === 'mods' && <ModsTab/>}
-                </main>
+                <nav className="flex-1 py-4 mt-auto">
+                    <NavItem
+                        icon={<Home size={18}/>}
+                        title={t("home_tab")}
+                        active={activeTab === 'home'}
+                        onClick={() => setActiveTab('home')}
+                    />
+                    <NavItem
+                        icon={<Package size={18}/>}
+                        title={t("mods_tab")}
+                        active={activeTab === 'mods'}
+                        onClick={() => setActiveTab('mods')}
+                    />
+                    <NavItem
+                        icon={<Settings size={18}/>}
+                        title={t("settings_tab")}
+                        active={activeTab === 'settings'}
+                        onClick={() => setActiveTab('settings')}
+                    />
+                </nav>
+
+                <div className="p-4 sm:p-6 border-t border-gray-700">
+                    <button
+                        disabled={isDownloading}
+                        className="w-full py-2 sm:py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded flex items-center justify-center disabled:bg-gray-500 text-sm sm:text-base"
+                        onClick={handlePlay}
+                    >
+                        <Play size={18} className="mr-2"/>
+                        {isDownloading ? t('downloading') : t("play")}
+                    </button>
+                    {isDownloading && (<div className="w-full bg-gray-700 rounded-full h-2 mt-4">
+                        <div
+                            className="bg-indigo-500 h-2 rounded-full"
+                            style={{width: `${downloadProgress}%`}}
+                        ></div>
+                    </div>)}
+                    <p className="text-xs mt-2 text-gray-400 text-center">{statusMessage}</p>
+                </div>
             </div>
 
-            <LoginPopup isOpen={isLoginPopupOpen} onClose={() => setIsLoginPopupPopupOpen(false)}/>
-            <VersionSelectorPopup
-                isOpen={isVersionSelectorOpen}
-                onClose={() => setIsVersionSelectorOpen(false)}
-                onVersionSelect={(version) => setSelectedVersion(version)}
-                currentLanguage={currentLanguage}
-            />
-        </div>);
+            <main className="flex-1 overflow-auto p-4 sm:p-6">
+                {activeTab === 'home' && <HomeTab/>}
+                {activeTab === 'settings' && <SettingsTab/>}
+                {activeTab === 'mods' && <ModsTab/>}
+            </main>
+        </div>
+
+        <LoginPopup isOpen={isLoginPopupOpen} onClose={() => setIsLoginPopupPopupOpen(false)}/>
+        <VersionSelectorPopup
+            isOpen={isVersionSelectorOpen}
+            onClose={() => setIsVersionSelectorOpen(false)}
+            onVersionSelect={(version) => invoke("download_version", {versionId : version}).catch("Failed to download version")
+                .then(() => {
+                    window.location.reload();
+                })}
+            currentLanguage={currentLanguage}
+        />
+    </div>);
 }
 
 // Other components (NavItem, HomeTab, ModsTab, SettingsTab, etc.) remain the same
 function NavItem({icon, title, active, onClick}) {
     const langClass = getCurrentLang() === "fa" ? 'font-vazir' : 'font-inter';
     return (<div
-            className={`flex items-center px-6 py-3 cursor-pointer ${active ? 'bg-gray-700 border-r-4 border-indigo-500' : 'hover:bg-gray-700'}`}
-            onClick={onClick}
-        >
-            <div className={`ml-3 ${active ? 'text-indigo-400' : 'text-gray-400'}`}>
-                {icon}
-            </div>
-            <span className={`${active ? 'font-semibold' : ''} ${langClass}`}>{title}</span>
-        </div>);
+        className={`flex items-center px-6 py-3 cursor-pointer ${active ? 'bg-gray-700 border-r-4 border-indigo-500' : 'hover:bg-gray-700'}`}
+        onClick={onClick}
+    >
+        <div className={`ml-3 ${active ? 'text-indigo-400' : 'text-gray-400'}`}>
+            {icon}
+        </div>
+        <span className={`${active ? 'font-semibold' : ''} ${langClass}`}>{title}</span>
+    </div>);
 }
 
 function HomeTab() {
@@ -440,16 +440,16 @@ function HomeTab() {
     }];
 
     return (<div className="p-8">
-            <h2 className="text-2xl font-bold mb-6">{t("minecraft_news")}</h2>
+        <h2 className="text-2xl font-bold mb-6">{t("minecraft_news")}</h2>
 
-            <div className="space-y-4">
-                {newsArticles.map((article, index) => (<div key={index} className="bg-gray-800 p-6 rounded">
-                        <h3 className="text-xl font-semibold mb-2">{article.title}</h3>
-                        <p className="text-gray-300 mb-3">{article.content}</p>
-                        <p className="text-sm text-indigo-400 italic">{article.date}</p>
-                    </div>))}
-            </div>
-        </div>);
+        <div className="space-y-4">
+            {newsArticles.map((article, index) => (<div key={index} className="bg-gray-800 p-6 rounded">
+                <h3 className="text-xl font-semibold mb-2">{article.title}</h3>
+                <p className="text-gray-300 mb-3">{article.content}</p>
+                <p className="text-sm text-indigo-400 italic">{article.date}</p>
+            </div>))}
+        </div>
+    </div>);
 }
 
 function ModsTab() {
@@ -462,31 +462,31 @@ function ModsTab() {
     },];
 
     return (<div className="p-6">
-            <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold">{t("mod_manager")}</h2>
-                <input
-                    type="text"
-                    placeholder={t("mod_search")}
-                    className="w-64 p-2 bg-gray-800 border border-gray-700 rounded"
-                />
-            </div>
+        <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold">{t("mod_manager")}</h2>
+            <input
+                type="text"
+                placeholder={t("mod_search")}
+                className="w-64 p-2 bg-gray-800 border border-gray-700 rounded"
+            />
+        </div>
 
-            <div className="space-y-3">
-                {mods.map((mod, index) => (
-                    <div key={index} className="bg-gray-800 p-4 rounded flex justify-between items-center">
-                        <div>
-                            <h3 className="font-semibold">{mod.name}</h3>
-                            <p className="text-sm text-gray-400">{mod.description}</p>
-                        </div>
-                        <div className="flex items-center">
-                            <span className="text-xs text-indigo-400 mr-3">{mod.version}</span>
-                            <button className="px-3 py-1 bg-indigo-500 hover:bg-indigo-600 rounded text-sm">
-                                Install
-                            </button>
-                        </div>
-                    </div>))}
-            </div>
-        </div>);
+        <div className="space-y-3">
+            {mods.map((mod, index) => (
+                <div key={index} className="bg-gray-800 p-4 rounded flex justify-between items-center">
+                    <div>
+                        <h3 className="font-semibold">{mod.name}</h3>
+                        <p className="text-sm text-gray-400">{mod.description}</p>
+                    </div>
+                    <div className="flex items-center">
+                        <span className="text-xs text-indigo-400 mr-3">{mod.version}</span>
+                        <button className="px-3 py-1 bg-indigo-500 hover:bg-indigo-600 rounded text-sm">
+                            Install
+                        </button>
+                    </div>
+                </div>))}
+        </div>
+    </div>);
 }
 
 function RamUsageBar({totalRam, ramUsage, setRamUsage}) {
@@ -502,23 +502,23 @@ function RamUsageBar({totalRam, ramUsage, setRamUsage}) {
     }
 
     return (<div className="bg-gray-800 p-6 rounded">
-            <h3 className="text-lg font-semibold mb-1">{t("mem_alloc_title")}</h3>
-            <p className="text-sm text-gray-400 mb-4">{t("mem_alloc_description")}</p>
-            <div className="flex items-center">
-                <input type="range"
-                       min="1024"
-                       max={totalRam > 1024 ? totalRam : 8192}
-                       step="512"
-                       value={ramUsage}
-                       onInput={handleRamChange}
-                       onMouseUp={handleRamChangeEnd}
-                       className="w-64"
-                />
-                <data id="ram_usage_label" className="ml-4 tabular-nums" value={ramUsageGB}>
-                    {ramUsageGB} GB
-                </data>
-            </div>
-        </div>);
+        <h3 className="text-lg font-semibold mb-1">{t("mem_alloc_title")}</h3>
+        <p className="text-sm text-gray-400 mb-4">{t("mem_alloc_description")}</p>
+        <div className="flex items-center">
+            <input type="range"
+                   min="1024"
+                   max={totalRam > 1024 ? totalRam : 8192}
+                   step="512"
+                   value={ramUsage}
+                   onInput={handleRamChange}
+                   onMouseUp={handleRamChangeEnd}
+                   className="w-64"
+            />
+            <data id="ram_usage_label" className="ml-4 tabular-nums" value={ramUsageGB}>
+                {ramUsageGB} GB
+            </data>
+        </div>
+    </div>);
 }
 
 function SettingsTab() {
@@ -539,39 +539,39 @@ function SettingsTab() {
     }
 
     return (<div className="p-6">
-            <h2 className="text-2xl font-bold mb-6">{t("settings_tab")}</h2>
+        <h2 className="text-2xl font-bold mb-6">{t("settings_tab")}</h2>
 
-            <div className="space-y-6">
-                <RamUsageBar
-                    totalRam={totalRam}
-                    ramUsage={ramUsage}
-                    setRamUsage={setRamUsage}
-                />
+        <div className="space-y-6">
+            <RamUsageBar
+                totalRam={totalRam}
+                ramUsage={ramUsage}
+                setRamUsage={setRamUsage}
+            />
 
-                <div className="bg-gray-800 p-6 rounded">
-                    <h3 className="text-lg font-semibold mb-1">{t("launch_options_title")}</h3>
-                    <p className="text-sm text-gray-400 mb-4">{t("launch_options_description")}</p>
-                    <div className="space-y-3">
-                        <div className="flex items-center">
-                            <input type="checkbox" id="fullscreen" className="mr-2"/>
-                            <label htmlFor="fullscreen">{t("lo_fullscreen")}</label>
-                        </div>
-                        <div className="flex items-center">
-                            <input type="checkbox" id="close-launcher" className="mr-2"/>
-                            <label htmlFor="close-launcher">{t("lo_close_on_start")}</label>
-                        </div>
-                        <div className="flex items-center">
-                            <input type="checkbox" id="check-updates" className="mr-2"/>
-                            <label htmlFor="check-updates">{t("startup_update_check")}</label>
-                        </div>
+            <div className="bg-gray-800 p-6 rounded">
+                <h3 className="text-lg font-semibold mb-1">{t("launch_options_title")}</h3>
+                <p className="text-sm text-gray-400 mb-4">{t("launch_options_description")}</p>
+                <div className="space-y-3">
+                    <div className="flex items-center">
+                        <input type="checkbox" id="fullscreen" className="mr-2"/>
+                        <label htmlFor="fullscreen">{t("lo_fullscreen")}</label>
+                    </div>
+                    <div className="flex items-center">
+                        <input type="checkbox" id="close-launcher" className="mr-2"/>
+                        <label htmlFor="close-launcher">{t("lo_close_on_start")}</label>
+                    </div>
+                    <div className="flex items-center">
+                        <input type="checkbox" id="check-updates" className="mr-2"/>
+                        <label htmlFor="check-updates">{t("startup_update_check")}</label>
                     </div>
                 </div>
-
-                <div className="flex justify-end">
-                    <button className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded" onClick={saveSettings}>
-                        {t("save_settings")}
-                    </button>
-                </div>
             </div>
-        </div>);
+
+            <div className="flex justify-end">
+                <button className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded" onClick={saveSettings}>
+                    {t("save_settings")}
+                </button>
+            </div>
+        </div>
+    </div>);
 }

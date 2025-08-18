@@ -262,7 +262,7 @@ fn download_file_async_thread(url: String, dest: String) {
     });
 }
 
-async fn download_file(url: String, dest: String) {
+pub async fn download_file(url: String, dest: String) {
     let mut resp = reqwest::get(&url)
         .await
         .expect(&format!("Downloading file failed. {url}").to_string());
