@@ -64,7 +64,7 @@ function VersionSelectorPopup({isOpen, onClose, onVersionSelect, currentLanguage
             .then(categories => {
                 const v = {};
                 for (const category of categories) {
-                    v[category.name] = category.versions.map(x => ({v: x.id, d: "07/17/25"}));
+                    v[category.name] = category.versions.map(x => ({v: x.id, d: x.date, base: x.base}));
 
                 }
                 setVersionsData(v);
@@ -79,7 +79,7 @@ function VersionSelectorPopup({isOpen, onClose, onVersionSelect, currentLanguage
     useEffect(() => {
 
         if (versionsData[activeMajor] && versionsData[activeMajor].length > 0) {
-            setActiveSpecific(versionsData[activeMajor][0].v);
+            setActiveSpecific(versionsData[activeMajor][0]);
         }
     }, [activeMajor]);
 
@@ -101,13 +101,13 @@ function VersionSelectorPopup({isOpen, onClose, onVersionSelect, currentLanguage
         if (type === 'grid') {
             return (<div onClick={() => setActiveSpecific(version)}
                          className={`${baseClasses} p-4 text-center border ${isActive ? activeClasses : 'bg-zinc-800 border-zinc-700 ' + hoverClasses}`}>
-                <div className="font-bold text-lg">{version}</div>
+                <div className="font-bold text-lg">{version.v}</div>
                 <div className={`text-sm ${isActive ? 'text-gray-200' : 'text-zinc-400'}`}>{date}</div>
             </div>);
         }
         return (<div onClick={() => setActiveSpecific(version)}
                      className={`${baseClasses} flex justify-between items-center p-4 border border-transparent ${isActive ? activeClasses : hoverClasses}`}>
-            <div className="font-bold">{version}</div>
+            <div className="font-bold">{version.v}</div>
             <div className={`text-sm ${isActive ? 'text-gray-200' : 'text-zinc-400'}`}>{date}</div>
         </div>);
     };
@@ -191,7 +191,7 @@ function VersionSelectorPopup({isOpen, onClose, onVersionSelect, currentLanguage
                             {versionsData[activeMajor].map(item => (
                                 <SpecificVersionItem
                                     key={item.v}
-                                    version={item.v}
+                                    version={item}
                                     date={item.d}
                                     type="grid"
                                 />
@@ -202,7 +202,7 @@ function VersionSelectorPopup({isOpen, onClose, onVersionSelect, currentLanguage
                             {versionsData[activeMajor].map(item => (
                                 <SpecificVersionItem
                                     key={item.v}
-                                    version={item.v}
+                                    version={item}
                                     date={item.d}
                                     type="list"
                                 />
@@ -425,7 +425,13 @@ export default function FalconClient() {
         <VersionSelectorPopup
             isOpen={isVersionSelectorOpen}
             onClose={() => setIsVersionSelectorOpen(false)}
-            onVersionSelect={(version) => invoke("download_version", {versionId: version}).catch("Failed to download version")
+            onVersionSelect={(version) => invoke("download_version", {
+                versionLoader: {
+                    id: version.v,
+                    date: version.d,
+                    base: version.base
+                }
+            }).catch("Failed to download version")
                 .then(() => {
                     window.location.reload();
                 })}

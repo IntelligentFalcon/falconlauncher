@@ -1,6 +1,6 @@
 use crate::directory_manager::{get_libraries_directory, get_versions_directory};
-use crate::structs::VersionBase::{FABRIC, FORGE, LITELOADER, NEOFORGE, VANILLA};
 use crate::utils::{extend_once, get_current_os, parse_library_name_to_path};
+use crate::version_manager::{VersionInfo, VersionLoader};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::fs;
@@ -30,12 +30,17 @@ pub fn library_from_value(value: &Value) -> LibraryInfo {
     let library_artifact = library_downloads
         .get("artifact")
         .expect("Parsing library_downloads failed");
+    let library_path = if library_artifact.get("path").is_none() {
+        let args = library_name.split(":").collect::<Vec<&str>>();
+        let group_id = args[0];
+        let artifact = args[1];
+        let version = args[2];
+        let artifact_version = format!("{artifact}-{version}.jar");
+        format!("{group_id}/{artifact}/{version}/{artifact_version}")
+    } else {
+        library_artifact["path"].as_str().unwrap().to_string()
+    };
 
-    let library_path = library_artifact
-        .get("path")
-        .expect("Parsing library path failed")
-        .as_str()
-        .expect("Parsing library path failed");
     let library_url = library_artifact
         .get("url")
         .expect("Parsing library_url failed")
@@ -69,9 +74,8 @@ pub struct LibraryRules {
 pub struct MinecraftVersion {
     pub id: String,
     pub version_path: String,
-    pub base: VersionBase,
 }
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum VersionBase {
     VANILLA,
     FORGE,
@@ -79,6 +83,7 @@ pub enum VersionBase {
     FABRIC,
     LITELOADER,
 }
+
 struct Library {
     pub name: String,
     pub path: String,
@@ -91,17 +96,6 @@ impl MinecraftVersion {
 
     pub fn new(id: String, version_folder: String) -> Self {
         let versions_dir = get_versions_directory();
-        let base = if version_folder.to_lowercase().contains("forge") {
-            FORGE
-        } else if version_folder.to_lowercase().contains("fabric") {
-            FABRIC
-        } else if version_folder.to_lowercase().contains("liteloader") {
-            LITELOADER
-        } else if version_folder.to_lowercase().contains("neoforge") {
-            NEOFORGE
-        } else {
-            VANILLA
-        };
         Self {
             id,
             version_path: versions_dir
@@ -109,7 +103,6 @@ impl MinecraftVersion {
                 .to_str()
                 .unwrap()
                 .to_string(),
-            base,
         }
     }
     pub fn get_json(&self) -> String {
@@ -140,21 +133,9 @@ impl MinecraftVersion {
         let json: Value = serde_json::from_str(fs::read_to_string(file).unwrap().as_str()).unwrap();
         let name = json["id"].as_str().unwrap().to_string();
         let version_folder = directory.to_str().unwrap().to_string();
-        let base = if version_folder.to_lowercase().contains("forge") {
-            FORGE
-        } else if version_folder.to_lowercase().contains("fabric") {
-            FABRIC
-        } else if version_folder.to_lowercase().contains("liteloader") {
-            LITELOADER
-        } else if version_folder.to_lowercase().contains("neoforge") {
-            NEOFORGE
-        } else {
-            VANILLA
-        };
         Self {
             id: name,
             version_path: directory.as_path().to_str().unwrap().to_string(),
-            base
         }
     }
     pub fn is_forge(&self) -> bool {
@@ -299,6 +280,6 @@ pub struct Profile {
 
 #[derive(Serialize)]
 pub struct VersionCategory {
-    pub versions: Vec<MinecraftVersion>,
+    pub versions: Vec<VersionLoader>,
     pub name: String,
 }

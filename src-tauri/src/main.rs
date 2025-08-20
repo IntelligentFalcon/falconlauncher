@@ -1,19 +1,17 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use crate::directory_manager::get_minecraft_directory;
-use crate::jdk_manager::{download_java, get_java};
+use std::collections::HashMap;
+use std::sync::LazyLock;
+use crate::downloader::download_forge_version;
 use crate::mod_manager::load_mods;
-use crate::version_manager::{
-    download_version_manifest, get_categorized_versions, load_version_manifest_local, VersionInfo,
-    VersionType,
-};
-use discord_sdk::activity::{Activity, ActivityBuilder, Assets};
-use discord_sdk::wheel::WheelHandler;
+use discord_sdk::activity::{ActivityBuilder, Assets};
 use discord_sdk::DiscordHandler;
 use std::time::Duration;
 use tauri::async_runtime::block_on;
 use tauri::ipc::RuntimeCapability;
+use tokio::sync::Mutex;
+
 
 mod config;
 mod directory_manager;
@@ -33,25 +31,12 @@ fn main() {
 }
 
 #[test]
-fn test_envs() {
-    get_minecraft_directory();
-}
-
-#[test]
-fn test_java_downloader() {
+fn test_download_forge(){
     block_on(async {
-        let id = "8".to_string();
-        download_java(&id).await
+        download_forge_version(&"1.12.2-14.23.0.2486".to_string()).await;
+
     });
 }
-#[test]
-fn test_get_java() {
-    block_on(async {
-        let id = "8".to_string();
-        println!("{}", get_java(id).await.to_str().unwrap());
-    })
-}
-
 #[test]
 fn test_get_mods() {
     let mods = load_mods();
@@ -100,8 +85,4 @@ fn test_activity() {
             tokio::time::sleep(Duration::from_millis(16)).await;
         }
     });
-}
-#[test]
-pub fn test_manifest_struct() {
-    block_on(async { get_categorized_versions(true, true, true, true).await });
 }

@@ -1,24 +1,28 @@
 use crate::directory_manager::{
-    get_assets_directory, get_falcon_launcher_directory, get_launcher_java_directory,
+    get_assets_directory, get_falcon_launcher_directory,
     get_libraries_directory, get_natives_folder, get_version_directory, get_versions_directory,
 };
-use crate::game_launcher::{update_download, update_download_bar, update_download_status};
-use crate::jdk_manager::get_java;
+use crate::game_launcher::update_download;
 use crate::structs::{library_from_value, LibraryRules, MinecraftVersion};
 use crate::utils::{get_current_os, verify_file_existence};
 use crate::version_manager::load_version_manifest;
+
 use serde_json::Value;
 use std::collections::HashMap;
-use std::fmt::format;
 use std::fs;
 use std::fs::{create_dir_all, exists, File};
-use std::io::{BufRead, BufReader, Write};
-use std::ops::Index;
+use std::io::{BufRead, Write};
 use std::path::PathBuf;
-use std::process::Command;
+use std::sync::LazyLock;
 use tauri::async_runtime::block_on;
 use tauri::AppHandle;
+use tokio::sync::Mutex;
+use zip::ZipArchive;
 use zip_extract::extract;
+pub static GLOBAL_CACHE: LazyLock<Mutex<Global>> = LazyLock::new(|| Mutex::new(Global { forge: None }));
+pub struct Global {
+    pub forge: Option<HashMap<String, Vec<String>>>,
+}
 
 async fn download_assets(value: &Value) {
     let id = value["id"].as_str().unwrap();
@@ -281,9 +285,17 @@ pub async fn download_file(url: String, dest: String) {
         .expect("Writing file failed.");
 }
 pub async fn get_available_forge_versions(version_id: &String) -> Vec<String> {
-    let url = "https://files.minecraftforge.net/net/minecraftforge/forge/maven-metadata.json";
-    let map: HashMap<String, Vec<String>> = reqwest::get(url).await.unwrap().json().await.unwrap();
-    map.iter()
+    let mut global_cache = GLOBAL_CACHE.lock().await;
+    if global_cache.forge.is_none() {
+        let url = "https://files.minecraftforge.net/net/minecraftforge/forge/maven-metadata.json";
+        let map: HashMap<String, Vec<String>> =
+            reqwest::get(url).await.unwrap().json().await.unwrap();
+        global_cache.forge = Some(map);
+    }
+    let map = &global_cache.forge;
+    map.clone()
+        .unwrap()
+        .iter()
         .find(|(key, _)| key.clone() == version_id)
         .map(|(key, val)| val.clone())
         .unwrap_or(Vec::new())
@@ -300,44 +312,59 @@ pub async fn download_forge_version(version: &String) {
     let url = format!("https://maven.minecraftforge.net/net/minecraftforge/forge/{version}/forge-{version}-installer.jar");
     let launcher_dir = get_falcon_launcher_directory();
 
-    let path = launcher_dir
-        .join("temp")
-        .join(format!("forge-{version}-installer.jar"));
-    let path_str = path.to_str().unwrap();
+    let mut path = launcher_dir.join("temp");
+    let mut path_str = path.to_str().unwrap();
 
     if !path.exists() {
         create_dir_all(path_str).unwrap();
     }
-    download_file_async(url, path_str.to_string());
-
-    let mut cmd = Command::new(
-        get_java("8".to_string())
-            .await
-            .to_str()
-            .unwrap()
-            .to_string(),
+    path = path.join(format!("forge-{version}-installer.jar"));
+    path_str = path.to_str().unwrap();
+    download_file(url, path_str.to_string()).await;
+    let installer_file = File::open(path_str).unwrap();
+    let mut zip = ZipArchive::new(installer_file).unwrap();
+    let install_profile_file = zip
+        .by_name("install_profile.json")
+        .expect("Failed to find install_profile.json");
+    let install_profile_json: Value = serde_json::from_reader(install_profile_file).unwrap();
+    let version_json = &install_profile_json["versionInfo"];
+    let version_id = install_profile_json["install"]["target"].as_str().unwrap();
+    let version_folder = get_version_directory(&version_id.to_string());
+    if !version_folder.exists() {
+        create_dir_all(version_folder).unwrap();
+    }
+    let version_json_path =
+        get_version_directory(&version_id.to_string()).join(format!("{version_id}.json"));
+    File::create(&version_json_path).unwrap();
+    fs::write(
+        version_json_path,
+        serde_json::to_string(&version_json).unwrap(),
     )
-    .arg("-jar")
-    .arg(path_str)
-    .arg("--installClient")
-    .spawn()
-    .unwrap();
-    let stderr = cmd.stderr.take().unwrap();
-    std::thread::spawn(move || {
-        let reader = BufReader::new(stderr);
-        for line in reader.lines().flatten() {
-            println!("[stderr] {}", line);
+    .expect("Failed to write to the forge json file.");
+    fs::remove_dir_all(launcher_dir.join("temp")).unwrap();
+    for library in version_json["libraries"].as_array().unwrap() {
+        if !library.get("url").is_none() {
+            let url = library["url"].as_str().unwrap();
+            let full_url = convert_to_full_url(
+                url.to_string(),
+                library["name"].as_str().unwrap().to_string(),
+            );
+            let full_path = convert_to_full_url(
+                get_libraries_directory().to_str().unwrap().to_string(),
+                library["name"].as_str().unwrap().to_string(),
+            );
+            download_file_if_not_exists(&PathBuf::from(full_path), full_url, 0).await;
         }
-    });
-
-    let stdout = cmd.stdout.take().expect("Failed to open stdout");
-    std::thread::spawn(move || {
-        let reader = BufReader::new(stdout);
-        for line in reader.lines() {
-            if let Ok(line) = line {
-                println!("[java stdout] {}", line);
-            }
-        }
-    });
-    fs::remove_dir_all(path_str).unwrap()
+    }
+}
+fn convert_to_full_url(base_url: String, library_name: String) -> String {
+    let args = library_name.split(":").collect::<Vec<_>>();
+    let group_id = args[0].replace(".", "/");
+    let artifact_id = args[1];
+    let version = args[2];
+    let artifact_version = format!("{artifact_id}-{version}");
+    format!(
+        "{}{}/{}/{}/{}.jar",
+        base_url, group_id, artifact_id, version, artifact_version
+    )
 }

@@ -40,11 +40,12 @@ pub fn get_downloaded_versions() -> Vec<MinecraftVersion> {
                 return false;
             }
             let children_files = x.path().read_dir().unwrap();
+            ///TEMPORARY === 1 MUST BE CHANGED FOR MODPACK COMPATIBILITY
             return children_files
                 .map(|f| f.unwrap())
                 .filter(|f| f.path().is_file() && f.path().extension().unwrap() == "json")
                 .count()
-                > 0;
+                == 1;
         })
         .map(|v| {
             MinecraftVersion::from_folder(

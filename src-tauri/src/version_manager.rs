@@ -1,11 +1,11 @@
 use crate::directory_manager::get_versions_directory;
-use crate::downloader::{download_file, download_file_if_not_exists, get_available_forge_versions};
-use crate::structs::{MinecraftVersion, VersionCategory};
-use crate::utils::{extend_once, is_connected_to_internet, load_json_url};
+use crate::downloader::{download_file, get_available_forge_versions};
+use crate::structs::VersionBase::FORGE;
+use crate::structs::{VersionBase, VersionCategory};
+use crate::utils::load_json_url;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::cmp::PartialEq;
-use std::ops::Add;
 
 pub async fn load_version_manifest() -> Option<Value> {
     let url = "https://launchermeta.mojang.com/mc/game/version_manifest.json";
@@ -44,24 +44,40 @@ pub async fn get_categorized_versions(
         let id_args: Vec<&str> = id.split(".").collect();
         let category = format!("{}.{}", id_args[0], id_args[1]);
         if let Some(cat) = result.iter_mut().find(|x| x.name == category) {
-            cat.versions.push(MinecraftVersion::from_id(ver.id.clone()));
+            cat.versions.push(VersionLoader {
+                id: id.clone(),
+                base: VersionBase::VANILLA,
+                date: ver.release_time.clone(),
+            });
             if forge {
                 cat.versions.extend(
                     get_available_forge_versions(&id)
                         .await
                         .iter()
-                        .map(|x| MinecraftVersion::from_id(x.clone()))
+                        .map(|x| VersionLoader {
+                            id: x.clone(),
+                            base: FORGE,
+                            date: "FORGE".to_string(),
+                        })
                         .collect::<Vec<_>>(),
                 );
             }
         } else {
-            let mut v = vec![MinecraftVersion::from_id(id.clone())];
+            let mut v = vec![VersionLoader {
+                id: id.clone(),
+                base: VersionBase::VANILLA,
+                date: ver.time.clone(),
+            }];
             if forge {
                 v.extend(
                     get_available_forge_versions(&id)
                         .await
                         .iter()
-                        .map(|x| MinecraftVersion::from_id(x.clone()))
+                        .map(|x| VersionLoader {
+                            id: x.clone(),
+                            base: FORGE,
+                            date: "FORGE".to_string(),
+                        })
                         .collect::<Vec<_>>(),
                 );
             }
@@ -106,6 +122,31 @@ pub struct VersionInfo {
     pub time: String,
     #[serde(rename = "releaseTime")]
     pub release_time: String,
+}
+#[derive(Debug, Deserialize, Serialize)]
+pub struct VersionLoader {
+    pub id: String,
+    pub base: VersionBase,
+    pub date: String,
+}
+
+impl VersionLoader {
+    pub fn get_installed_id(&self) -> String {
+        match self.base {
+            VersionBase::VANILLA => self.id.clone(),
+            FORGE => {
+                let id_clone = self.id.clone();
+                let args = id_clone.split("-").collect::<Vec<_>>();
+                let vanilla_id = args[0];
+                let forge_ver = args[1];
+                format!("{}-forge{}", vanilla_id, self.id)
+            }
+            /// FIX THESE LATER
+            VersionBase::NEOFORGE => self.id.clone(),
+            VersionBase::FABRIC => self.id.clone(),
+            VersionBase::LITELOADER => self.id.clone(),
+        }
+    }
 }
 
 #[derive(Debug, Deserialize)]
