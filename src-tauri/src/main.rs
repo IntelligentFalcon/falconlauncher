@@ -1,8 +1,6 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::collections::HashMap;
-use std::sync::LazyLock;
 use crate::downloader::download_forge_version;
 use crate::mod_manager::load_mods;
 use discord_sdk::activity::{ActivityBuilder, Assets};
@@ -10,7 +8,6 @@ use discord_sdk::DiscordHandler;
 use std::time::Duration;
 use tauri::async_runtime::block_on;
 use tauri::ipc::RuntimeCapability;
-use tokio::sync::Mutex;
 
 
 mod config;

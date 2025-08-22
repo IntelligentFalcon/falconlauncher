@@ -137,7 +137,6 @@ function VersionSelectorPopup({isOpen, onClose, onVersionSelect, currentLanguage
                                 // HERE
                                 setShowForge(prev => {
                                     const newValue = !prev;
-                                    console.log(newValue);
                                     updateVersions(newValue, showFabric, showNeoForge, showLiteLoader);
 
                                     return newValue;
@@ -274,7 +273,7 @@ export default function FalconClient() {
             }
         }).catch(console.error);
 
-        loadVersions();
+        loadVersions().then(() => console.log("loaded versions!")).catch("Error!");
 
         let unlistenProgress, unlistenProgressBar;
         const registerEvents = async () => {
@@ -285,7 +284,7 @@ export default function FalconClient() {
             });
         };
 
-        registerEvents();
+        registerEvents().then(() => console.log("Done!"));
 
         return () => {
             unlistenProgress?.();

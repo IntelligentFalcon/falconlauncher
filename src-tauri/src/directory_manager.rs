@@ -8,7 +8,7 @@ pub fn get_minecraft_directory() -> PathBuf {
         "osx" => var_os("$HOME")
             .map(|home| PathBuf::from(home).join("Library/Application Support/minecraft"))
             .unwrap(),
-        "linux" => var_os("APPDATA")
+        "linux" => var_os("$HOME")
             .map(|appdata| PathBuf::from(appdata).join(".minecraft"))
             .unwrap(),
         _ => var_os("APPDATA")

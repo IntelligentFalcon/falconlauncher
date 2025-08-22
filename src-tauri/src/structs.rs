@@ -32,7 +32,7 @@ pub fn library_from_value(value: &Value) -> LibraryInfo {
         .expect("Parsing library_downloads failed");
     let library_path = if library_artifact.get("path").is_none() {
         let args = library_name.split(":").collect::<Vec<&str>>();
-        let group_id = args[0];
+        let group_id = args[0].replace(".", "/");
         let artifact = args[1];
         let version = args[2];
         let artifact_version = format!("{artifact}-{version}.jar");
@@ -186,12 +186,18 @@ impl MinecraftVersion {
                         let natives = val.get(format!("natives-{os}"));
                         match natives {
                             None => {}
-                            Some(_) => {
-                                let path = libraries_path
-                                    .join(natives.unwrap().get("path").unwrap().as_str().unwrap())
-                                    .to_str()
-                                    .unwrap()
-                                    .to_string();
+                            Some(natives) => {
+                                let p = if natives.get("path").is_none() {
+                                    let url = natives["url"].as_str().unwrap();
+                                    let url_https_less =
+                                        url.replace("https://", "").replace("http://", "");
+                                    let url_args = url_https_less.split("/").collect::<Vec<&str>>();
+                                    let path = url_https_less.replace(url_args[0], "");
+                                    path
+                                } else {
+                                    natives.get("path").unwrap().as_str().unwrap().to_string()
+                                };
+                                let path = libraries_path.join(p).to_str().unwrap().to_string();
                                 libraries.push(path.replace("/", "\\"));
                             }
                         }

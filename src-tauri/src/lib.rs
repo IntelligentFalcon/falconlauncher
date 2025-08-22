@@ -1,6 +1,6 @@
-use std::collections::HashMap;
 use crate::config::{load_config, Config};
 use crate::game_launcher::{launch_game, update_download_status};
+use std::collections::HashMap;
 
 use crate::directory_manager::get_falcon_launcher_directory;
 use crate::downloader::download_forge_version;
@@ -33,7 +33,6 @@ mod utils;
 mod version_manager;
 
 static CONFIG: LazyLock<Mutex<Config>> = LazyLock::new(|| Mutex::new(config::default_config()));
-
 
 #[command]
 async fn play_button_handler(app: AppHandle, selected_version: String) {
@@ -208,19 +207,19 @@ async fn download_version(app_handle: AppHandle, version_loader: VersionLoader) 
             "DEBUG: Forge version detected! {} installing it rn!",
             version_loader.id
         );
-        download_forge_version(&version_loader.id).await;
+        download_forge_version(&version_loader.id, &app_handle).await;
     };
     let version = MinecraftVersion::from_id(version_id);
     let inherited_version = version.get_inherited();
-        update_download_status("Downloading version...", &app_handle);
-        downloader::download_version(&version, &app_handle).await;
-        downloader::download_version(&inherited_version, &app_handle).await;
-        let dialog = DialogBuilder::message()
-            .set_title("Done!")
-            .set_text("Successfully installed the selected version you can now play it")
-            .alert()
-            .show()
-            .unwrap();
-        let mut conf = CONFIG.lock().await;
-        conf.versions.push(version);
-    }
+    update_download_status("Downloading version...", &app_handle);
+    downloader::download_version(&version, &app_handle).await;
+    downloader::download_version(&inherited_version, &app_handle).await;
+    let dialog = DialogBuilder::message()
+        .set_title("Done!")
+        .set_text("Successfully installed the selected version you can now play it")
+        .alert()
+        .show()
+        .unwrap();
+    let mut conf = CONFIG.lock().await;
+    conf.versions.push(version);
+}

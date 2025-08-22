@@ -1,6 +1,6 @@
 use crate::directory_manager::{
-    get_assets_directory, get_falcon_launcher_directory,
-    get_libraries_directory, get_natives_folder, get_version_directory, get_versions_directory,
+    get_assets_directory, get_falcon_launcher_directory, get_libraries_directory,
+    get_natives_folder, get_version_directory, get_versions_directory,
 };
 use crate::game_launcher::update_download;
 use crate::structs::{library_from_value, LibraryRules, MinecraftVersion};
@@ -11,7 +11,7 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::fs;
 use std::fs::{create_dir_all, exists, File};
-use std::io::{BufRead, Write};
+use std::io::{read_to_string, BufRead, Write};
 use std::path::PathBuf;
 use std::sync::LazyLock;
 use tauri::async_runtime::block_on;
@@ -19,7 +19,8 @@ use tauri::AppHandle;
 use tokio::sync::Mutex;
 use zip::ZipArchive;
 use zip_extract::extract;
-pub static GLOBAL_CACHE: LazyLock<Mutex<Global>> = LazyLock::new(|| Mutex::new(Global { forge: None }));
+pub static GLOBAL_CACHE: LazyLock<Mutex<Global>> =
+    LazyLock::new(|| Mutex::new(Global { forge: None }));
 pub struct Global {
     pub forge: Option<HashMap<String, Vec<String>>>,
 }
@@ -196,10 +197,17 @@ async fn download_classifiers(classifiers: Option<&Value>, version: &String) {
     match natives {
         None => {}
         Some(val) => {
-            let path = val["path"].as_str().unwrap();
+            let url = val["url"].as_str().unwrap();
+            let url_https_less = url.replace("https://", "").replace("http://", "");
+            let path = if val.get("path").is_none() {
+                let url_args = url_https_less.split("/").collect::<Vec<&str>>();
+                let path = url_https_less.replace(url_args[0], "");
+                path
+            } else {
+                val["path"].as_str().unwrap().to_string()
+            };
             let full_path = get_libraries_directory().join(path);
             let size = val["size"].as_u64().unwrap();
-            let url = val["url"].as_str().unwrap();
             download_file_if_not_exists(&full_path, url.to_string(), size).await;
             let file = File::open(full_path.to_str().unwrap().to_string());
             let natives_path = get_natives_folder(version);
@@ -308,7 +316,7 @@ pub async fn get_available_forge_versions(version_id: &String) -> Vec<String> {
 //         .map(|(key, val)| val[0].clone())
 //         .unwrap_or(Vec::new())
 // }
-pub async fn download_forge_version(version: &String) {
+pub async fn download_forge_version(version: &String, app_handle: &AppHandle) {
     let url = format!("https://maven.minecraftforge.net/net/minecraftforge/forge/{version}/forge-{version}-installer.jar");
     let launcher_dir = get_falcon_launcher_directory();
 
@@ -327,8 +335,37 @@ pub async fn download_forge_version(version: &String) {
         .by_name("install_profile.json")
         .expect("Failed to find install_profile.json");
     let install_profile_json: Value = serde_json::from_reader(install_profile_file).unwrap();
-    let version_json = &install_profile_json["versionInfo"];
-    let version_id = install_profile_json["install"]["target"].as_str().unwrap();
+    if !install_profile_json.get("install").is_none()
+        && !install_profile_json["install"].get("filePath").is_none()
+    {
+        let mut forge = zip
+            .by_name(
+                install_profile_json["install"]["filePath"]
+                    .as_str()
+                    .unwrap(),
+            )
+            .unwrap();
+        let path_maven = install_profile_json["install"]["path"].as_str().unwrap();
+        let args = path_maven.split(":").collect::<Vec<&str>>();
+        let group_id = args[0].replace(".", "/");
+        let artifact = args[1];
+        let version = args[2];
+        let artifact_version = format!("{artifact}-{version}");
+        let full_path = get_libraries_directory().join(format!(
+            "{group_id}/{artifact}/{version}/{artifact_version}.jar"
+        ));
+        create_dir_all(&full_path.parent().unwrap()).expect("Failed to create the path");
+        let mut file = File::create(full_path).unwrap();
+        std::io::copy(&mut forge, &mut file).expect("Failed to copy files");
+    }
+    let version_json = if install_profile_json.get("versionInfo").is_none() {
+        let versions_file = zip.by_name("version.json").unwrap();
+        &serde_json::from_reader(versions_file).unwrap()
+    } else {
+        &install_profile_json["versionInfo"]
+    };
+
+    let version_id = version_json["id"].as_str().unwrap();
     let version_folder = get_version_directory(&version_id.to_string());
     if !version_folder.exists() {
         create_dir_all(version_folder).unwrap();
@@ -341,21 +378,67 @@ pub async fn download_forge_version(version: &String) {
         serde_json::to_string(&version_json).unwrap(),
     )
     .expect("Failed to write to the forge json file.");
-    fs::remove_dir_all(launcher_dir.join("temp")).unwrap();
+    if !install_profile_json.get("libraries").is_none() {
+        for library in install_profile_json["libraries"].as_array().unwrap() {
+            let library_downloads = if library.get("downloads").is_none() {
+                &library
+            } else {
+                &library["downloads"]["artifact"]
+            };
+            let url = library_downloads["url"].as_str().unwrap();
+            if url == "" {
+                let path = format!("maven/{}", library_downloads["path"].as_str().unwrap());
+                let mut f = zip
+                    .by_name(&path.split("/").last().unwrap().to_string())
+                    .expect("Stupid error ");
+                let mut file = File::create(get_libraries_directory().join(path)).unwrap();
+                std::io::copy(&mut f, &mut file).expect("Failed to copy files");
+
+                continue;
+            }
+
+            let full_url = if url.ends_with("/") {
+                convert_to_full_url(
+                    url.to_string(),
+                    library["name"].as_str().unwrap().to_string(),
+                )
+            } else {
+                url.to_string()
+            };
+            let full_path = if library_downloads.get("path").is_none() {
+                convert_to_full_path(
+                    get_libraries_directory().to_str().unwrap().to_string(),
+                    library["name"].as_str().unwrap().to_string(),
+                )
+            } else {
+                library_downloads["path"].as_str().unwrap().to_string()
+            };
+
+            download_file_if_not_exists(&PathBuf::from(full_path), full_url, 0).await;
+        }
+    }
     for library in version_json["libraries"].as_array().unwrap() {
-        if !library.get("url").is_none() {
+        let library_downloads = if !library.get("downloads").is_none() {
+            &library["downloads"]
+        } else {
+            &library
+        };
+        if !library_downloads.get("url").is_none() {
             let url = library["url"].as_str().unwrap();
             let full_url = convert_to_full_url(
                 url.to_string(),
                 library["name"].as_str().unwrap().to_string(),
             );
-            let full_path = convert_to_full_url(
+            let full_path = convert_to_full_path(
                 get_libraries_directory().to_str().unwrap().to_string(),
                 library["name"].as_str().unwrap().to_string(),
             );
+
             download_file_if_not_exists(&PathBuf::from(full_path), full_url, 0).await;
         }
     }
+
+    fs::remove_dir_all(launcher_dir.join("temp")).unwrap();
 }
 fn convert_to_full_url(base_url: String, library_name: String) -> String {
     let args = library_name.split(":").collect::<Vec<_>>();
@@ -365,6 +448,17 @@ fn convert_to_full_url(base_url: String, library_name: String) -> String {
     let artifact_version = format!("{artifact_id}-{version}");
     format!(
         "{}{}/{}/{}/{}.jar",
+        base_url, group_id, artifact_id, version, artifact_version
+    )
+}
+fn convert_to_full_path(base_url: String, library_name: String) -> String {
+    let args = library_name.split(":").collect::<Vec<_>>();
+    let group_id = args[0].replace(".", "/");
+    let artifact_id = args[1];
+    let version = args[2];
+    let artifact_version = format!("{artifact_id}-{version}");
+    format!(
+        "{}/{}/{}/{}/{}.jar",
         base_url, group_id, artifact_id, version, artifact_version
     )
 }
