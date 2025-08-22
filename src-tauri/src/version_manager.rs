@@ -138,8 +138,8 @@ impl VersionLoader {
                 let id_clone = self.id.clone();
                 let args = id_clone.split("-").collect::<Vec<_>>();
                 let vanilla_id = args[0];
-                let forge_ver = args[1];
-                format!("{}-forge{}", vanilla_id, self.id)
+                let forge_ver = args[1].split("-").last().unwrap();
+                format!("{}-forge-{}", vanilla_id, forge_ver)
             }
             /// FIX THESE LATER
             VersionBase::NEOFORGE => self.id.clone(),

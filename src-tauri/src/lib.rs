@@ -80,7 +80,10 @@ pub fn run() {
 
             block_on(async move {
                 load_config(&mut *CONFIG.lock().await).await;
-                download_version_manifest().await;
+                if is_connected_to_internet().await {
+                    download_version_manifest().await;
+                }
+
             });
 
             let handle = app.handle();

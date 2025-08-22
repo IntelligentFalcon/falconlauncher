@@ -1,12 +1,11 @@
 use crate::directory_manager::get_falcon_launcher_directory;
 use crate::structs::MinecraftVersion;
-use crate::utils::{get_downloaded_versions, load_versions};
+use crate::utils::get_downloaded_versions;
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::fs::{create_dir_all, exists, File};
-use std::io::{BufReader, Read};
+use std::fs::create_dir_all;
+use std::io::Read;
 use std::path::PathBuf;
-use tauri::async_runtime::block_on;
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Config {
     #[serde(rename = "LaunchOptions")]
@@ -52,7 +51,7 @@ pub fn default_config() -> Config {
             username: "Steve".to_string(),
             ram_usage: 2048,
         },
-        versions: vec![],
+        versions: get_downloaded_versions(),
         launcher_settings: LauncherSettings {
             language: "en".to_string(),
         },

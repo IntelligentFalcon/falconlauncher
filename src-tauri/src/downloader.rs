@@ -387,11 +387,11 @@ pub async fn download_forge_version(version: &String, app_handle: &AppHandle) {
             };
             let url = library_downloads["url"].as_str().unwrap();
             if url == "" {
-                let path = format!("maven/{}", library_downloads["path"].as_str().unwrap());
-                let mut f = zip
-                    .by_name(&path.split("/").last().unwrap().to_string())
-                    .expect("Stupid error ");
-                let mut file = File::create(get_libraries_directory().join(path)).unwrap();
+                let path = library_downloads["path"].as_str().unwrap();
+                let zip_path = format!("maven/{}", library_downloads["path"].as_str().unwrap());
+                let mut f = zip.by_name(&zip_path).expect("Stupid error ");
+                create_dir_all(PathBuf::from(get_libraries_directory().join(&path)).parent().unwrap());
+                let mut file = File::create(get_libraries_directory().join(&path)).unwrap();
                 std::io::copy(&mut f, &mut file).expect("Failed to copy files");
 
                 continue;
