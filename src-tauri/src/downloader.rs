@@ -1,24 +1,29 @@
 use crate::directory_manager::{
     get_assets_directory, get_falcon_launcher_directory, get_libraries_directory,
-    get_natives_folder, get_version_directory, get_versions_directory,
+    get_minecraft_directory, get_natives_folder, get_version_directory, get_versions_directory,
 };
 use crate::game_launcher::update_download;
 use crate::structs::{library_from_value, LibraryRules, MinecraftVersion};
 use crate::utils::{get_current_os, verify_file_existence};
 use crate::version_manager::load_version_manifest;
 
+use crate::jdk_manager::get_java;
 use serde_json::Value;
 use std::collections::HashMap;
+use std::env::home_dir;
+use std::fmt::format;
 use std::fs;
 use std::fs::{create_dir_all, exists, File};
-use std::io::{read_to_string, BufRead, Write};
+use std::io::{read_to_string, BufRead, BufReader, Write};
 use std::path::PathBuf;
+use std::process::{Command, Stdio};
 use std::sync::LazyLock;
 use tauri::async_runtime::block_on;
 use tauri::AppHandle;
 use tokio::sync::Mutex;
 use zip::ZipArchive;
 use zip_extract::extract;
+
 pub static GLOBAL_CACHE: LazyLock<Mutex<Global>> =
     LazyLock::new(|| Mutex::new(Global { forge: None }));
 pub struct Global {
@@ -326,10 +331,50 @@ pub async fn download_forge_version(version: &String, app_handle: &AppHandle) {
     if !path.exists() {
         create_dir_all(path_str).unwrap();
     }
+
     path = path.join(format!("forge-{version}-installer.jar"));
     path_str = path.to_str().unwrap();
     download_file(url, path_str.to_string()).await;
     let installer_file = File::open(path_str).unwrap();
+
+    let version_args = version.split("-").collect::<Vec<&str>>();
+    let mc_version = version_args[0];
+    let mc_args = mc_version.split(".").collect::<Vec<&str>>();
+    let version_mid = mc_args[1].parse::<i32>().unwrap();
+    if version_mid > 12 {
+        println!("DEBUG: Non legacy version detected!");
+        let jdk_8 = get_java("8".to_string());
+        let mut child = Command::new(jdk_8.await.display().to_string())
+            .arg("-jar")
+            .arg(PathBuf::from(path_str).display().to_string())
+            .arg("--installClient")
+            .arg(get_minecraft_directory().display().to_string())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .expect("Failed to install forge");
+        let stderr = child.stderr.take().unwrap();
+        std::thread::spawn(move || {
+            let reader = BufReader::new(stderr);
+            for line in reader.lines().flatten() {
+                println!("[stderr] {}", line);
+            }
+        });
+
+        let stdout = child.stdout.take().expect("Failed to open stdout");
+        std::thread::spawn(move || {
+            let reader = BufReader::new(stdout);
+            for line in reader.lines() {
+                if let Ok(line) = line {
+                    println!("[java stdout] {}", line);
+                }
+            }
+        });
+        return;
+    } else {
+        println!("DEBUG: Legacy version detected!");
+    }
+
     let mut zip = ZipArchive::new(installer_file).unwrap();
     let install_profile_file = zip
         .by_name("install_profile.json")
@@ -390,7 +435,12 @@ pub async fn download_forge_version(version: &String, app_handle: &AppHandle) {
                 let path = library_downloads["path"].as_str().unwrap();
                 let zip_path = format!("maven/{}", library_downloads["path"].as_str().unwrap());
                 let mut f = zip.by_name(&zip_path).expect("Stupid error ");
-                create_dir_all(PathBuf::from(get_libraries_directory().join(&path)).parent().unwrap());
+                create_dir_all(
+                    PathBuf::from(get_libraries_directory().join(&path))
+                        .parent()
+                        .unwrap(),
+                )
+                .expect("Failed to create the directory");
                 let mut file = File::create(get_libraries_directory().join(&path)).unwrap();
                 std::io::copy(&mut f, &mut file).expect("Failed to copy files");
 

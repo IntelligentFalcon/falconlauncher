@@ -1,5 +1,5 @@
 use crate::utils::get_current_os;
-use std::env::var_os;
+use std::env::{home_dir, var_os};
 use std::path::PathBuf;
 
 pub fn get_minecraft_directory() -> PathBuf {
@@ -8,9 +8,7 @@ pub fn get_minecraft_directory() -> PathBuf {
         "osx" => var_os("$HOME")
             .map(|home| PathBuf::from(home).join("Library/Application Support/minecraft"))
             .unwrap(),
-        "linux" => var_os("$HOME")
-            .map(|appdata| PathBuf::from(appdata).join(".minecraft"))
-            .unwrap(),
+        "linux" => home_dir().unwrap().join(".minecraft"),
         _ => var_os("APPDATA")
             .map(|home| PathBuf::from(home).join(".minecraft"))
             .unwrap(),
