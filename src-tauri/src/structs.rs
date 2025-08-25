@@ -289,3 +289,19 @@ pub struct VersionCategory {
     pub versions: Vec<VersionLoader>,
     pub name: String,
 }
+#[derive(Serialize, Deserialize)]
+pub struct FabricInstaller {
+    pub url: String,
+    pub maven: String,
+    pub version: String,
+    pub stable: bool,
+}
+#[derive(Serialize, Deserialize)]
+
+pub struct FabricLoader {
+    pub separator: String,
+    pub build: u16,
+    pub maven: String,
+    pub version: String,
+    pub stable: bool,
+}

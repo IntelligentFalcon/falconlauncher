@@ -1,6 +1,6 @@
 use crate::directory_manager::get_versions_directory;
-use crate::downloader::{download_file, get_available_forge_versions};
-use crate::structs::VersionBase::FORGE;
+use crate::downloader::{download_file, get_available_fabric_versions, get_available_forge_versions};
+use crate::structs::VersionBase::{FABRIC, FORGE};
 use crate::structs::{VersionBase, VersionCategory};
 use crate::utils::load_json_url;
 use serde::{Deserialize, Serialize};
@@ -39,6 +39,41 @@ pub async fn get_categorized_versions(
         .iter()
         .filter(|x| x.version_type == VersionType::Release)
         .collect();
+    let snapshots: Vec<VersionLoader> = manifest
+        .versions
+        .iter()
+        .filter(|x| x.version_type == VersionType::Snapshot)
+        .map(|x| VersionLoader {
+            id: x.id.to_string(),
+            base: VersionBase::VANILLA,
+            date: x.time.to_string(),
+        })
+        .collect();
+    let old_beta: Vec<VersionLoader> = manifest
+        .versions
+        .iter()
+        .filter(|x| x.version_type == VersionType::OldBeta)
+        .map(|x| VersionLoader {
+            id: x.id.to_string(),
+            base: VersionBase::VANILLA,
+            date: x.time.to_string(),
+        })
+        .collect();
+    let old_alpha: Vec<VersionLoader> = manifest
+        .versions
+        .iter()
+        .filter(|x| x.version_type == VersionType::OldAlpha)
+        .map(|x| VersionLoader {
+            id: x.id.to_string(),
+            base: VersionBase::VANILLA,
+            date: x.time.to_string(),
+        })
+        .collect();
+
+    result.push(VersionCategory {
+        name: "Snapshot".to_string(),
+        versions: snapshots,
+    });
     for ver in versions {
         let id = ver.id.clone();
         let id_args: Vec<&str> = id.split(".").collect();
@@ -87,7 +122,28 @@ pub async fn get_categorized_versions(
             });
         }
     }
-
+    result.push(VersionCategory {
+        name: "Beta".to_string(),
+        versions: old_beta,
+    });
+    result.push(VersionCategory {
+        name: "Alpha".to_string(),
+        versions: old_alpha,
+    });
+    //TODO: show fabric here using the 3 gold url
+    let cat = result.iter_mut().find(|x| x.name == category).unwrap();
+    for fab_ver in get_available_fabric_versions()
+    cat.versions.extend(
+        get_available_fabric_versions()
+            .await
+            .iter()
+            .map(|x| VersionLoader {
+                id: x.clone(),
+                base: FABRIC,
+                date: "FABRIC".to_string(),
+            })
+            .collect::<Vec<_>>(),
+    );
     result
 }
 pub async fn download_version_manifest() {
@@ -128,6 +184,15 @@ pub struct VersionLoader {
     pub id: String,
     pub base: VersionBase,
     pub date: String,
+}
+
+impl VersionLoader {
+    pub fn get_fabric_loader_id(&self) -> String {
+        self.id.split("-").collect::<Vec<&str>>()[1].to_string()
+    }
+    pub fn get_fabric_version_id(&self) -> String {
+        self.id.split("-").collect::<Vec<&str>>()[0].to_string()
+    }
 }
 
 impl VersionLoader {

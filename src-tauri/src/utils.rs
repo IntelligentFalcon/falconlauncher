@@ -176,3 +176,25 @@ pub fn extend_once<T: PartialEq>(mut vec1: Vec<T>, vec2: Vec<T>) -> Vec<T> {
     }
     vec1
 }
+pub fn convert_to_full_url(base_url: String, library_name: String) -> String {
+    let args = library_name.split(":").collect::<Vec<_>>();
+    let group_id = args[0].replace(".", "/");
+    let artifact_id = args[1];
+    let version = args[2];
+    let artifact_version = format!("{artifact_id}-{version}");
+    format!(
+        "{}{}/{}/{}/{}.jar",
+        base_url, group_id, artifact_id, version, artifact_version
+    )
+}
+pub fn convert_to_full_path(base_path: String, library_name: &String) -> String {
+    let args = library_name.split(":").collect::<Vec<_>>();
+    let group_id = args[0].replace(".", "/");
+    let artifact_id = args[1];
+    let version = args[2];
+    let artifact_version = format!("{artifact_id}-{version}");
+    format!(
+        "{}/{}/{}/{}/{}.jar",
+        base_path, group_id, artifact_id, version, artifact_version
+    )
+}

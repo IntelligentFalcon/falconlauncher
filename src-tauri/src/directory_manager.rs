@@ -45,3 +45,7 @@ pub fn get_mods_folder() -> PathBuf {
 pub fn get_profiles_file() -> PathBuf {
     get_falcon_launcher_directory().join("profiles.json")
 }
+
+pub fn get_temp_directory() -> PathBuf {
+    get_falcon_launcher_directory().join("temp")
+}

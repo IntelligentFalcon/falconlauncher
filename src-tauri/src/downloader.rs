@@ -1,20 +1,23 @@
 use crate::directory_manager::{
     get_assets_directory, get_falcon_launcher_directory, get_libraries_directory,
-    get_minecraft_directory, get_natives_folder, get_version_directory, get_versions_directory,
+    get_minecraft_directory, get_natives_folder, get_temp_directory, get_version_directory,
+    get_versions_directory,
 };
 use crate::game_launcher::update_download;
-use crate::structs::{library_from_value, LibraryRules, MinecraftVersion};
-use crate::utils::{get_current_os, verify_file_existence};
-use crate::version_manager::load_version_manifest;
+use crate::structs::{
+    library_from_value, FabricInstaller, FabricLoader, LibraryRules, MinecraftVersion,
+};
+use crate::utils::{
+    convert_to_full_path, convert_to_full_url, get_current_os, verify_file_existence,
+};
+use crate::version_manager::{load_version_manifest, VersionLoader};
 
 use crate::jdk_manager::get_java;
 use serde_json::Value;
 use std::collections::HashMap;
-use std::env::home_dir;
-use std::fmt::format;
 use std::fs;
 use std::fs::{create_dir_all, exists, File};
-use std::io::{read_to_string, BufRead, BufReader, Write};
+use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::sync::LazyLock;
@@ -351,6 +354,7 @@ pub async fn download_forge_version(version: &String, app_handle: &AppHandle) {
             .arg(get_minecraft_directory().display().to_string())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
+            .current_dir(get_temp_directory())
             .spawn()
             .expect("Failed to install forge");
         let stderr = child.stderr.take().unwrap();
@@ -370,10 +374,11 @@ pub async fn download_forge_version(version: &String, app_handle: &AppHandle) {
                 }
             }
         });
+        fs::remove_dir_all(launcher_dir.join("temp")).unwrap();
+
         return;
-    } else {
-        println!("DEBUG: Legacy version detected!");
     }
+    println!("DEBUG: Legacy version detected!");
 
     let mut zip = ZipArchive::new(installer_file).unwrap();
     let install_profile_file = zip
@@ -458,7 +463,7 @@ pub async fn download_forge_version(version: &String, app_handle: &AppHandle) {
             let full_path = if library_downloads.get("path").is_none() {
                 convert_to_full_path(
                     get_libraries_directory().to_str().unwrap().to_string(),
-                    library["name"].as_str().unwrap().to_string(),
+                    &library["name"].as_str().unwrap().to_string(),
                 )
             } else {
                 library_downloads["path"].as_str().unwrap().to_string()
@@ -481,7 +486,7 @@ pub async fn download_forge_version(version: &String, app_handle: &AppHandle) {
             );
             let full_path = convert_to_full_path(
                 get_libraries_directory().to_str().unwrap().to_string(),
-                library["name"].as_str().unwrap().to_string(),
+                &library["name"].as_str().unwrap().to_string(),
             );
 
             download_file_if_not_exists(&PathBuf::from(full_path), full_url, 0).await;
@@ -490,25 +495,73 @@ pub async fn download_forge_version(version: &String, app_handle: &AppHandle) {
 
     fs::remove_dir_all(launcher_dir.join("temp")).unwrap();
 }
-fn convert_to_full_url(base_url: String, library_name: String) -> String {
-    let args = library_name.split(":").collect::<Vec<_>>();
-    let group_id = args[0].replace(".", "/");
-    let artifact_id = args[1];
-    let version = args[2];
-    let artifact_version = format!("{artifact_id}-{version}");
-    format!(
-        "{}{}/{}/{}/{}.jar",
-        base_url, group_id, artifact_id, version, artifact_version
+
+pub async fn download_fabric(version_loader: VersionLoader) {
+    let loaders_url = "https://meta.fabricmc.net/v2/versions/loader";
+    let installers_url = "https://meta.fabricmc.net/v2/versions/installer";
+    type FabricLoaders = Vec<FabricLoader>;
+    type FabricInstallers = Vec<FabricInstaller>;
+    let loaders = reqwest::get(loaders_url)
+        .await
+        .unwrap()
+        .json::<FabricLoaders>()
+        .await
+        .unwrap();
+    let installers = reqwest::get(installers_url)
+        .await
+        .unwrap()
+        .json::<FabricInstallers>()
+        .await
+        .unwrap();
+
+    let loader = loaders
+        .iter()
+        .find(|x| x.version == version_loader.get_fabric_loader_id())
+        .unwrap();
+    let stable_installer = installers.iter().find(|x| x.stable).unwrap();
+    let installer_path_download = convert_to_full_path(
+        get_temp_directory().to_str().unwrap().to_string(),
+        &stable_installer.maven,
+    );
+
+    download_file(
+        stable_installer.url.to_string(),
+        installer_path_download.clone(),
     )
+    .await;
+    let mut child = Command::new(get_java("8".to_string()).await)
+        .arg("-jar")
+        .arg(installer_path_download.clone())
+        .arg("-mcVersion")
+        .arg(version_loader.get_fabric_version_id())
+        .arg("-loader")
+        .arg(version_loader.get_fabric_loader_id())
+        .arg("-dir")
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .arg(get_minecraft_directory().display().to_string())
+        .current_dir(installer_path_download)
+        .spawn()
+        .expect("Failed to spawn child process");
+    let stderr = child.stderr.take().unwrap();
+    std::thread::spawn(move || {
+        let reader = BufReader::new(stderr);
+        for line in reader.lines().flatten() {
+            println!("[stderr] {}", line);
+        }
+    });
+
+    let stdout = child.stdout.take().expect("Failed to open stdout");
+    std::thread::spawn(move || {
+        let reader = BufReader::new(stdout);
+        for line in reader.lines() {
+            if let Ok(line) = line {
+                println!("[java stdout] {}", line);
+            }
+        }
+    });
 }
-fn convert_to_full_path(base_url: String, library_name: String) -> String {
-    let args = library_name.split(":").collect::<Vec<_>>();
-    let group_id = args[0].replace(".", "/");
-    let artifact_id = args[1];
-    let version = args[2];
-    let artifact_version = format!("{artifact_id}-{version}");
-    format!(
-        "{}/{}/{}/{}/{}.jar",
-        base_url, group_id, artifact_id, version, artifact_version
-    )
+
+pub async fn get_available_fabric_versions() -> Vec<String>{
+
 }
