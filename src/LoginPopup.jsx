@@ -46,16 +46,16 @@ export default function LoginPopup({isOpen, onClose}) {
                         onClose();
                     }}
                 >
-                    Log in
+                    {t("login")}
                 </button>
 
-                <button
-                    type="button"
-                    className="w-full p-3 bg-white text-gray-800 font-semibold rounded flex items-center justify-center hover:bg-gray-200 transition-colors"
-                >
-                    <MicrosoftLogo/>
-                    Sign in with Microsoft
-                </button>
+                {/*<button*/}
+                {/*    type="button"*/}
+                {/*    className="w-full p-3 bg-white text-gray-800 font-semibold rounded flex items-center justify-center hover:bg-gray-200 transition-colors"*/}
+                {/*>*/}
+                {/*    <MicrosoftLogo/>*/}
+                {/*    Sign in with Microsoft*/}
+                {/*</button>*/}
             </form>
         </div>
     </div>);

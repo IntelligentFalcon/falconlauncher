@@ -29,4 +29,6 @@
     <string id="mod_loaders">ماد لودر ها</string>
     <string id="install_new_version">نصب ورژن جدید</string>
     <string id="minecraft_version">ماینکرفت</string>
+    <string id="login">ورود</string>
+    <string id="save_settings">ذخیره تنظیمات</string>
 </resources>

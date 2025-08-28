@@ -29,4 +29,6 @@
     <string id="mod_loaders">Mod Loaders</string>
     <string id="install_new_version">Install New Version</string>
     <string id="minecraft_version">Minecraft</string>
+    <string id="login">Log in</string>
+    <string id="save_settings">Save Settings</string>
 </resources>

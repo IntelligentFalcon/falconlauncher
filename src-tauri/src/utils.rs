@@ -198,3 +198,8 @@ pub fn convert_to_full_path(base_path: String, library_name: &String) -> String 
         base_path, group_id, artifact_id, version, artifact_version
     )
 }
+
+pub fn get_core_version(version_id: &String) -> String {
+    let args = version_id.split(".").collect::<Vec<_>>();
+    format!("{}.{}", args[0], args[1])
+}

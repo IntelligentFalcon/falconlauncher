@@ -4,20 +4,22 @@ use crate::directory_manager::{
     get_versions_directory,
 };
 use crate::game_launcher::update_download;
-use crate::structs::{
-    library_from_value, FabricInstaller, FabricLoader, LibraryRules, MinecraftVersion,
-};
+use crate::structs::{library_from_value, LibraryRules, MinecraftVersion};
 use crate::utils::{
-    convert_to_full_path, convert_to_full_url, get_current_os, verify_file_existence,
+    convert_to_full_path, convert_to_full_url, get_core_version, get_current_os,
+    verify_file_existence,
 };
 use crate::version_manager::{load_version_manifest, VersionLoader};
 
 use crate::jdk_manager::get_java;
+use crate::structs::fabric::{FabricInstaller, FabricLoader, FabricMinecraftVersion};
 use serde_json::Value;
 use std::collections::HashMap;
+use std::fmt::format;
 use std::fs;
 use std::fs::{create_dir_all, exists, File};
 use std::io::{BufRead, BufReader, Write};
+use std::iter::Map;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::sync::LazyLock;
@@ -27,10 +29,19 @@ use tokio::sync::Mutex;
 use zip::ZipArchive;
 use zip_extract::extract;
 
-pub static GLOBAL_CACHE: LazyLock<Mutex<Global>> =
-    LazyLock::new(|| Mutex::new(Global { forge: None }));
+pub static GLOBAL_CACHE: LazyLock<Mutex<Global>> = LazyLock::new(|| {
+    Mutex::new(Global {
+        forge: None,
+        fabric_loaders: None,
+        fabric_installers: None,
+        fabric_mc_versions: None,
+    })
+});
 pub struct Global {
     pub forge: Option<HashMap<String, Vec<String>>>,
+    pub fabric_loaders: Option<Vec<FabricLoader>>,
+    pub fabric_installers: Option<Vec<FabricInstaller>>,
+    pub fabric_mc_versions: Option<Vec<FabricMinecraftVersion>>,
 }
 
 async fn download_assets(value: &Value) {
@@ -317,13 +328,6 @@ pub async fn get_available_forge_versions(version_id: &String) -> Vec<String> {
         .unwrap_or(Vec::new())
 }
 
-// pub async fn get_forge_versions() -> Vec<String> {
-//     let url = "https://files.minecraftforge.net/net/minecraftforge/forge/maven-metadata.json";
-//     let map: HashMap<String, Vec<String>> = reqwest::get(url).await.unwrap().json().await.unwrap();
-//     map.iter()
-//         .map(|(key, val)| val[0].clone())
-//         .unwrap_or(Vec::new())
-// }
 pub async fn download_forge_version(version: &String, app_handle: &AppHandle) {
     let url = format!("https://maven.minecraftforge.net/net/minecraftforge/forge/{version}/forge-{version}-installer.jar");
     let launcher_dir = get_falcon_launcher_directory();
@@ -496,7 +500,7 @@ pub async fn download_forge_version(version: &String, app_handle: &AppHandle) {
     fs::remove_dir_all(launcher_dir.join("temp")).unwrap();
 }
 
-pub async fn download_fabric(version_loader: VersionLoader) {
+pub async fn download_fabric(version_loader: &VersionLoader) {
     let loaders_url = "https://meta.fabricmc.net/v2/versions/loader";
     let installers_url = "https://meta.fabricmc.net/v2/versions/installer";
     type FabricLoaders = Vec<FabricLoader>;
@@ -532,15 +536,16 @@ pub async fn download_fabric(version_loader: VersionLoader) {
     let mut child = Command::new(get_java("8".to_string()).await)
         .arg("-jar")
         .arg(installer_path_download.clone())
+        .arg("client")
         .arg("-mcVersion")
         .arg(version_loader.get_fabric_version_id())
         .arg("-loader")
         .arg(version_loader.get_fabric_loader_id())
         .arg("-dir")
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
         .arg(get_minecraft_directory().display().to_string())
         .current_dir(installer_path_download)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
         .spawn()
         .expect("Failed to spawn child process");
     let stderr = child.stderr.take().unwrap();
@@ -562,6 +567,35 @@ pub async fn download_fabric(version_loader: VersionLoader) {
     });
 }
 
-pub async fn get_available_fabric_versions() -> Vec<String>{
+pub async fn get_available_fabric_versions(version_id: &String) -> Vec<String> {
+    let mut global_cache = GLOBAL_CACHE.lock().await;
+    if global_cache.fabric_mc_versions.is_none() {
+        let url = "https://meta.fabricmc.net/v2/versions/game";
+        let map: Vec<FabricMinecraftVersion> =
+            reqwest::get(url).await.unwrap().json().await.unwrap();
+        global_cache.fabric_mc_versions = Some(map);
+    }
+    if global_cache.fabric_installers.is_none() {
+        let url = "https://meta.fabricmc.net/v2/versions/installer";
+        let map: Vec<FabricInstaller> = reqwest::get(url).await.unwrap().json().await.unwrap();
+        global_cache.fabric_installers = Some(map);
+    }
+    if global_cache.fabric_loaders.is_none() {
+        let url = "https://meta.fabricmc.net/v2/versions/loader";
+        let map: Vec<FabricLoader> = reqwest::get(url).await.unwrap().json().await.unwrap();
+        global_cache.fabric_loaders = Some(map);
+    }
 
+    let map = &global_cache.fabric_mc_versions;
+    let unwrapped_map = map.clone().unwrap_or(Vec::new());
+    let v = unwrapped_map.iter().find(|x| &x.version == version_id);
+    if v.is_none() {
+        return Vec::new();
+    }
+    let mut result = Vec::new();
+    let loaders = &global_cache.fabric_loaders;
+    for loader in loaders.clone().unwrap() {
+        result.push(format!("{}-{}", version_id.to_string(), loader.version));
+    }
+    result
 }

@@ -3,8 +3,8 @@ use crate::game_launcher::{launch_game, update_download_status};
 use std::collections::HashMap;
 
 use crate::directory_manager::get_falcon_launcher_directory;
-use crate::downloader::download_forge_version;
-use crate::structs::VersionBase::FORGE;
+use crate::downloader::{download_fabric, download_forge_version};
+use crate::structs::VersionBase::{FORGE, FABRIC};
 use crate::structs::{MinecraftVersion, VersionCategory};
 use crate::utils::is_connected_to_internet;
 use crate::version_manager::{
@@ -30,6 +30,7 @@ mod jdk_manager;
 mod profile_manager;
 mod structs;
 mod utils;
+
 mod version_manager;
 
 static CONFIG: LazyLock<Mutex<Config>> = LazyLock::new(|| Mutex::new(config::default_config()));
@@ -66,13 +67,6 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
-            let dialog = DialogBuilder::message()
-                            .set_level(MessageLevel::Info)
-                            .set_title("من را بخوان")
-                            .set_text("این یک خروجی آزمایشی از لانچر هستش لطفا اگه از جایی این رو دریافت کردین برای اپدیت های جدید حتما عضو چنل @IntelligentFalcon
-                            در تلگرام بشید چون  که هر چیزی توی این خروجی ممکنه تغییر کنه و یا حذف شده باشه و این که انتظار کار نکردن برخی چیزای داخل لانچر رو داشته باشید.").alert()
-                            .show()
-                            .unwrap();
             let fl_path = get_falcon_launcher_directory();
             let jdk_path = directory_manager::get_launcher_java_directory();
             create_dir_all(fl_path).unwrap();
@@ -212,6 +206,13 @@ async fn download_version(app_handle: AppHandle, version_loader: VersionLoader) 
         );
         download_forge_version(&version_loader.id, &app_handle).await;
     };
+    if version_loader.base == FABRIC {
+        println!(
+            "DEBUG: Fabric version detected! {} installing it rn!",
+            version_loader.id
+        );
+        download_fabric(&version_loader).await;
+    }
     let version = MinecraftVersion::from_id(version_id);
     let inherited_version = version.get_inherited();
     update_download_status("Downloading version...", &app_handle);

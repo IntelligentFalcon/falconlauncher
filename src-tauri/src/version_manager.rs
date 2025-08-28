@@ -1,11 +1,14 @@
 use crate::directory_manager::get_versions_directory;
-use crate::downloader::{download_file, get_available_fabric_versions, get_available_forge_versions};
+use crate::downloader::{
+    download_file, get_available_fabric_versions, get_available_forge_versions,
+};
 use crate::structs::VersionBase::{FABRIC, FORGE};
 use crate::structs::{VersionBase, VersionCategory};
 use crate::utils::load_json_url;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::cmp::PartialEq;
+use std::fmt::format;
 
 pub async fn load_version_manifest() -> Option<Value> {
     let url = "https://launchermeta.mojang.com/mc/game/version_manifest.json";
@@ -78,48 +81,44 @@ pub async fn get_categorized_versions(
         let id = ver.id.clone();
         let id_args: Vec<&str> = id.split(".").collect();
         let category = format!("{}.{}", id_args[0], id_args[1]);
-        if let Some(cat) = result.iter_mut().find(|x| x.name == category) {
-            cat.versions.push(VersionLoader {
-                id: id.clone(),
-                base: VersionBase::VANILLA,
-                date: ver.release_time.clone(),
-            });
-            if forge {
-                cat.versions.extend(
-                    get_available_forge_versions(&id)
-                        .await
-                        .iter()
-                        .map(|x| VersionLoader {
-                            id: x.clone(),
-                            base: FORGE,
-                            date: "FORGE".to_string(),
-                        })
-                        .collect::<Vec<_>>(),
-                );
-            }
-        } else {
-            let mut v = vec![VersionLoader {
-                id: id.clone(),
-                base: VersionBase::VANILLA,
-                date: ver.time.clone(),
-            }];
-            if forge {
-                v.extend(
-                    get_available_forge_versions(&id)
-                        .await
-                        .iter()
-                        .map(|x| VersionLoader {
-                            id: x.clone(),
-                            base: FORGE,
-                            date: "FORGE".to_string(),
-                        })
-                        .collect::<Vec<_>>(),
-                );
-            }
+        if result.iter_mut().find(|x| x.name == category).is_none() {
             result.push(VersionCategory {
-                name: category,
-                versions: v,
+                name: category.clone(),
+                versions: Vec::new(),
             });
+        }
+        let cat = result.iter_mut().find(|x| x.name == category).unwrap();
+        cat.versions.push(VersionLoader {
+            id: id.clone(),
+            base: VersionBase::VANILLA,
+            date: ver.release_time.clone(),
+        });
+        if forge {
+            cat.versions.extend(
+                get_available_forge_versions(&id)
+                    .await
+                    .iter()
+                    .map(|x| VersionLoader {
+                        id: x.clone(),
+                        base: FORGE,
+                        date: "FORGE".to_string(),
+                    })
+                    .collect::<Vec<_>>(),
+            );
+        }
+
+        if fabric {
+            cat.versions.extend(
+                get_available_fabric_versions(&id)
+                    .await
+                    .iter()
+                    .map(|x| VersionLoader {
+                        id: x.clone(),
+                        base: FABRIC,
+                        date: "FABRIC".to_string(),
+                    })
+                    .collect::<Vec<_>>(),
+            );
         }
     }
     result.push(VersionCategory {
@@ -130,20 +129,7 @@ pub async fn get_categorized_versions(
         name: "Alpha".to_string(),
         versions: old_alpha,
     });
-    //TODO: show fabric here using the 3 gold url
-    let cat = result.iter_mut().find(|x| x.name == category).unwrap();
-    for fab_ver in get_available_fabric_versions()
-    cat.versions.extend(
-        get_available_fabric_versions()
-            .await
-            .iter()
-            .map(|x| VersionLoader {
-                id: x.clone(),
-                base: FABRIC,
-                date: "FABRIC".to_string(),
-            })
-            .collect::<Vec<_>>(),
-    );
+
     result
 }
 pub async fn download_version_manifest() {
@@ -208,7 +194,10 @@ impl VersionLoader {
             }
             /// FIX THESE LATER
             VersionBase::NEOFORGE => self.id.clone(),
-            VersionBase::FABRIC => self.id.clone(),
+            FABRIC => {
+                let args = self.id.split("-").collect::<Vec<_>>();
+                format!("fabric-loader-{}-{}",args[1],args[0])
+            }
             VersionBase::LITELOADER => self.id.clone(),
         }
     }

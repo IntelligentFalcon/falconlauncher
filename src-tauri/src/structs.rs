@@ -1,3 +1,4 @@
+
 use crate::directory_manager::{get_libraries_directory, get_versions_directory};
 use crate::utils::{extend_once, get_current_os, parse_library_name_to_path};
 use crate::version_manager::{VersionInfo, VersionLoader};
@@ -289,19 +290,5 @@ pub struct VersionCategory {
     pub versions: Vec<VersionLoader>,
     pub name: String,
 }
-#[derive(Serialize, Deserialize)]
-pub struct FabricInstaller {
-    pub url: String,
-    pub maven: String,
-    pub version: String,
-    pub stable: bool,
-}
-#[derive(Serialize, Deserialize)]
 
-pub struct FabricLoader {
-    pub separator: String,
-    pub build: u16,
-    pub maven: String,
-    pub version: String,
-    pub stable: bool,
-}
+pub mod fabric;

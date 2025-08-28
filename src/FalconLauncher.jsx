@@ -147,7 +147,15 @@ function VersionSelectorPopup({isOpen, onClose, onVersionSelect, currentLanguage
                         </div>
                         <div className="flex items-center bg-zinc-700 p-3 rounded-md">
                             <input type="checkbox" id="fabric"
-                                   className="w-5 h-5 accent-indigo-500 cursor-pointer"/>
+                                   className="w-5 h-5 accent-indigo-500 cursor-pointer" onChange={e => {
+                                // HERE
+                                setShowFabric(prev => {
+                                    const newValue = !prev;
+                                    updateVersions(showForge, newValue, showNeoForge, showLiteLoader);
+
+                                    return newValue;
+                                });
+                            }}/>
                             <label htmlFor="fabric"
                                    className="mx-3 text-base cursor-pointer flex-grow">{t('install_fabric', currentLanguage)}</label>
                         </div>
@@ -228,7 +236,7 @@ function VersionSelectorPopup({isOpen, onClose, onVersionSelect, currentLanguage
 }
 
 
-export default function FalconClient() {
+export default function FalconLauncher() {
     const [activeTab, setActiveTab] = useState("home");
     const [downloadProgress, setDownloadProgress] = useState(0);
     const [isDownloading, setIsDownloading] = useState(false);
@@ -380,12 +388,12 @@ export default function FalconClient() {
                         active={activeTab === 'home'}
                         onClick={() => setActiveTab('home')}
                     />
-                    <NavItem
-                        icon={<Package size={18}/>}
-                        title={t("mods_tab")}
-                        active={activeTab === 'mods'}
-                        onClick={() => setActiveTab('mods')}
-                    />
+                    {/*<NavItem*/}
+                    {/*    icon={<Package size={18}/>}*/}
+                    {/*    title={t("mods_tab")}*/}
+                    {/*    active={activeTab === 'mods'}*/}
+                    {/*    onClick={() => setActiveTab('mods')}*/}
+                    {/*/>*/}
                     <NavItem
                         icon={<Settings size={18}/>}
                         title={t("settings_tab")}
@@ -455,21 +463,9 @@ function NavItem({icon, title, active, onClick}) {
 
 function HomeTab() {
     const newsArticles = [{
-        title: 'Minecraft 1.20.4 Released',
-        content: 'The latest version brings new features and bug fixes',
-        date: '3 days ago'
-    }, {
-        title: 'Community Event: Building Competition',
-        content: 'Join our weekly building competition',
-        date: '1 week ago'
-    }, {
-        title: 'New Mod Spotlight: Enhanced Biomes',
-        content: 'Discover incredible new biomes with this mod',
-        date: '2 weeks ago'
-    }, {
-        title: 'New Mod Spotlight: Enhanced Biomes',
-        content: 'Discover incredible new biomes with this mod',
-        date: '2 weeks ago'
+        title: 'مهم',
+        content: 'در نسخه الفا ممکنه مشکلات زیادی ، کم و کسری زیادی باشه اگه چیزی به ذهنتون رسید و فیدبکی داشتید از گفتنش پرهیز نکنید @IntelligentFalcon',
+        date: 'کمی پیش :)'
     }];
 
     return (<div className="p-8">
@@ -581,24 +577,24 @@ function SettingsTab() {
                 setRamUsage={setRamUsage}
             />
 
-            <div className="bg-gray-800 p-6 rounded">
-                <h3 className="text-lg font-semibold mb-1">{t("launch_options_title")}</h3>
-                <p className="text-sm text-gray-400 mb-4">{t("launch_options_description")}</p>
-                <div className="space-y-3">
-                    <div className="flex items-center">
-                        <input type="checkbox" id="fullscreen" className="mr-2"/>
-                        <label htmlFor="fullscreen">{t("lo_fullscreen")}</label>
-                    </div>
-                    <div className="flex items-center">
-                        <input type="checkbox" id="close-launcher" className="mr-2"/>
-                        <label htmlFor="close-launcher">{t("lo_close_on_start")}</label>
-                    </div>
-                    <div className="flex items-center">
-                        <input type="checkbox" id="check-updates" className="mr-2"/>
-                        <label htmlFor="check-updates">{t("startup_update_check")}</label>
-                    </div>
-                </div>
-            </div>
+            {/*<div className="bg-gray-800 p-6 rounded">*/}
+            {/*    <h3 className="text-lg font-semibold mb-1">{t("launch_options_title")}</h3>*/}
+            {/*    <p className="text-sm text-gray-400 mb-4">{t("launch_options_description")}</p>*/}
+            {/*    <div className="space-y-3">*/}
+            {/*        <div className="flex items-center">*/}
+            {/*            <input type="checkbox" id="fullscreen" className="mr-2"/>*/}
+            {/*            <label htmlFor="fullscreen">{t("lo_fullscreen")}</label>*/}
+            {/*        </div>*/}
+            {/*        <div className="flex items-center">*/}
+            {/*            <input type="checkbox" id="close-launcher" className="mr-2"/>*/}
+            {/*            <label htmlFor="close-launcher">{t("lo_close_on_start")}</label>*/}
+            {/*        </div>*/}
+            {/*        <div className="flex items-center">*/}
+            {/*            <input type="checkbox" id="check-updates" className="mr-2"/>*/}
+            {/*            <label htmlFor="check-updates">{t("startup_update_check")}</label>*/}
+            {/*        </div>*/}
+            {/*    </div>*/}
+            {/*</div>*/}
 
             <div className="flex justify-end">
                 <button className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded" onClick={saveSettings}>

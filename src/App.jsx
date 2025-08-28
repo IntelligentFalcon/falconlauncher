@@ -1,9 +1,9 @@
-import FalconClient from './FalconClient'
+import FalconLauncher from './FalconLauncher.jsx'
 
 function App() {
   return (
     <div className="min-h-screen bg-gray-900">
-      <FalconClient />
+      <FalconLauncher />
     </div>
   )
 }
