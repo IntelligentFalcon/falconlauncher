@@ -4,10 +4,14 @@ import {XMLParser} from "fast-xml-parser";
 const parser = new XMLParser({
     ignoreAttributes: false,
     attributeNamePrefix: "@_",
-    isArray: (name) => name === "string" // force <string> to always be an array
+    isArray: (name) => name === "string"
 });
 let translations = {};
 let currentLang = "en";
+
+export async function reload() {
+    await loadLanguage(currentLang);
+}
 
 export async function loadLanguage(lang) {
     const res = await fetch(`/${lang}.xml`);

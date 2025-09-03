@@ -1,6 +1,6 @@
 [package]
 name = "falconlauncher"
-version = "0.1.0"
+version = "0.0.1"
 description = "Iranian opensource minecraft launcher"
 authors = ["Mmd4J", "Maploop", "MrRsd"]
 edition = "2021"

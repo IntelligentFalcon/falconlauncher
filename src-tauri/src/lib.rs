@@ -1,11 +1,11 @@
 use crate::config::{load_config, Config};
 use crate::game_launcher::{launch_game, update_download_status};
 use std::collections::HashMap;
-
-use crate::directory_manager::get_falcon_launcher_directory;
+use crate::mod_manager::load_mods;
+use crate::directory_manager::{create_necessary_dirs, get_falcon_launcher_directory};
 use crate::downloader::{download_fabric, download_forge_version};
-use crate::structs::VersionBase::{FORGE, FABRIC};
-use crate::structs::{MinecraftVersion, VersionCategory};
+use crate::structs::VersionBase::{FABRIC, FORGE};
+use crate::structs::{MinecraftVersion, ModInfo, VersionCategory};
 use crate::utils::is_connected_to_internet;
 use crate::version_manager::{
     download_version_manifest, get_categorized_versions, VersionInfo, VersionLoader,
@@ -21,11 +21,11 @@ use std::sync::LazyLock;
 use tauri::async_runtime::{block_on, Mutex};
 use tauri::{command, AppHandle, LogicalSize, Manager};
 use utils::load_versions;
-
 mod config;
 mod directory_manager;
 mod downloader;
 mod game_launcher;
+mod mod_manager;
 mod jdk_manager;
 mod profile_manager;
 mod structs;
@@ -60,6 +60,10 @@ async fn get_versions() -> Vec<String> {
         .collect()
 }
 #[command]
+async fn get_mods() -> Vec<ModInfo> {
+    load_mods()
+}
+#[command]
 async fn reload_versions() {}
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -73,11 +77,11 @@ pub fn run() {
             create_dir_all(jdk_path).unwrap();
 
             block_on(async move {
-                load_config(&mut *CONFIG.lock().await).await;
+                create_necessary_dirs().await;
                 if is_connected_to_internet().await {
                     download_version_manifest().await;
                 }
-
+                load_config(&mut *CONFIG.lock().await).await;
             });
 
             let handle = app.handle();
@@ -115,6 +119,7 @@ pub fn run() {
             reload_versions,
             get_ram_usage,
             save,
+            get_mods,
             download_version,
             get_profiles,
             get_installed_versions,

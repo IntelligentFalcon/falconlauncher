@@ -1,4 +1,3 @@
-
 use crate::directory_manager::{get_libraries_directory, get_versions_directory};
 use crate::utils::{extend_once, get_current_os, parse_library_name_to_path};
 use crate::version_manager::{VersionInfo, VersionLoader};
@@ -261,20 +260,28 @@ impl MinecraftVersion {
         libraries
     }
 }
-
+#[derive(Debug,Serialize,Deserialize)]
 pub struct ModInfo {
     pub path: String,
     pub mod_id: String,
-    pub display_name: String,
+    pub name: String,
     pub version: String,
+    pub description: String,
 }
 impl ModInfo {
-    pub fn new(path: String, mod_id: String, display_name: String, version: String) -> Self {
+    pub fn new(
+        path: String,
+        mod_id: String,
+        display_name: String,
+        version: String,
+        description: String,
+    ) -> Self {
         Self {
             path,
             mod_id,
-            display_name,
+            name: display_name,
             version,
+            description,
         }
     }
 }
@@ -292,3 +299,4 @@ pub struct VersionCategory {
 }
 
 pub mod fabric;
+pub mod mod_identifiers;

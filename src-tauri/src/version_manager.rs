@@ -196,7 +196,7 @@ impl VersionLoader {
             VersionBase::NEOFORGE => self.id.clone(),
             FABRIC => {
                 let args = self.id.split("-").collect::<Vec<_>>();
-                format!("fabric-loader-{}-{}",args[1],args[0])
+                format!("fabric-loader-{}-{}", args[1], args[0])
             }
             VersionBase::LITELOADER => self.id.clone(),
         }

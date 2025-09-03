@@ -9,7 +9,6 @@ use std::time::Duration;
 use tauri::async_runtime::block_on;
 use tauri::ipc::RuntimeCapability;
 
-
 mod config;
 mod directory_manager;
 mod downloader;
@@ -27,13 +26,6 @@ fn main() {
     falcon_lib::run()
 }
 
-#[test]
-fn test_download_forge(){
-    block_on(async {
-        download_forge_version(&"1.12.2-14.23.0.2486".to_string()).await;
-
-    });
-}
 #[test]
 fn test_get_mods() {
     let mods = load_mods();

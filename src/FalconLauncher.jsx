@@ -1,9 +1,10 @@
 import {useCallback, useEffect, useState} from 'react';
-import {Grid, Home, List, Package, Play, Settings, X} from 'lucide-react';
+import {Grid, Home, List, Package, Play, Settings, X, Plus} from 'lucide-react';
 import {invoke} from "@tauri-apps/api/core";
 import {listen} from '@tauri-apps/api/event';
 import LoginPopup from './LoginPopup';
 import {getCurrentLang, loadLanguage, t} from "./i18n";
+import {publicDir} from "@tauri-apps/api/path";
 
 const FlagIran = ({className}) => (
     <svg viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="img" className={className}
@@ -261,6 +262,29 @@ export default function FalconLauncher() {
         }
     }, [selectedVersion]);
 
+    function reloadProfiles() {
+        useEffect(() => {
+            invoke("get_profiles").then((v) => {
+                setProfiles(v);
+                if (v.length > 0) {
+                    invoke("get_username").then(setUsername).catch(console.error);
+                }
+            }).catch(console.error);
+        }, [profiles, username]);
+    }
+
+    function reloadLanguage() {
+        useEffect(() => {
+            invoke("get_language").then(lang => {
+                setCurrentLanguage(lang);
+                loadLanguage(lang).catch("Failed to load the language");
+            }).catch(console.error);
+        }, [currentLanguage]);
+    }
+
+    reloadLanguage();
+    reloadProfiles();
+
     useEffect(() => {
         // // Mock translations for popup
         // const newTranslations = {
@@ -269,17 +293,6 @@ export default function FalconLauncher() {
         // };
         // Object.assign(t, newTranslations);
 
-        invoke("get_language").then(lang => {
-            setCurrentLanguage(lang);
-            loadLanguage(lang).catch("Failed to load the language");
-        }).catch(console.error);
-
-        invoke("get_profiles").then((v) => {
-            setProfiles(v);
-            if (v.length > 0) {
-                invoke("get_username").then(setUsername).catch(console.error);
-            }
-        }).catch(console.error);
 
         loadVersions().then(() => console.log("loaded versions!")).catch("Error!");
 
@@ -322,7 +335,7 @@ export default function FalconLauncher() {
         setCurrentLanguage(lang);
         await invoke("set_language", {lang});
         await invoke("save");
-        loadLanguage(lang).catch(console.error);
+        await loadLanguage(lang).catch(console.error);
         window.location.reload();
     };
 
@@ -388,12 +401,12 @@ export default function FalconLauncher() {
                         active={activeTab === 'home'}
                         onClick={() => setActiveTab('home')}
                     />
-                    {/*<NavItem*/}
-                    {/*    icon={<Package size={18}/>}*/}
-                    {/*    title={t("mods_tab")}*/}
-                    {/*    active={activeTab === 'mods'}*/}
-                    {/*    onClick={() => setActiveTab('mods')}*/}
-                    {/*/>*/}
+                    <NavItem
+                        icon={<Package size={18}/>}
+                        title={t("mods_tab")}
+                        active={activeTab === 'mods'}
+                        onClick={() => setActiveTab('mods')}
+                    />
                     <NavItem
                         icon={<Settings size={18}/>}
                         title={t("settings_tab")}
@@ -428,7 +441,10 @@ export default function FalconLauncher() {
             </main>
         </div>
 
-        <LoginPopup isOpen={isLoginPopupOpen} onClose={() => setIsLoginPopupPopupOpen(false)}/>
+        <LoginPopup isOpen={isLoginPopupOpen} onClose={() => {
+            setIsLoginPopupPopupOpen(false);
+            reloadProfiles();
+        }}/>
         <VersionSelectorPopup
             isOpen={isVersionSelectorOpen}
             onClose={() => setIsVersionSelectorOpen(false)}
@@ -481,23 +497,85 @@ function HomeTab() {
     </div>);
 }
 
+function AddModPopup({ isOpen, onClose }) {
+    if (!isOpen) {
+        return null;
+    }
+
+    const handleInstallMod = () => {
+        // Here you would handle the file selection and invoke a Tauri command to install the mod
+        // For example:
+        // open({
+        //     multiple: false,
+        //     filters: [{
+        //         name: 'Minecraft Mod',
+        //         extensions: ['jar']
+        //     }]
+        // }).then(file => {
+        //     if (file) {
+        //         invoke("install_mod", { path: file.path }).then(() => {
+        //             onClose();
+        //             // You might want to refresh the mods list here
+        //         });
+        //     }
+        // });
+        console.log("Install mod clicked");
+        onClose();
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50">
+            <div className="bg-gray-800 p-8 rounded-lg shadow-xl w-full max-w-sm relative text-gray-200">
+                <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors">
+                    <X size={24} />
+                </button>
+                <h2 className="text-3xl font-bold text-center mb-6">{t("install_mod")}</h2>
+                <button
+                    onClick={handleInstallMod}
+                    className="w-full p-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded transition-colors"
+                >
+                    {t("select_mod_file")}
+                </button>
+            </div>
+        </div>
+    );
+}
+
 function ModsTab() {
-    const mods = [{
-        name: 'Optifine', description: 'Optimize performance and add features', version: '1.20.4'
-    }, {name: 'JEI (Just Enough Items)', description: 'View all items and recipes', version: '1.20.4'}, {
-        name: 'Sodium', description: 'Performance optimization', version: '1.20.4'
-    }, {name: 'Fabric API', description: 'Core API for Fabric mods', version: '1.20.4'}, {
-        name: 'Litematica', description: 'Schematic mod for building', version: '1.20.4'
-    },];
+    const [mods,setMods] = useState([]);
+    const [isAddModPopupOpen, setAddModPopupOpen] = useState(false);
+
+    useEffect(() => {
+        invoke("get_mods").then((v) => {
+            setMods(v);
+        }).finally(() => {
+            console.log("Loaded mods");
+        });
+    }, [mods])
+
+    const handleToggleMod = (mod, enabled) => {
+        // Here you would invoke a Tauri command to enable/disable the mod
+        console.log(`Toggling mod ${mod.name} to ${enabled}`);
+        // For now, we'll just update the local state for visual feedback
+        setMods(mods.map(m => m.name === mod.name ? { ...m, enabled } : m));
+    };
 
     return (<div className="p-6">
         <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold">{t("mod_manager")}</h2>
-            <input
-                type="text"
-                placeholder={t("mod_search")}
-                className="w-64 p-2 bg-gray-800 border border-gray-700 rounded"
-            />
+            <div className="flex items-center">
+                <input
+                    type="text"
+                    placeholder={t("mod_search")}
+                    className="w-64 p-2 bg-gray-800 border border-gray-700 rounded"
+                />
+                 <button
+                    onClick={() => setAddModPopupOpen(true)}
+                    className="ml-2 p-2 bg-indigo-500 hover:bg-indigo-600 rounded text-white"
+                >
+                    <Plus size={20} />
+                </button>
+            </div>
         </div>
 
         <div className="space-y-3">
@@ -509,12 +587,23 @@ function ModsTab() {
                     </div>
                     <div className="flex items-center">
                         <span className="text-xs text-indigo-400 mr-3">{mod.version}</span>
-                        <button className="px-3 py-1 bg-indigo-500 hover:bg-indigo-600 rounded text-sm">
-                            Install
-                        </button>
+                        <label htmlFor={`mod-toggle-${index}`} className="flex items-center cursor-pointer">
+                            <div className="relative">
+                                <input
+                                    type="checkbox"
+                                    id={`mod-toggle-${index}`}
+                                    className="sr-only"
+                                    checked={mod.enabled}
+                                    onChange={(e) => handleToggleMod(mod, e.target.checked)}
+                                />
+                                <div className="block bg-gray-600 w-14 h-8 rounded-full"></div>
+                                <div className="dot absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition-transform"></div>
+                            </div>
+                        </label>
                     </div>
                 </div>))}
         </div>
+        <AddModPopup isOpen={isAddModPopupOpen} onClose={() => setAddModPopupOpen(false)} />
     </div>);
 }
 
@@ -578,22 +667,22 @@ function SettingsTab() {
             />
 
             {/*<div className="bg-gray-800 p-6 rounded">*/}
-            {/*    <h3 className="text-lg font-semibold mb-1">{t("launch_options_title")}</h3>*/}
-            {/*    <p className="text-sm text-gray-400 mb-4">{t("launch_options_description")}</p>*/}
-            {/*    <div className="space-y-3">*/}
-            {/*        <div className="flex items-center">*/}
-            {/*            <input type="checkbox" id="fullscreen" className="mr-2"/>*/}
-            {/*            <label htmlFor="fullscreen">{t("lo_fullscreen")}</label>*/}
-            {/*        </div>*/}
-            {/*        <div className="flex items-center">*/}
-            {/*            <input type="checkbox" id="close-launcher" className="mr-2"/>*/}
-            {/*            <label htmlFor="close-launcher">{t("lo_close_on_start")}</label>*/}
-            {/*        </div>*/}
-            {/*        <div className="flex items-center">*/}
-            {/*            <input type="checkbox" id="check-updates" className="mr-2"/>*/}
-            {/*            <label htmlFor="check-updates">{t("startup_update_check")}</label>*/}
-            {/*        </div>*/}
-            {/*    </div>*/}
+            {/* <h3 className="text-lg font-semibold mb-1">{t("launch_options_title")}</h3>*/}
+            {/* <p className="text-sm text-gray-400 mb-4">{t("launch_options_description")}</p>*/}
+            {/* <div className="space-y-3">*/}
+            {/* <div className="flex items-center">*/}
+            {/* <input type="checkbox" id="fullscreen" className="mr-2"/>*/}
+            {/* <label htmlFor="fullscreen">{t("lo_fullscreen")}</label>*/}
+            {/* </div>*/}
+            {/* <div className="flex items-center">*/}
+            {/* <input type="checkbox" id="close-launcher" className="mr-2"/>*/}
+            {/* <label htmlFor="close-launcher">{t("lo_close_on_start")}</label>*/}
+            {/* </div>*/}
+            {/* <div className="flex items-center">*/}
+            {/* <input type="checkbox" id="check-updates" className="mr-2"/>*/}
+            {/* <label htmlFor="check-updates">{t("startup_update_check")}</label>*/}
+            {/* </div>*/}
+            {/* </div>*/}
             {/*</div>*/}
 
             <div className="flex justify-end">

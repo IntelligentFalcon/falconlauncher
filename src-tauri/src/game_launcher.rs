@@ -3,10 +3,7 @@ use crate::directory_manager::*;
 use crate::downloader::{download_forge_version, download_version};
 use crate::jdk_manager::get_java;
 use crate::profile_manager::get_profile;
-use crate::utils::{
-    extend_once, get_current_os, is_connected_to_internet,
-    vec_to_string,
-};
+use crate::utils::{extend_once, get_current_os, is_connected_to_internet, vec_to_string};
 use serde_json::Value;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;

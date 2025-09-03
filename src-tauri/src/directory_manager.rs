@@ -1,6 +1,7 @@
 use crate::utils::get_current_os;
 use std::env::{home_dir, var_os};
 use std::path::PathBuf;
+use tokio::fs::create_dir_all;
 
 pub fn get_minecraft_directory() -> PathBuf {
     let os = get_current_os();
@@ -48,4 +49,14 @@ pub fn get_profiles_file() -> PathBuf {
 
 pub fn get_temp_directory() -> PathBuf {
     get_falcon_launcher_directory().join("temp")
+}
+
+pub async fn create_necessary_dirs() {
+    create_dir_all(get_versions_directory()).await.unwrap();
+    create_dir_all(get_mods_folder()).await.unwrap();
+    create_dir_all(get_falcon_launcher_directory())
+        .await
+        .unwrap();
+    create_dir_all(get_assets_directory()).await.unwrap();
+    create_dir_all(get_launcher_java_directory()).await.unwrap();
 }

@@ -31,6 +31,9 @@ fn load_downloaded_versions() {
     }
 }
 pub fn get_downloaded_versions() -> Vec<MinecraftVersion> {
+    if !get_versions_directory().exists() {
+        return Vec::new();
+    }
     get_versions_directory()
         .read_dir()
         .unwrap()

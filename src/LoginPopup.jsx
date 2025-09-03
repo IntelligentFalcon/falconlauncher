@@ -1,6 +1,7 @@
 import {X} from 'lucide-react';
 import {invoke} from "@tauri-apps/api/core";
 import {useState} from "react";
+import {t} from "./i18n.js";
 
 const MicrosoftLogo = () => (<svg width="21" height="21" viewBox="0 0 21 21" className="mr-2" aria-hidden="true">
     <path fill="#f25022" d="M1 1h9v9H1z"/>
