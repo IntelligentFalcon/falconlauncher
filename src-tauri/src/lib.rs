@@ -1,28 +1,25 @@
 use crate::config::{load_config, Config};
-use crate::directory_manager::{create_necessary_dirs, get_falcon_launcher_directory};
+use crate::directory_manager::{
+    create_necessary_dirs, get_falcon_launcher_directory, get_mods_folder,
+};
 use crate::downloader::{download_fabric, download_forge_version};
 use crate::game_launcher::{launch_game, update_download_status};
 use crate::mod_manager::{load_mods, set_mod_enabled};
 use crate::structs::VersionBase::{FABRIC, FORGE};
 use crate::structs::{MinecraftVersion, ModInfo, VersionCategory};
 use crate::utils::is_connected_to_internet;
-use crate::version_manager::{
-    download_version_manifest, get_categorized_versions, VersionInfo, VersionLoader,
-};
-use native_dialog::{DialogBuilder, MessageLevel};
-use serde::de::value::BoolDeserializer;
-use serde_json::Value;
-use std::collections::HashMap;
-use std::fs::create_dir_all;
+use crate::version_manager::{download_version_manifest, get_categorized_versions, VersionLoader};
+use std::fs::{create_dir_all, rename};
 use std::io::Write;
 use std::ops::Deref;
 use std::string::ToString;
 use std::sync::LazyLock;
 use tauri::async_runtime::{block_on, Mutex};
 use tauri::{command, AppHandle, LogicalSize, Manager};
+use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_log::{Target, TargetKind};
+use tokio::fs::copy;
 
-use utils::load_versions;
 mod config;
 mod directory_manager;
 mod downloader;
@@ -75,6 +72,7 @@ async fn reload_versions() {}
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_log::Builder::new().build())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_opener::init())
@@ -144,7 +142,8 @@ pub fn run() {
             create_offline_profile,
             set_language,
             load_categorized_versions,
-            get_language
+            get_language,
+            install_mod_from_local
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -219,6 +218,21 @@ async fn get_language() -> String {
 }
 
 #[command]
+async fn install_mod_from_local(app: AppHandle) {
+    let paths = app
+        .dialog()
+        .file()
+        .add_filter("Minecraft mods".to_string(), &[&"jar", &"disabled"])
+        .blocking_pick_files()
+        .unwrap();
+    for path in paths {
+        let p = path.as_path().unwrap();
+        let file_name = p.file_name().unwrap().to_str().unwrap();
+        let new_path = get_mods_folder().join(file_name);
+        copy(p, new_path).await;
+    }
+}
+#[command]
 async fn download_version(app_handle: AppHandle, version_loader: VersionLoader) {
     let version_id = version_loader.get_installed_id();
     if version_loader.base == FORGE {
@@ -240,12 +254,11 @@ async fn download_version(app_handle: AppHandle, version_loader: VersionLoader) 
     update_download_status("Downloading version...", &app_handle);
     downloader::download_version(&version, &app_handle).await;
     downloader::download_version(&inherited_version, &app_handle).await;
-    let dialog = DialogBuilder::message()
-        .set_title("Done!")
-        .set_text("Successfully installed the selected version you can now play it")
-        .alert()
-        .show()
-        .unwrap();
+    let dialog = app_handle
+        .dialog()
+        .message("Successfully installed the selected version you can now play it")
+        .title("Done!")
+        .blocking_show();
     let mut conf = CONFIG.lock().await;
     conf.versions.push(version);
 }

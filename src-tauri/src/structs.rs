@@ -259,9 +259,8 @@ impl MinecraftVersion {
         libraries = extend_once(libraries, libraries_2);
         libraries
     }
-
 }
-#[derive(Deserialize,Serialize)]
+#[derive(Deserialize, Serialize)]
 pub struct ModInfo {
     pub path: String,
     pub mod_id: String,
@@ -271,10 +270,10 @@ pub struct ModInfo {
     #[serde(default = "default_true")]
     pub enabled: bool,
 }
-pub fn default_true() -> bool{
+pub fn default_true() -> bool {
     true
 }
-impl ModInfo  {
+impl ModInfo {
     pub fn new(
         path: String,
         mod_id: String,

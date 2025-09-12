@@ -336,7 +336,6 @@ export default function FalconLauncher() {
         await invoke("set_language", {lang});
         await invoke("save");
         await loadLanguage(lang).catch(console.error);
-        window.location.reload();
     };
 
     return (<div className="flex flex-col w-full h-screen bg-gray-900 text-gray-200 overflow-hidden">
@@ -519,6 +518,7 @@ function AddModPopup({isOpen, onClose}) {
         //         });
         //     }
         // });
+        invoke("install_mod_from_local").catch("Failed to install mod from local");
         console.log("Install mod clicked");
         onClose();
     };

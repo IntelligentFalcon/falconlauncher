@@ -14,6 +14,7 @@
     "core:window:allow-set-maximizable",
     "core:window:allow-set-focus",
     "notification:default",
-    "log:default"
+    "log:default",
+    "dialog:default"
   ]
 }
