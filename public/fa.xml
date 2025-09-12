@@ -31,4 +31,7 @@
     <string id="minecraft_version">ماینکرفت</string>
     <string id="login">ورود</string>
     <string id="save_settings">ذخیره تنظیمات</string>
+    <string id="install_mod">نصب ماد</string>
+    <string id="select_mod_file">انتخاب ماد از طریق فایل</string>
+
 </resources>
