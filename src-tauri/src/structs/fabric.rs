@@ -22,3 +22,4 @@ pub struct FabricInstaller {
     pub version: String,
     pub stable: bool,
 }
+

@@ -1,9 +1,8 @@
 use crate::config::{load_config, Config};
-use crate::game_launcher::{launch_game, update_download_status};
-use std::collections::HashMap;
-use crate::mod_manager::load_mods;
 use crate::directory_manager::{create_necessary_dirs, get_falcon_launcher_directory};
 use crate::downloader::{download_fabric, download_forge_version};
+use crate::game_launcher::{launch_game, update_download_status};
+use crate::mod_manager::{load_mods, set_mod_enabled};
 use crate::structs::VersionBase::{FABRIC, FORGE};
 use crate::structs::{MinecraftVersion, ModInfo, VersionCategory};
 use crate::utils::is_connected_to_internet;
@@ -13,6 +12,7 @@ use crate::version_manager::{
 use native_dialog::{DialogBuilder, MessageLevel};
 use serde::de::value::BoolDeserializer;
 use serde_json::Value;
+use std::collections::HashMap;
 use std::fs::create_dir_all;
 use std::io::Write;
 use std::ops::Deref;
@@ -20,13 +20,15 @@ use std::string::ToString;
 use std::sync::LazyLock;
 use tauri::async_runtime::{block_on, Mutex};
 use tauri::{command, AppHandle, LogicalSize, Manager};
+use tauri_plugin_log::{Target, TargetKind};
+
 use utils::load_versions;
 mod config;
 mod directory_manager;
 mod downloader;
 mod game_launcher;
-mod mod_manager;
 mod jdk_manager;
+mod mod_manager;
 mod profile_manager;
 mod structs;
 mod utils;
@@ -35,6 +37,10 @@ mod version_manager;
 
 static CONFIG: LazyLock<Mutex<Config>> = LazyLock::new(|| Mutex::new(config::default_config()));
 
+#[command]
+async fn toggle_mod(mod_info: ModInfo, toggle: bool) {
+    set_mod_enabled(mod_info, toggle);
+}
 #[command]
 async fn play_button_handler(app: AppHandle, selected_version: String) {
     launch_game(app, selected_version, &*CONFIG.lock().await).await;
@@ -63,13 +69,23 @@ async fn get_versions() -> Vec<String> {
 async fn get_mods() -> Vec<ModInfo> {
     load_mods()
 }
+
 #[command]
 async fn reload_versions() {}
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_log::Builder::new().build())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(
+            tauri_plugin_log::Builder::new()
+                .target(Target::new(TargetKind::Folder {
+                    path: get_falcon_launcher_directory(),
+                    file_name: Some("logs".to_string()),
+                }))
+                .build(),
+        )
         .setup(|app| {
             let fl_path = get_falcon_launcher_directory();
             let jdk_path = directory_manager::get_launcher_java_directory();
@@ -118,6 +134,7 @@ pub fn run() {
             get_username,
             reload_versions,
             get_ram_usage,
+            toggle_mod,
             save,
             get_mods,
             download_version,

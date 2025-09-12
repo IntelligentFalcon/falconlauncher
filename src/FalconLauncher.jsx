@@ -497,7 +497,7 @@ function HomeTab() {
     </div>);
 }
 
-function AddModPopup({ isOpen, onClose }) {
+function AddModPopup({isOpen, onClose}) {
     if (!isOpen) {
         return null;
     }
@@ -526,8 +526,9 @@ function AddModPopup({ isOpen, onClose }) {
     return (
         <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50">
             <div className="bg-gray-800 p-8 rounded-lg shadow-xl w-full max-w-sm relative text-gray-200">
-                <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors">
-                    <X size={24} />
+                <button onClick={onClose}
+                        className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors">
+                    <X size={24}/>
                 </button>
                 <h2 className="text-3xl font-bold text-center mb-6">{t("install_mod")}</h2>
                 <button
@@ -542,22 +543,26 @@ function AddModPopup({ isOpen, onClose }) {
 }
 
 function ModsTab() {
-    const [mods,setMods] = useState([]);
+    const [mods, setMods] = useState([]);
     const [isAddModPopupOpen, setAddModPopupOpen] = useState(false);
+        useEffect(() => {
+            if (mods.length < 1)
 
-    useEffect(() => {
-        invoke("get_mods").then((v) => {
-            setMods(v);
-        }).finally(() => {
-            console.log("Loaded mods");
-        });
-    }, [mods])
+                invoke("get_mods").then((v) => {
+                setMods(v);
+            }).finally(() => {
+
+                console.log("Loaded mods");
+            });
+        }, [mods])
 
     const handleToggleMod = (mod, enabled) => {
         // Here you would invoke a Tauri command to enable/disable the mod
+        mod.enabled = enabled;
         console.log(`Toggling mod ${mod.name} to ${enabled}`);
+        invoke("toggle_mod", {modInfo: mod, toggle: enabled}).catch("Error!");
         // For now, we'll just update the local state for visual feedback
-        setMods(mods.map(m => m.name === mod.name ? { ...m, enabled } : m));
+        setMods(mods.map(m => m.name === mod.name ? mod : m));
     };
 
     return (<div className="p-6">
@@ -569,11 +574,11 @@ function ModsTab() {
                     placeholder={t("mod_search")}
                     className="w-64 p-2 bg-gray-800 border border-gray-700 rounded"
                 />
-                 <button
+                <button
                     onClick={() => setAddModPopupOpen(true)}
                     className="ml-2 p-2 bg-indigo-500 hover:bg-indigo-600 rounded text-white"
                 >
-                    <Plus size={20} />
+                    <Plus size={20}/>
                 </button>
             </div>
         </div>
@@ -597,13 +602,14 @@ function ModsTab() {
                                     onChange={(e) => handleToggleMod(mod, e.target.checked)}
                                 />
                                 <div className="block bg-gray-600 w-14 h-8 rounded-full"></div>
-                                <div className="dot absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition-transform"></div>
+                                <div
+                                    className="dot absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition-transform"></div>
                             </div>
                         </label>
                     </div>
                 </div>))}
         </div>
-        <AddModPopup isOpen={isAddModPopupOpen} onClose={() => setAddModPopupOpen(false)} />
+        <AddModPopup isOpen={isAddModPopupOpen} onClose={() => setAddModPopupOpen(false)}/>
     </div>);
 }
 

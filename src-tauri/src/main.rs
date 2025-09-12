@@ -5,6 +5,7 @@ use crate::downloader::download_forge_version;
 use crate::mod_manager::load_mods;
 use discord_sdk::activity::{ActivityBuilder, Assets};
 use discord_sdk::DiscordHandler;
+use std::fs::File;
 use std::time::Duration;
 use tauri::async_runtime::block_on;
 use tauri::ipc::RuntimeCapability;

@@ -543,7 +543,7 @@ pub async fn download_fabric(version_loader: &VersionLoader) {
         .arg(version_loader.get_fabric_loader_id())
         .arg("-dir")
         .arg(get_minecraft_directory().display().to_string())
-        .current_dir(installer_path_download)
+        .current_dir(PathBuf::from(installer_path_download).parent().unwrap().to_str().unwrap())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()

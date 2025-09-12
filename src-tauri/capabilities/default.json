@@ -13,6 +13,7 @@
     "core:window:allow-center",
     "core:window:allow-set-maximizable",
     "core:window:allow-set-focus",
-    "notification:default"
+    "notification:default",
+    "log:default"
   ]
 }
