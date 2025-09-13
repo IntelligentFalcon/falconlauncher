@@ -609,7 +609,10 @@ function ModsTab() {
                     </div>
                 </div>))}
         </div>
-        <AddModPopup isOpen={isAddModPopupOpen} onClose={() => setAddModPopupOpen(false)}/>
+        <AddModPopup isOpen={isAddModPopupOpen} onClose={() => {
+            setMods([]);
+            setAddModPopupOpen(false);
+        }}/>
     </div>);
 }
 
