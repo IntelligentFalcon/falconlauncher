@@ -1,5 +1,5 @@
 import {useCallback, useEffect, useState} from 'react';
-import {Grid, Home, List, Package, Play, Settings, X, Plus} from 'lucide-react';
+import {Grid, Home, List, Package, Play, Settings, X, Plus, Trash2} from 'lucide-react';
 import {invoke} from "@tauri-apps/api/core";
 import {listen} from '@tauri-apps/api/event';
 import LoginPopup from './LoginPopup';
@@ -322,9 +322,9 @@ export default function FalconLauncher() {
         if (!selectedVersion && versions.length > 0) setSelectedVersion(versions[0]);
         setIsDownloading(true);
         try {
-            await invoke("set_username", {username});
+            await invoke("set_username", {username: username});
             await invoke("save");
-            await invoke("play_button_handler", {selectedVersion});
+            await invoke("play_button_handler", {selectedVersion: selectedVersion});
         } catch (e) {
             console.error("Failed to launch game:", e);
             setIsDownloading(false);
@@ -358,16 +358,22 @@ export default function FalconLauncher() {
 
         <div className="flex flex-1 flex-col lg:flex-row overflow-hidden">
             <div className="w-full lg:w-64 md:w-48 bg-gray-800 flex flex-col">
+
                 <div className="p-4 sm:p-6 flex flex-col">
+                    {/*WEIRD ISSUE HERE Background gray color is not working*/}
                     <select
                         name="Profile"
-                        className="w-full mb-2 p-2 bg-gray-900 border border-indigo-500 rounded text-gray-200 focus:outline-none text-sm sm:text-base"
+                        className="az-select az-bg-gray-900 az-w-full az-mb-2 az-p-2 az-border az-border-indigo-500 az-rounded az-text-gray-200 az-focus:az-outline-none az-text-sm sm:az-text-base"
                         value={username}
-                        onChange={(e) => setUsername(e.target.value)}
+                        onChange={async (e) => {
+                            setUsername(e.target.value);
+                            await invoke("set_username", {username: e.target.value});
+                        }}
                     >
                         <option value="" disabled>{t("select_profile")}</option>
                         {profiles.map((v) => <option key={v} value={v}>{v}</option>)}
                     </select>
+
                     <button
                         className="w-full mb-4 p-2 bg-gray-900 border border-indigo-500 rounded text-gray-200 focus:outline-none text-sm sm:text-base"
                         onClick={() => setIsLoginPopupPopupOpen(true)}
@@ -385,7 +391,7 @@ export default function FalconLauncher() {
                             {versions.map((version) => <option key={version} value={version}>{version}</option>)}
                         </select>
                         <button
-                            className="w-full p-2 bg-gray-900 border border-indigo-500 rounded text-gray-200 hover:bg-gray-700 focus:outline-none text-sm sm:text-base"
+                            className="az-btn az-hover-lift w-full p-2 az-bg-gray-900 border border-indigo-500 rounded az-text-gray-200 hover:az-bg-gray-700 focus:outline-none text-sm sm:text-base"
                             onClick={() => setIsVersionSelectorOpen(true)}
                         >
                             {t('install_new_version', currentLanguage)}
@@ -416,7 +422,7 @@ export default function FalconLauncher() {
 
                 <div className="p-4 sm:p-6 border-t border-gray-700">
                     <button
-                        disabled={isDownloading}
+                        disabled={isDownloading || username === ""}
                         className="w-full py-2 sm:py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded flex items-center justify-center disabled:bg-gray-500 text-sm sm:text-base"
                         onClick={handlePlay}
                     >
@@ -502,22 +508,6 @@ function AddModPopup({isOpen, onClose}) {
     }
 
     const handleInstallMod = () => {
-        // Here you would handle the file selection and invoke a Tauri command to install the mod
-        // For example:
-        // open({
-        //     multiple: false,
-        //     filters: [{
-        //         name: 'Minecraft Mod',
-        //         extensions: ['jar']
-        //     }]
-        // }).then(file => {
-        //     if (file) {
-        //         invoke("install_mod", { path: file.path }).then(() => {
-        //             onClose();
-        //             // You might want to refresh the mods list here
-        //         });
-        //     }
-        // });
         invoke("install_mod_from_local").catch("Failed to install mod from local");
         console.log("Install mod clicked");
         onClose();
@@ -531,12 +521,26 @@ function AddModPopup({isOpen, onClose}) {
                     <X size={24}/>
                 </button>
                 <h2 className="text-3xl font-bold text-center mb-6">{t("install_mod")}</h2>
-                <button
-                    onClick={handleInstallMod}
-                    className="w-full p-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded transition-colors"
-                >
-                    {t("select_mod_file")}
-                </button>
+                <div className="space-y-4">
+                    <button
+                        onClick={handleInstallMod}
+                        className="w-full p-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded transition-colors"
+                    >
+                        {t("select_mod_file")}
+                    </button>
+                    <button
+                        onClick={() => console.log("Download from Modrinth clicked")}
+                        className="w-full p-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded transition-colors"
+                    >
+                        Download from Modrinth
+                    </button>
+                    <button
+                        onClick={() => console.log("Download from CurseForge clicked")}
+                        className="w-full p-3 bg-orange-600 hover:bg-orange-700 text-white font-bold rounded transition-colors"
+                    >
+                        Download from CurseForge
+                    </button>
+                </div>
             </div>
         </div>
     );
@@ -563,6 +567,14 @@ function ModsTab() {
         invoke("toggle_mod", {modInfo: mod, toggle: enabled}).catch("Error!");
         // For now, we'll just update the local state for visual feedback
         setMods(mods.map(m => m.name === mod.name ? mod : m));
+    };
+    
+    const handleDeleteMod = (mod) => {
+        console.log(`Deleting mod ${mod.name}`);
+        // Here you would invoke a Tauri command to delete the mod
+        // invoke("delete_mod", { modInfo: mod }).catch("Error!");
+        // For now, we'll just update the local state for visual feedback
+        setMods(mods.filter(m => m.name !== mod.name));
     };
 
     return (<div className="p-6">
@@ -606,6 +618,12 @@ function ModsTab() {
                                     className="dot absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition-transform"></div>
                             </div>
                         </label>
+                        <button
+                            onClick={() => handleDeleteMod(mod)}
+                            className="ml-4 p-2 text-red-500 hover:text-red-400"
+                        >
+                            <Trash2 size={20}/>
+                        </button>
                     </div>
                 </div>))}
         </div>

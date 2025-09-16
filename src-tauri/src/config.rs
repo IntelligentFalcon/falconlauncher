@@ -48,7 +48,7 @@ async fn load() -> Config {
 pub fn default_config() -> Config {
     Config {
         launch_options: LaunchOptions {
-            username: "Steve".to_string(),
+            username: "".to_string(),
             ram_usage: 2048,
         },
         versions: get_downloaded_versions(),

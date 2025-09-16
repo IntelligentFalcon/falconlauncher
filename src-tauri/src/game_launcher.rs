@@ -17,13 +17,6 @@ pub async fn launch_game(app_handle: AppHandle, version: String, config: &Config
     let version = versions.next().unwrap();
     let inherited_version = version.get_inherited();
     let inherited_json = inherited_version.load_json();
-    // if version.is_forge() && !version.is_installed() {
-    //     println!(
-    //         "DEBUG: Forge version detected! {} installing it rn!",
-    //         version.id
-    //     );
-    //     download_forge_version(&version.id).await;
-    // }
     // if is_connected_to_internet().await {
     //     update_download_status("Downloading version...", &app_handle);
     //     download_version(&version, &app_handle).await;

@@ -184,7 +184,9 @@ async fn get_profiles() -> Vec<String> {
 }
 #[command]
 async fn create_offline_profile(username: String) {
-    profile_manager::create_new_profile(username, false);
+    profile_manager::create_new_profile(username.clone(), false);
+    let mut config = CONFIG.lock().await;
+    config.launch_options.username = username;
 }
 #[command]
 async fn get_installed_versions() -> Vec<String> {
@@ -229,7 +231,7 @@ async fn install_mod_from_local(app: AppHandle) {
         let p = path.as_path().unwrap();
         let file_name = p.file_name().unwrap().to_str().unwrap();
         let new_path = get_mods_folder().join(file_name);
-        copy(p, new_path).await;
+        copy(p, new_path).await.unwrap();
     }
 }
 #[command]

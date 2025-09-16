@@ -1,5 +1,6 @@
 /* دستور import باید اولین خط باشد */
 @import url('https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css');
+@import "@usegrand/azta-css/azta.min.css";
 
 @tailwind base;
 @tailwind components;
