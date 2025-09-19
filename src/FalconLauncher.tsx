@@ -13,7 +13,7 @@ import {
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import LoginPopup from './LoginPopup';
-import { getCurrentLang, loadLanguage, t } from './i18n';
+import { t } from './lib/i18n';
 import { publicDir } from '@tauri-apps/api/path';
 import { Button } from './components/ui/button';
 import {
@@ -23,16 +23,27 @@ import {
   SelectTrigger,
   SelectValue,
 } from './components/ui/select';
-
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from './components/ui/dialog';
+import { useLocale } from './stores/locale';
 function VersionSelectorPopup({
   isOpen,
   onClose,
   onVersionSelect,
-  currentLanguage = 'fa',
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onVersionSelect: (version: any) => void;
 }) {
-  const [viewMode, setViewMode] = useState('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [activeMajor, setActiveMajor] = useState('1.21');
-  const [activeSpecific, setActiveSpecific] = useState(null);
+  const [activeSpecific, setActiveSpecific] = useState<string | null>(null);
   const [showForge, setShowForge] = useState(false);
   const [showNeoForge, setShowNeoForge] = useState(false);
   const [showLiteLoader, setShowLiteLoader] = useState(false);
@@ -69,8 +80,6 @@ function VersionSelectorPopup({
       setActiveSpecific(versionsData[activeMajor][0]);
     }
   }, [activeMajor]);
-
-  if (!isOpen) return null;
 
   const handleInstall = () => {
     if (activeSpecific) {
@@ -124,201 +133,173 @@ function VersionSelectorPopup({
     );
   };
 
-  const directionClass = currentLanguage === 'fa' ? 'rtl' : 'ltr';
-  const fontClass = currentLanguage === 'fa' ? 'font-vazir' : 'font-inter';
-
   return (
     <>
-      <style>{`
-                @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap');
-                @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
-                .font-vazir { font-family: 'Vazirmatn', sans-serif; }
-                .font-inter { font-family: 'Inter', sans-serif; }
-            `}</style>
-      <div
-        className={`fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 transition-opacity duration-300 ${
-          isOpen ? 'opacity-100' : 'opacity-0'
-        } ${fontClass}`}
-        dir={directionClass}
-      >
-        <div
-          className={`w-[1200px] h-[750px] max-w-[95vw] max-h-[90vh] bg-zinc-900 rounded-lg flex overflow-hidden border border-zinc-700 shadow-2xl text-gray-200 transition-transform duration-300 ${
-            isOpen ? 'scale-100' : 'scale-95'
-          }`}
-        >
-          <aside className="w-[280px] bg-gray-800 p-6 border-l border-zinc-700 flex flex-col">
-            <h2 className="text-xl font-bold mb-6">
-              {t('mod_loaders', currentLanguage)}
-            </h2>
-            <div className="space-y-3">
-              <div className="flex items-center bg-zinc-700 p-3 rounded-md">
-                <input
-                  type="checkbox"
-                  id="forge"
-                  className="w-5 h-5 accent-indigo-500 cursor-pointer"
-                  checked={showForge}
-                  onChange={(e) => {
-                    // HERE
-                    setShowForge((prev) => {
-                      const newValue = !prev;
-                      updateVersions(
-                        newValue,
-                        showFabric,
-                        showNeoForge,
-                        showLiteLoader
-                      );
+      <div className={`flex overflow-hidden`}>
+        <aside className="w-[280px] bg-gray-800 p-6 border-l border-zinc-700 flex flex-col">
+          <h2 className="text-xl font-bold mb-6">{t('mod_loaders')}</h2>
+          <div className="space-y-3">
+            <div className="flex items-center bg-zinc-700 p-3 rounded-md">
+              <input
+                type="checkbox"
+                id="forge"
+                className="w-5 h-5 accent-indigo-500 cursor-pointer"
+                checked={showForge}
+                onChange={(e) => {
+                  // HERE
+                  setShowForge((prev) => {
+                    const newValue = !prev;
+                    updateVersions(
+                      newValue,
+                      showFabric,
+                      showNeoForge,
+                      showLiteLoader
+                    );
 
-                      return newValue;
-                    });
-                  }}
-                />
-                <label
-                  htmlFor="forge"
-                  className="mx-3 text-base cursor-pointer grow"
-                >
-                  {t('install_forge', currentLanguage)}
-                </label>
-              </div>
-              <div className="flex items-center bg-zinc-700 p-3 rounded-md">
-                <input
-                  type="checkbox"
-                  id="fabric"
-                  className="w-5 h-5 accent-indigo-500 cursor-pointer"
-                  onChange={(e) => {
-                    // HERE
-                    setShowFabric((prev) => {
-                      const newValue = !prev;
-                      updateVersions(
-                        showForge,
-                        newValue,
-                        showNeoForge,
-                        showLiteLoader
-                      );
-
-                      return newValue;
-                    });
-                  }}
-                />
-                <label
-                  htmlFor="fabric"
-                  className="mx-3 text-base cursor-pointer grow"
-                >
-                  {t('install_fabric', currentLanguage)}
-                </label>
-              </div>
-              <div className="flex items-center bg-zinc-700 p-3 rounded-md">
-                <input
-                  type="checkbox"
-                  id="liteloader"
-                  className="w-5 h-5 accent-indigo-500 cursor-pointer"
-                />
-                <label
-                  htmlFor="liteloader"
-                  className="mx-3 text-base cursor-pointer grow"
-                >
-                  {t('install_liteloader', currentLanguage)}
-                </label>
-              </div>
-              <div className="flex items-center bg-zinc-700 p-3 rounded-md">
-                <input
-                  type="checkbox"
-                  id="neoforge"
-                  className="w-5 h-5 accent-indigo-500 cursor-pointer"
-                />
-                <label
-                  htmlFor="neoforge"
-                  className="mx-3 text-base cursor-pointer grow"
-                >
-                  {t('install_neoforge', currentLanguage)}
-                </label>
-              </div>
+                    return newValue;
+                  });
+                }}
+              />
+              <label
+                htmlFor="forge"
+                className="mx-3 text-base cursor-pointer grow"
+              >
+                {t('install_forge')}
+              </label>
             </div>
-            <button
-              onClick={handleInstall}
-              className="w-full mt-auto bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg transition-colors"
-            >
-              {t('install_selected', currentLanguage)}
-            </button>
-          </aside>
-          <main className="grow p-6 flex flex-col overflow-y-auto">
-            <header className="flex justify-between items-center mb-6">
-              <h1 className="text-3xl font-bold">
-                {t('minecraft_version', currentLanguage)} {activeMajor}
-              </h1>
-              <div className="flex space-x-2">
-                <button
-                  onClick={() => setViewMode('grid')}
-                  className={`p-2 rounded-md transition-colors ${
-                    viewMode === 'grid'
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-zinc-700 text-zinc-400 hover:bg-zinc-600'
-                  }`}
-                >
-                  <Grid size={20} />
-                </button>
-                <button
-                  onClick={() => setViewMode('list')}
-                  className={`p-2 rounded-md transition-colors ${
-                    viewMode === 'list'
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-zinc-700 text-zinc-400 hover:bg-zinc-600'
-                  }`}
-                >
-                  <List size={20} />
-                </button>
-              </div>
-            </header>
-            {!versionsData[activeMajor] ||
-            versionsData[activeMajor].length === 0 ? (
-              <p>Loading versions...</p>
-            ) : viewMode === 'grid' ? (
-              <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-4">
-                {versionsData[activeMajor].map((item) => (
-                  <SpecificVersionItem
-                    key={item.v}
-                    version={item}
-                    date={item.d}
-                    type="grid"
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="flex flex-col space-y-2">
-                {versionsData[activeMajor].map((item) => (
-                  <SpecificVersionItem
-                    key={item.v}
-                    version={item}
-                    date={item.d}
-                    type="list"
-                  />
-                ))}
-              </div>
-            )}
-          </main>
-          <aside className="w-[120px] bg-gray-800 p-2 border-r border-zinc-700 overflow-y-auto">
-            <ul className="space-y-1">
-              {majorVersions.map((v) => (
-                <li
-                  key={v}
-                  onClick={() => setActiveMajor(v)}
-                  className={`px-3 py-4 text-center font-bold text-lg rounded-md cursor-pointer transition-colors ${
-                    activeMajor === v
-                      ? 'bg-zinc-900 text-white'
-                      : 'text-zinc-400 hover:bg-zinc-700'
-                  }`}
-                >
-                  {v}
-                </li>
-              ))}
-            </ul>
-          </aside>
+            <div className="flex items-center bg-zinc-700 p-3 rounded-md">
+              <input
+                type="checkbox"
+                id="fabric"
+                className="w-5 h-5 accent-indigo-500 cursor-pointer"
+                onChange={(e) => {
+                  // HERE
+                  setShowFabric((prev) => {
+                    const newValue = !prev;
+                    updateVersions(
+                      showForge,
+                      newValue,
+                      showNeoForge,
+                      showLiteLoader
+                    );
+
+                    return newValue;
+                  });
+                }}
+              />
+              <label
+                htmlFor="fabric"
+                className="mx-3 text-base cursor-pointer grow"
+              >
+                {t('install_fabric')}
+              </label>
+            </div>
+            <div className="flex items-center bg-zinc-700 p-3 rounded-md">
+              <input
+                type="checkbox"
+                id="liteloader"
+                className="w-5 h-5 accent-indigo-500 cursor-pointer"
+              />
+              <label
+                htmlFor="liteloader"
+                className="mx-3 text-base cursor-pointer grow"
+              >
+                {t('install_liteloader')}
+              </label>
+            </div>
+            <div className="flex items-center bg-zinc-700 p-3 rounded-md">
+              <input
+                type="checkbox"
+                id="neoforge"
+                className="w-5 h-5 accent-indigo-500 cursor-pointer"
+              />
+              <label
+                htmlFor="neoforge"
+                className="mx-3 text-base cursor-pointer grow"
+              >
+                {t('install_neoforge')}
+              </label>
+            </div>
+          </div>
           <button
-            onClick={onClose}
-            className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"
+            onClick={handleInstall}
+            className="w-full mt-auto bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg transition-colors"
           >
-            <X size={24} />
+            {t('install_selected')}
           </button>
-        </div>
+        </aside>
+        <main className="grow p-6 flex flex-col overflow-y-auto">
+          <header className="flex justify-between items-center mb-6">
+            <h1 className="text-3xl font-bold">
+              {t('minecraft_version')} {activeMajor}
+            </h1>
+            <div className="flex space-x-2">
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`p-2 rounded-md transition-colors ${
+                  viewMode === 'grid'
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-zinc-700 text-zinc-400 hover:bg-zinc-600'
+                }`}
+              >
+                <Grid size={20} />
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={`p-2 rounded-md transition-colors ${
+                  viewMode === 'list'
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-zinc-700 text-zinc-400 hover:bg-zinc-600'
+                }`}
+              >
+                <List size={20} />
+              </button>
+            </div>
+          </header>
+          {!versionsData[activeMajor] ||
+          versionsData[activeMajor].length === 0 ? (
+            <p>Loading versions...</p>
+          ) : viewMode === 'grid' ? (
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-4">
+              {versionsData[activeMajor].map((item) => (
+                <SpecificVersionItem
+                  key={item.v}
+                  version={item}
+                  date={item.d}
+                  type="grid"
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col space-y-2">
+              {versionsData[activeMajor].map((item) => (
+                <SpecificVersionItem
+                  key={item.v}
+                  version={item}
+                  date={item.d}
+                  type="list"
+                />
+              ))}
+            </div>
+          )}
+        </main>
+        <aside className="w-[120px] bg-gray-800 p-2 border-r border-zinc-700 overflow-y-auto">
+          <ul className="space-y-1">
+            {majorVersions.map((v) => (
+              <li
+                key={v}
+                onClick={() => setActiveMajor(v)}
+                className={`px-3 py-4 text-center font-bold text-lg rounded-md cursor-pointer transition-colors ${
+                  activeMajor === v
+                    ? 'bg-zinc-900 text-white'
+                    : 'text-zinc-400 hover:bg-zinc-700'
+                }`}
+              >
+                {v}
+              </li>
+            ))}
+          </ul>
+        </aside>
       </div>
     </>
   );
@@ -333,9 +314,11 @@ export default function FalconLauncher() {
   const [username, setUsername] = useState('');
   const [statusMessage, setStatusMessage] = useState('Ready to play');
   const [isLoginPopupOpen, setIsLoginPopupPopupOpen] = useState(false);
-  const [isVersionSelectorOpen, setIsVersionSelectorOpen] = useState(false);
   const [profiles, setProfiles] = useState([]);
-  const [currentLanguage, setCurrentLanguage] = useState('fa');
+
+  const [isVersionSelectorOpen, setIsVersionSelectorOpen] = useState(false);
+
+  const { locale, setLocale } = useLocale();
 
   const loadVersions = useCallback(async () => {
     try {
@@ -362,18 +345,6 @@ export default function FalconLauncher() {
     }, [profiles, username]);
   }
 
-  function reloadLanguage() {
-    useEffect(() => {
-      invoke('get_language')
-        .then((lang) => {
-          setCurrentLanguage(lang);
-          loadLanguage(lang).catch('Failed to load the language');
-        })
-        .catch(console.error);
-    }, [currentLanguage]);
-  }
-
-  reloadLanguage();
   reloadProfiles();
 
   useEffect(() => {
@@ -407,11 +378,6 @@ export default function FalconLauncher() {
     };
   }, [loadVersions]);
 
-  useEffect(() => {
-    document.body.className = '';
-    document.body.classList.add(`lang-${currentLanguage}`);
-  }, [currentLanguage]);
-
   const handlePlay = async () => {
     if (!selectedVersion && versions.length > 0)
       setSelectedVersion(versions[0]);
@@ -428,9 +394,6 @@ export default function FalconLauncher() {
 
   const handleLanguageChange = async (lang) => {
     setCurrentLanguage(lang);
-    await invoke('set_language', { lang });
-    await invoke('save');
-    await loadLanguage(lang).catch(console.error);
   };
 
   return (
@@ -445,12 +408,10 @@ export default function FalconLauncher() {
         <div className="flex items-center">
           <button
             className="p-1 rounded-full hover:bg-gray-700 transition-colors"
-            onClick={() =>
-              handleLanguageChange(currentLanguage === 'fa' ? 'en' : 'fa')
-            }
+            onClick={() => setLocale(locale === 'fa' ? 'en' : 'fa')}
             title="Change Language"
           >
-            {currentLanguage === 'fa' ? 'fa' : 'en'}
+            {locale === 'fa' ? 'fa' : 'en'}
           </button>
         </div>
       </div>
@@ -459,31 +420,37 @@ export default function FalconLauncher() {
         <div className="w-full lg:w-64 md:w-48 bg-gray-800 flex flex-col">
           <div className="p-4 sm:p-6 flex flex-col">
             {/*WEIRD ISSUE HERE Background gray color is not working*/}
-            <select
-              name="Profile"
-              className="az-select az-bg-gray-900 az-w-full az-mb-2 az-p-2 az-border az-border-indigo-500 az-rounded az-text-gray-200 az-focus:az-outline-none az-text-sm sm:az-text-base"
-              value={username}
-              onChange={async (e) => {
-                setUsername(e.target.value);
-                await invoke('set_username', { username: e.target.value });
+            <Select
+              onValueChange={async (value) => {
+                setUsername(value);
+                await invoke('set_username', { username: value });
               }}
             >
-              <option value="" disabled>
-                {t('select_profile')}
-              </option>
-              {profiles.map((v) => (
-                <option key={v} value={v}>
-                  {v}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger>
+                <SelectValue
+                  placeholder={username ?? profiles[0] ?? t('select_profile')}
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {profiles.map((profile) => (
+                  <SelectItem
+                    key={profile}
+                    value={profile}
+                    className="capitalize"
+                  >
+                    {profile}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-            <button
-              className="w-full mb-4 p-2 bg-gray-900 border border-indigo-500 rounded-sm text-gray-200 focus:outline-hidden text-sm sm:text-base"
+            <Button
+              variant="secondary"
+              className="text-xs"
               onClick={() => setIsLoginPopupPopupOpen(true)}
             >
               {t('create_profile')}
-            </button>
+            </Button>
 
             <div className="border-t border-gray-700 pt-4">
               <h3 className="text-sm font-semibold mb-2 text-gray-400">
@@ -491,7 +458,9 @@ export default function FalconLauncher() {
               </h3>
               <Select onValueChange={(value) => setSelectedVersion(value)}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Theme" />
+                  <SelectValue
+                    placeholder={selectedVersion ?? versions[0] ?? 'Loading...'}
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   {versions.map((version) => (
@@ -505,12 +474,39 @@ export default function FalconLauncher() {
                   ))}
                 </SelectContent>
               </Select>
-              <button
-                className="az-btn az-hover-lift w-full p-2 az-bg-gray-900 border border-indigo-500 rounded-sm az-text-gray-200 hover:az-bg-gray-700 focus:outline-hidden text-sm sm:text-base"
-                onClick={() => setIsVersionSelectorOpen(true)}
-              >
-                {t('install_new_version', currentLanguage)}
-              </button>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button className="w-full" variant="secondary">
+                    {t('install_new_version')}
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Are you absolutely sure?</DialogTitle>
+                    <DialogDescription>
+                      This action cannot be undone. This will permanently delete
+                      your account and remove your data from our servers.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <VersionSelectorPopup
+                    isOpen={isVersionSelectorOpen}
+                    close={() => setIsVersionSelectorOpen(false)}
+                    onVersionSelect={(version) =>
+                      invoke('download_version', {
+                        versionLoader: {
+                          id: version.v,
+                          date: version.d,
+                          base: version.base,
+                        },
+                      })
+                        .catch('Failed to download version')
+                        .then(() => {
+                          window.location.reload();
+                        })
+                    }
+                  />
+                </DialogContent>
+              </Dialog>
             </div>
           </div>
 
@@ -536,14 +532,14 @@ export default function FalconLauncher() {
           </nav>
 
           <div className="p-4 sm:p-6 border-t border-gray-700">
-            <button
+            <Button
               disabled={isDownloading || username === ''}
-              className="w-full py-2 sm:py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-sm flex items-center justify-center disabled:bg-gray-500 text-sm sm:text-base"
+              variant="success"
               onClick={handlePlay}
             >
               <Play size={18} className="mr-2" />
               {isDownloading ? t('downloading') : t('play')}
-            </button>
+            </Button>
             {isDownloading && (
               <div className="w-full bg-gray-700 rounded-full h-2 mt-4">
                 <div
@@ -572,31 +568,12 @@ export default function FalconLauncher() {
           reloadProfiles();
         }}
       />
-      <VersionSelectorPopup
-        isOpen={isVersionSelectorOpen}
-        onClose={() => setIsVersionSelectorOpen(false)}
-        onVersionSelect={(version) =>
-          invoke('download_version', {
-            versionLoader: {
-              id: version.v,
-              date: version.d,
-              base: version.base,
-            },
-          })
-            .catch('Failed to download version')
-            .then(() => {
-              window.location.reload();
-            })
-        }
-        currentLanguage={currentLanguage}
-      />
     </div>
   );
 }
 
 // Other components (NavItem, HomeTab, ModsTab, SettingsTab, etc.) remain the same
 function NavItem({ icon, title, active, onClick }) {
-  const langClass = getCurrentLang() === 'fa' ? 'font-vazir' : 'font-inter';
   return (
     <div
       className={`flex items-center px-6 py-3 cursor-pointer ${
@@ -609,9 +586,7 @@ function NavItem({ icon, title, active, onClick }) {
       <div className={`ml-3 ${active ? 'text-indigo-400' : 'text-gray-400'}`}>
         {icon}
       </div>
-      <span className={`${active ? 'font-semibold' : ''} ${langClass}`}>
-        {title}
-      </span>
+      <span className={`${active ? 'font-semibold' : ''}`}>{title}</span>
     </div>
   );
 }
