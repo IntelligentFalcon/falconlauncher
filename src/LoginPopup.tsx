@@ -31,7 +31,7 @@ export default function LoginPopup({isOpen, onClose}) {
                     <input
                         type="text"
                         placeholder="Username"
-                        className="w-full p-3 bg-gray-900 border border-gray-700 rounded text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="w-full p-3 bg-gray-900 border border-gray-700 rounded-sm text-gray-200 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
                         onInput={event => {
                             setUsername(event.target.value);
                             invoke("set_username", {username: event.target.value}).catch("Guess what? i couldn't save your username");
@@ -41,7 +41,7 @@ export default function LoginPopup({isOpen, onClose}) {
 
                 <button
                     type="submit"
-                    className="w-full mb-4 p-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded transition-colors"
+                    className="w-full mb-4 p-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-sm transition-colors"
                     onClick={event => {
                         invoke("create_offline_profile", {username: username}).catch("Oh failed to create profile!");
                         onClose();
@@ -52,7 +52,7 @@ export default function LoginPopup({isOpen, onClose}) {
 
                 {/*<button*/}
                 {/*    type="button"*/}
-                {/*    className="w-full p-3 bg-white text-gray-800 font-semibold rounded flex items-center justify-center hover:bg-gray-200 transition-colors"*/}
+                {/*    className="w-full p-3 bg-white text-gray-800 font-semibold rounded-sm flex items-center justify-center hover:bg-gray-200 transition-colors"*/}
                 {/*>*/}
                 {/*    <MicrosoftLogo/>*/}
                 {/*    Sign in with Microsoft*/}

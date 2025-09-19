@@ -144,7 +144,7 @@ function VersionSelectorPopup({isOpen, onClose, onVersionSelect, currentLanguage
                                 });
                             }}/>
                             <label htmlFor="forge"
-                                   className="mx-3 text-base cursor-pointer flex-grow">{t('install_forge', currentLanguage)}</label>
+                                   className="mx-3 text-base cursor-pointer grow">{t('install_forge', currentLanguage)}</label>
                         </div>
                         <div className="flex items-center bg-zinc-700 p-3 rounded-md">
                             <input type="checkbox" id="fabric"
@@ -158,19 +158,19 @@ function VersionSelectorPopup({isOpen, onClose, onVersionSelect, currentLanguage
                                 });
                             }}/>
                             <label htmlFor="fabric"
-                                   className="mx-3 text-base cursor-pointer flex-grow">{t('install_fabric', currentLanguage)}</label>
+                                   className="mx-3 text-base cursor-pointer grow">{t('install_fabric', currentLanguage)}</label>
                         </div>
                         <div className="flex items-center bg-zinc-700 p-3 rounded-md">
                             <input type="checkbox" id="liteloader"
                                    className="w-5 h-5 accent-indigo-500 cursor-pointer"/>
                             <label htmlFor="liteloader"
-                                   className="mx-3 text-base cursor-pointer flex-grow">{t('install_liteloader', currentLanguage)}</label>
+                                   className="mx-3 text-base cursor-pointer grow">{t('install_liteloader', currentLanguage)}</label>
                         </div>
                         <div className="flex items-center bg-zinc-700 p-3 rounded-md">
                             <input type="checkbox" id="neoforge"
                                    className="w-5 h-5 accent-indigo-500 cursor-pointer"/>
                             <label htmlFor="neoforge"
-                                   className="mx-3 text-base cursor-pointer flex-grow">{t('install_neoforge', currentLanguage)}</label>
+                                   className="mx-3 text-base cursor-pointer grow">{t('install_neoforge', currentLanguage)}</label>
                         </div>
                     </div>
                     <button onClick={handleInstall}
@@ -178,7 +178,7 @@ function VersionSelectorPopup({isOpen, onClose, onVersionSelect, currentLanguage
                         {t('install_selected', currentLanguage)}
                     </button>
                 </aside>
-                <main className="flex-grow p-6 flex flex-col overflow-y-auto">
+                <main className="grow p-6 flex flex-col overflow-y-auto">
                     <header className="flex justify-between items-center mb-6">
                         <h1 className="text-3xl font-bold">{t('minecraft_version', currentLanguage)} {activeMajor}</h1>
                         <div className="flex space-x-2">
@@ -350,8 +350,8 @@ export default function FalconLauncher() {
                     onClick={() => handleLanguageChange(currentLanguage === 'fa' ? 'en' : 'fa')}
                     title="Change Language"
                 >
-                    {currentLanguage === "fa" ? <FlagUK className="w-8 h-6 rounded-sm"/> :
-                        <FlagIran className="w-8 h-6 rounded-sm"/>}
+                    {currentLanguage === "fa" ? <FlagUK className="w-8 h-6 rounded-xs"/> :
+                        <FlagIran className="w-8 h-6 rounded-xs"/>}
                 </button>
             </div>
         </div>
@@ -375,7 +375,7 @@ export default function FalconLauncher() {
                     </select>
 
                     <button
-                        className="w-full mb-4 p-2 bg-gray-900 border border-indigo-500 rounded text-gray-200 focus:outline-none text-sm sm:text-base"
+                        className="w-full mb-4 p-2 bg-gray-900 border border-indigo-500 rounded-sm text-gray-200 focus:outline-hidden text-sm sm:text-base"
                         onClick={() => setIsLoginPopupPopupOpen(true)}
                     >
                         {t("create_profile")}
@@ -384,14 +384,14 @@ export default function FalconLauncher() {
                     <div className="border-t border-gray-700 pt-4">
                         <h3 className="text-sm font-semibold mb-2 text-gray-400">{t("game_version")}</h3>
                         <select
-                            className="w-full p-2 bg-gray-900 border border-gray-700 rounded text-gray-200 text-sm sm:text-base mb-2"
+                            className="w-full p-2 bg-gray-900 border border-gray-700 rounded-sm text-gray-200 text-sm sm:text-base mb-2"
                             value={selectedVersion}
                             onChange={(e) => setSelectedVersion(e.target.value)}
                         >
                             {versions.map((version) => <option key={version} value={version}>{version}</option>)}
                         </select>
                         <button
-                            className="az-btn az-hover-lift w-full p-2 az-bg-gray-900 border border-indigo-500 rounded az-text-gray-200 hover:az-bg-gray-700 focus:outline-none text-sm sm:text-base"
+                            className="az-btn az-hover-lift w-full p-2 az-bg-gray-900 border border-indigo-500 rounded-sm az-text-gray-200 hover:az-bg-gray-700 focus:outline-hidden text-sm sm:text-base"
                             onClick={() => setIsVersionSelectorOpen(true)}
                         >
                             {t('install_new_version', currentLanguage)}
@@ -423,7 +423,7 @@ export default function FalconLauncher() {
                 <div className="p-4 sm:p-6 border-t border-gray-700">
                     <button
                         disabled={isDownloading || username === ""}
-                        className="w-full py-2 sm:py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded flex items-center justify-center disabled:bg-gray-500 text-sm sm:text-base"
+                        className="w-full py-2 sm:py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-sm flex items-center justify-center disabled:bg-gray-500 text-sm sm:text-base"
                         onClick={handlePlay}
                     >
                         <Play size={18} className="mr-2"/>
@@ -493,7 +493,7 @@ function HomeTab() {
         <h2 className="text-2xl font-bold mb-6">{t("minecraft_news")}</h2>
 
         <div className="space-y-4">
-            {newsArticles.map((article, index) => (<div key={index} className="bg-gray-800 p-6 rounded">
+            {newsArticles.map((article, index) => (<div key={index} className="bg-gray-800 p-6 rounded-sm">
                 <h3 className="text-xl font-semibold mb-2">{article.title}</h3>
                 <p className="text-gray-300 mb-3">{article.content}</p>
                 <p className="text-sm text-indigo-400 italic">{article.date}</p>
@@ -524,19 +524,19 @@ function AddModPopup({isOpen, onClose}) {
                 <div className="space-y-4">
                     <button
                         onClick={handleInstallMod}
-                        className="w-full p-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded transition-colors"
+                        className="w-full p-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-sm transition-colors"
                     >
                         {t("select_mod_file")}
                     </button>
                     <button
                         onClick={() => console.log("Download from Modrinth clicked")}
-                        className="w-full p-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded transition-colors"
+                        className="w-full p-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-sm transition-colors"
                     >
                         Download from Modrinth
                     </button>
                     <button
                         onClick={() => console.log("Download from CurseForge clicked")}
-                        className="w-full p-3 bg-orange-600 hover:bg-orange-700 text-white font-bold rounded transition-colors"
+                        className="w-full p-3 bg-orange-600 hover:bg-orange-700 text-white font-bold rounded-sm transition-colors"
                     >
                         Download from CurseForge
                     </button>
@@ -584,11 +584,11 @@ function ModsTab() {
                 <input
                     type="text"
                     placeholder={t("mod_search")}
-                    className="w-64 p-2 bg-gray-800 border border-gray-700 rounded"
+                    className="w-64 p-2 bg-gray-800 border border-gray-700 rounded-sm"
                 />
                 <button
                     onClick={() => setAddModPopupOpen(true)}
-                    className="ml-2 p-2 bg-indigo-500 hover:bg-indigo-600 rounded text-white"
+                    className="ml-2 p-2 bg-indigo-500 hover:bg-indigo-600 rounded-sm text-white"
                 >
                     <Plus size={20}/>
                 </button>
@@ -597,7 +597,7 @@ function ModsTab() {
 
         <div className="space-y-3">
             {mods.map((mod, index) => (
-                <div key={index} className="bg-gray-800 p-4 rounded flex justify-between items-center">
+                <div key={index} className="bg-gray-800 p-4 rounded-sm flex justify-between items-center">
                     <div>
                         <h3 className="font-semibold">{mod.name}</h3>
                         <p className="text-sm text-gray-400">{mod.description}</p>
@@ -646,7 +646,7 @@ function RamUsageBar({totalRam, ramUsage, setRamUsage}) {
         invoke("set_ram_usage", {ramUsage: ramUsage}).catch(console.error);
     }
 
-    return (<div className="bg-gray-800 p-6 rounded">
+    return (<div className="bg-gray-800 p-6 rounded-sm">
         <h3 className="text-lg font-semibold mb-1">{t("mem_alloc_title")}</h3>
         <p className="text-sm text-gray-400 mb-4">{t("mem_alloc_description")}</p>
         <div className="flex items-center">
@@ -693,7 +693,7 @@ function SettingsTab() {
                 setRamUsage={setRamUsage}
             />
 
-            {/*<div className="bg-gray-800 p-6 rounded">*/}
+            {/*<div className="bg-gray-800 p-6 rounded-sm">*/}
             {/* <h3 className="text-lg font-semibold mb-1">{t("launch_options_title")}</h3>*/}
             {/* <p className="text-sm text-gray-400 mb-4">{t("launch_options_description")}</p>*/}
             {/* <div className="space-y-3">*/}
@@ -713,7 +713,7 @@ function SettingsTab() {
             {/*</div>*/}
 
             <div className="flex justify-end">
-                <button className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded" onClick={saveSettings}>
+                <button className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-sm" onClick={saveSettings}>
                     {t("save_settings")}
                 </button>
             </div>

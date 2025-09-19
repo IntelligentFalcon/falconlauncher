@@ -1,30 +1,13 @@
-/* دستور import باید اولین خط باشد */
-@import url('https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css');
-@import "@usegrand/azta-css/azta.min.css";
+@import '@usegrand/azta-css/azta.min.css' layer(base);
+@import 'tailwindcss';
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@font-face {
+    font-family: "Unixel";
+    src: url("/font/unixel-Regular.woff2") format("woff2");
+    font-weight: 400;
+    font-style: normal;
+}
 
 body {
-    margin: 0;
-    padding: 0;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-    overflow: hidden;
-    position: fixed;
-    width: 100vw;
-    height: 100vh;
-}
-
-body.lang-fa {
-  font-family: 'Vazirmatn', sans-serif;
-}
-
-body.lang-en {
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-}
-
-input:checked ~ .dot {
-  transform: translateX(1.5rem);
-  background-color: #4f46e5; /* indigo-600 */
+    font-family: "Unixel";
 }
