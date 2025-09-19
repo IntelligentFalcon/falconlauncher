@@ -13,7 +13,6 @@ import {
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import LoginPopup from './LoginPopup';
-import { t } from './lib/i18n';
 import { publicDir } from '@tauri-apps/api/path';
 import { Button } from './components/ui/button';
 import {
@@ -31,16 +30,21 @@ import {
   DialogTitle,
   DialogTrigger,
 } from './components/ui/dialog';
+import { useTranslation } from 'react-i18next';
 import { useLocale } from './stores/locale';
+import { LocaleButton } from './components/basic/locale-button';
+
 function VersionSelectorPopup({
   isOpen,
-  onClose,
+  close,
   onVersionSelect,
 }: {
   isOpen: boolean;
-  onClose: () => void;
+  close: () => void;
   onVersionSelect: (version: any) => void;
 }) {
+  const { t } = useTranslation();
+
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [activeMajor, setActiveMajor] = useState('1.21');
   const [activeSpecific, setActiveSpecific] = useState<string | null>(null);
@@ -85,7 +89,7 @@ function VersionSelectorPopup({
     if (activeSpecific) {
       onVersionSelect(activeSpecific);
     }
-    onClose();
+    close();
   };
 
   const SpecificVersionItem = ({ version, date, type }) => {
@@ -306,6 +310,8 @@ function VersionSelectorPopup({
 }
 
 export default function FalconLauncher() {
+  const { t } = useTranslation();
+
   const [activeTab, setActiveTab] = useState('home');
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -317,8 +323,6 @@ export default function FalconLauncher() {
   const [profiles, setProfiles] = useState([]);
 
   const [isVersionSelectorOpen, setIsVersionSelectorOpen] = useState(false);
-
-  const { locale, setLocale } = useLocale();
 
   const loadVersions = useCallback(async () => {
     try {
@@ -392,10 +396,6 @@ export default function FalconLauncher() {
     }
   };
 
-  const handleLanguageChange = async (lang) => {
-    setCurrentLanguage(lang);
-  };
-
   return (
     <div className="flex flex-col w-full h-screen bg-gray-900 text-gray-200 overflow-hidden">
       <div className="flex justify-between items-center px-4 sm:px-6 py-3 bg-gray-800 border-b border-gray-700">
@@ -406,13 +406,7 @@ export default function FalconLauncher() {
           <span className="text-xs text-gray-400">v1.0.0</span>
         </div>
         <div className="flex items-center">
-          <button
-            className="p-1 rounded-full hover:bg-gray-700 transition-colors"
-            onClick={() => setLocale(locale === 'fa' ? 'en' : 'fa')}
-            title="Change Language"
-          >
-            {locale === 'fa' ? 'fa' : 'en'}
-          </button>
+          <LocaleButton />
         </div>
       </div>
 
@@ -592,6 +586,8 @@ function NavItem({ icon, title, active, onClick }) {
 }
 
 function HomeTab() {
+  const { t } = useTranslation();
+
   const newsArticles = [
     {
       title: 'مهم',
@@ -619,6 +615,8 @@ function HomeTab() {
 }
 
 function AddModPopup({ isOpen, onClose }) {
+  const { t } = useTranslation();
+
   if (!isOpen) {
     return null;
   }
@@ -667,6 +665,8 @@ function AddModPopup({ isOpen, onClose }) {
 }
 
 function ModsTab() {
+  const { t } = useTranslation();
+
   const [mods, setMods] = useState([]);
   const [isAddModPopupOpen, setAddModPopupOpen] = useState(false);
   useEffect(() => {
@@ -768,6 +768,7 @@ function ModsTab() {
 }
 
 function RamUsageBar({ totalRam, ramUsage, setRamUsage }) {
+  const { t } = useTranslation();
   const ramUsageGB = (ramUsage / 1024).toFixed(1);
 
   const handleRamChange = (event) => {
@@ -807,6 +808,8 @@ function RamUsageBar({ totalRam, ramUsage, setRamUsage }) {
 }
 
 function SettingsTab() {
+  const { t } = useTranslation();
+
   const [totalRam, setTotalRam] = useState(0);
   const [ramUsage, setRamUsage] = useState(2048);
 

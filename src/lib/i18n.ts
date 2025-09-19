@@ -1,43 +1,17 @@
+import i18n from 'i18next';
+import { initReactI18next } from 'react-i18next';
+import enJSON from './locale/en.json';
+import faJSON from './locale/fa.json';
 import { useLocale } from '@/stores/locale';
-import { XMLParser } from 'fast-xml-parser';
 
-const parser = new XMLParser({
-  ignoreAttributes: false,
-  attributeNamePrefix: '@_',
-  isArray: (name) => name === 'string',
+i18n.use(initReactI18next).init({
+  resources: {
+    en: { translation: enJSON },
+    fa: { translation: faJSON },
+  }, // Where we're gonna put translations' files
+  lng: useLocale.getState().locale, // Set the initial language of the App
 });
-
-let translations: Record<string, string> = {};
-export async function reloadTranslations(locale: 'en' | 'fa') {
-  const res = await fetch(`/${locale}.xml`);
-  console.log(locale);
-
-  if (!res.ok) {
-    throw new Error(`Could not load ${locale}.xml`);
-  }
-  const xmlText = await res.text();
-  const json = parser.parse(xmlText);
-
-  const entries = json.resources.string;
-  const map: Record<string, string> = {};
-
-  if (Array.isArray(entries)) {
-    entries.forEach((entry) => {
-      map[entry['@_id']] = entry['#text'];
-    });
-  } else {
-    map[entries['@_id']] = entries['#text'];
-  }
-
-  translations = map;
-}
-
-export function t(text: string) {
-  return translations[text] || text;
-}
 
 useLocale.subscribe(({ locale }) => {
-  reloadTranslations(locale);
+  i18n.changeLanguage(locale);
 });
-
-reloadTranslations(useLocale.getState().locale);

@@ -1,7 +1,7 @@
 import { X } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { useState } from 'react';
-import { t } from './lib/i18n.js';
+import { useTranslation } from 'react-i18next';
 
 const MicrosoftLogo = () => (
   <svg
@@ -19,6 +19,8 @@ const MicrosoftLogo = () => (
 );
 
 export default function LoginPopup({ isOpen, onClose }) {
+  const { t } = useTranslation();
+
   if (!isOpen) {
     return null;
   }
