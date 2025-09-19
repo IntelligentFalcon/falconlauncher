@@ -112,7 +112,7 @@ impl MinecraftVersion {
         MinecraftVersion::new(id.clone(), id)
     }
     pub fn from_folder(directory: PathBuf) -> MinecraftVersion {
-        let ignored_jsons = vec!["tlauncheradditional.json"];
+        let ignored_jsons = vec!["tlauncheradditional.json", "usercache.json", "usernamecache.json"];
         let file: PathBuf = directory
             .read_dir()
             .unwrap()
