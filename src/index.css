@@ -1,5 +1,8 @@
 @import '@usegrand/azta-css/azta.min.css' layer(base);
 @import 'tailwindcss';
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
 
 @font-face {
     font-family: "Unixel";
@@ -8,6 +11,13 @@
     font-style: normal;
 }
 
-body {
-    font-family: "Unixel";
+@layer base {
+    * {
+        @apply tracking-normal;
+    }
+
+    body {
+        @apply bg-stone-950 text-stone-50;
+        font-family: "Unixel";
+    }
 }
