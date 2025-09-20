@@ -1,10 +1,18 @@
-import FalconLauncher from './FalconLauncher.js';
+import React from 'react';
+import FalconLauncher from './FalconLauncher';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+export const queryClient = new QueryClient();
 
 function App() {
   return (
-    <div className="min-h-screen antialiased">
-      <FalconLauncher />
-    </div>
+    <React.StrictMode>
+      <QueryClientProvider client={queryClient}>
+        <div className="min-h-screen antialiased">
+          <FalconLauncher />
+        </div>
+      </QueryClientProvider>
+    </React.StrictMode>
   );
 }
 

@@ -24,290 +24,15 @@ import {
 } from './components/ui/select';
 import {
   Dialog,
+  DialogBody,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from './components/ui/dialog';
 import { useTranslation } from 'react-i18next';
-import { useLocale } from './stores/locale';
 import { LocaleButton } from './components/basic/locale-button';
-
-function VersionSelectorPopup({
-  isOpen,
-  close,
-  onVersionSelect,
-}: {
-  isOpen: boolean;
-  close: () => void;
-  onVersionSelect: (version: any) => void;
-}) {
-  const { t } = useTranslation();
-
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [activeMajor, setActiveMajor] = useState('1.21');
-  const [activeSpecific, setActiveSpecific] = useState<string | null>(null);
-  const [showForge, setShowForge] = useState(false);
-  const [showNeoForge, setShowNeoForge] = useState(false);
-  const [showLiteLoader, setShowLiteLoader] = useState(false);
-  const [showFabric, setShowFabric] = useState(false);
-  const [versionsData, setVersionsData] = useState({});
-
-  const updateVersions = (forge, fabric, neoforge, liteloader) => {
-    invoke('load_categorized_versions', {
-      fabric: fabric,
-      forge: forge,
-      neoForge: neoforge,
-      liteLoader: liteloader,
-    })
-      .then((categories) => {
-        const v = {};
-        for (const category of categories) {
-          v[category.name] = category.versions.map((x) => ({
-            v: x.id,
-            d: x.date,
-            base: x.base,
-          }));
-        }
-        setVersionsData(v);
-      })
-      .catch((err) => console.error('Error loading versions:', err));
-  };
-
-  if (Object.keys(versionsData).length === 0) {
-    updateVersions(showForge, showFabric, showNeoForge, showLiteLoader);
-  }
-  const majorVersions = Object.keys(versionsData);
-  useEffect(() => {
-    if (versionsData[activeMajor] && versionsData[activeMajor].length > 0) {
-      setActiveSpecific(versionsData[activeMajor][0]);
-    }
-  }, [activeMajor]);
-
-  const handleInstall = () => {
-    if (activeSpecific) {
-      onVersionSelect(activeSpecific);
-    }
-    close();
-  };
-
-  const SpecificVersionItem = ({ version, date, type }) => {
-    const isActive = activeSpecific === version;
-    const baseClasses =
-      'cursor-pointer transition-all duration-200 ease-in-out rounded-lg';
-    const activeClasses = 'bg-indigo-600 border-indigo-400 text-white';
-    const hoverClasses = 'hover:bg-zinc-700';
-
-    if (type === 'grid') {
-      return (
-        <div
-          onClick={() => setActiveSpecific(version)}
-          className={`${baseClasses} p-4 text-center border ${
-            isActive
-              ? activeClasses
-              : 'bg-zinc-800 border-zinc-700 ' + hoverClasses
-          }`}
-        >
-          <div className="font-bold text-lg">{version.v}</div>
-          <div
-            className={`text-sm ${
-              isActive ? 'text-gray-200' : 'text-zinc-400'
-            }`}
-          >
-            {date}
-          </div>
-        </div>
-      );
-    }
-    return (
-      <div
-        onClick={() => setActiveSpecific(version)}
-        className={`${baseClasses} flex justify-between items-center p-4 border border-transparent ${
-          isActive ? activeClasses : hoverClasses
-        }`}
-      >
-        <div className="font-bold">{version.v}</div>
-        <div
-          className={`text-sm ${isActive ? 'text-gray-200' : 'text-zinc-400'}`}
-        >
-          {date}
-        </div>
-      </div>
-    );
-  };
-
-  return (
-    <>
-      <div className={`flex overflow-hidden`}>
-        <aside className="w-[280px] bg-gray-800 p-6 border-l border-zinc-700 flex flex-col">
-          <h2 className="text-xl font-bold mb-6">{t('mod_loaders')}</h2>
-          <div className="space-y-3">
-            <div className="flex items-center bg-zinc-700 p-3 rounded-md">
-              <input
-                type="checkbox"
-                id="forge"
-                className="w-5 h-5 accent-indigo-500 cursor-pointer"
-                checked={showForge}
-                onChange={(e) => {
-                  // HERE
-                  setShowForge((prev) => {
-                    const newValue = !prev;
-                    updateVersions(
-                      newValue,
-                      showFabric,
-                      showNeoForge,
-                      showLiteLoader
-                    );
-
-                    return newValue;
-                  });
-                }}
-              />
-              <label
-                htmlFor="forge"
-                className="mx-3 text-base cursor-pointer grow"
-              >
-                {t('install_forge')}
-              </label>
-            </div>
-            <div className="flex items-center bg-zinc-700 p-3 rounded-md">
-              <input
-                type="checkbox"
-                id="fabric"
-                className="w-5 h-5 accent-indigo-500 cursor-pointer"
-                onChange={(e) => {
-                  // HERE
-                  setShowFabric((prev) => {
-                    const newValue = !prev;
-                    updateVersions(
-                      showForge,
-                      newValue,
-                      showNeoForge,
-                      showLiteLoader
-                    );
-
-                    return newValue;
-                  });
-                }}
-              />
-              <label
-                htmlFor="fabric"
-                className="mx-3 text-base cursor-pointer grow"
-              >
-                {t('install_fabric')}
-              </label>
-            </div>
-            <div className="flex items-center bg-zinc-700 p-3 rounded-md">
-              <input
-                type="checkbox"
-                id="liteloader"
-                className="w-5 h-5 accent-indigo-500 cursor-pointer"
-              />
-              <label
-                htmlFor="liteloader"
-                className="mx-3 text-base cursor-pointer grow"
-              >
-                {t('install_liteloader')}
-              </label>
-            </div>
-            <div className="flex items-center bg-zinc-700 p-3 rounded-md">
-              <input
-                type="checkbox"
-                id="neoforge"
-                className="w-5 h-5 accent-indigo-500 cursor-pointer"
-              />
-              <label
-                htmlFor="neoforge"
-                className="mx-3 text-base cursor-pointer grow"
-              >
-                {t('install_neoforge')}
-              </label>
-            </div>
-          </div>
-          <button
-            onClick={handleInstall}
-            className="w-full mt-auto bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg transition-colors"
-          >
-            {t('install_selected')}
-          </button>
-        </aside>
-        <main className="grow p-6 flex flex-col overflow-y-auto">
-          <header className="flex justify-between items-center mb-6">
-            <h1 className="text-3xl font-bold">
-              {t('minecraft_version')} {activeMajor}
-            </h1>
-            <div className="flex space-x-2">
-              <button
-                onClick={() => setViewMode('grid')}
-                className={`p-2 rounded-md transition-colors ${
-                  viewMode === 'grid'
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-zinc-700 text-zinc-400 hover:bg-zinc-600'
-                }`}
-              >
-                <Grid size={20} />
-              </button>
-              <button
-                onClick={() => setViewMode('list')}
-                className={`p-2 rounded-md transition-colors ${
-                  viewMode === 'list'
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-zinc-700 text-zinc-400 hover:bg-zinc-600'
-                }`}
-              >
-                <List size={20} />
-              </button>
-            </div>
-          </header>
-          {!versionsData[activeMajor] ||
-          versionsData[activeMajor].length === 0 ? (
-            <p>Loading versions...</p>
-          ) : viewMode === 'grid' ? (
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-4">
-              {versionsData[activeMajor].map((item) => (
-                <SpecificVersionItem
-                  key={item.v}
-                  version={item}
-                  date={item.d}
-                  type="grid"
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="flex flex-col space-y-2">
-              {versionsData[activeMajor].map((item) => (
-                <SpecificVersionItem
-                  key={item.v}
-                  version={item}
-                  date={item.d}
-                  type="list"
-                />
-              ))}
-            </div>
-          )}
-        </main>
-        <aside className="w-[120px] bg-gray-800 p-2 border-r border-zinc-700 overflow-y-auto">
-          <ul className="space-y-1">
-            {majorVersions.map((v) => (
-              <li
-                key={v}
-                onClick={() => setActiveMajor(v)}
-                className={`px-3 py-4 text-center font-bold text-lg rounded-md cursor-pointer transition-colors ${
-                  activeMajor === v
-                    ? 'bg-zinc-900 text-white'
-                    : 'text-zinc-400 hover:bg-zinc-700'
-                }`}
-              >
-                {v}
-              </li>
-            ))}
-          </ul>
-        </aside>
-      </div>
-    </>
-  );
-}
+import { VersionSelectorPopup } from './components/block/version-manager';
 
 export default function FalconLauncher() {
   const { t } = useTranslation();
@@ -476,29 +201,28 @@ export default function FalconLauncher() {
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>Are you absolutely sure?</DialogTitle>
-                    <DialogDescription>
-                      This action cannot be undone. This will permanently delete
-                      your account and remove your data from our servers.
-                    </DialogDescription>
+                    <DialogTitle>{t('version_installer_title')}</DialogTitle>
                   </DialogHeader>
-                  <VersionSelectorPopup
-                    isOpen={isVersionSelectorOpen}
-                    close={() => setIsVersionSelectorOpen(false)}
-                    onVersionSelect={(version) =>
-                      invoke('download_version', {
-                        versionLoader: {
-                          id: version.v,
-                          date: version.d,
-                          base: version.base,
-                        },
-                      })
-                        .catch('Failed to download version')
-                        .then(() => {
-                          window.location.reload();
+                  <DialogBody>
+                    <VersionSelectorPopup
+                      close={() => setIsVersionSelectorOpen(false)}
+                      onVersionSelect={(version) =>
+                        invoke('download_version', {
+                          versionLoader: {
+                            id: version.v,
+                            date: version.d,
+                            base: version.base,
+                          },
                         })
-                    }
-                  />
+                          .catch(() =>
+                            console.error('Failed to download version')
+                          )
+                          .then(() => {
+                            window.location.reload();
+                          })
+                      }
+                    />
+                  </DialogBody>
                 </DialogContent>
               </Dialog>
             </div>
@@ -529,6 +253,7 @@ export default function FalconLauncher() {
             <Button
               disabled={isDownloading || username === ''}
               variant="success"
+              className="w-full"
               onClick={handlePlay}
             >
               <Play size={18} className="mr-2" />

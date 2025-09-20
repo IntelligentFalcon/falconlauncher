@@ -78,7 +78,7 @@ function DialogHeader({
     <div
       data-slot="dialog-header"
       className={cn(
-        'az-modal-header flex flex-col gap-2 text-center sm:text-left ',
+        'az-modal-header flex flex-col gap-2 text-center sm:text-left border-stone-500',
         className
       )}
       {...props}
@@ -142,6 +142,16 @@ function DialogDescription({
   );
 }
 
+function DialogBody({ className, ...props }: React.ComponentProps<'div'>) {
+  return (
+    <div
+      data-slot="dialog-body"
+      className={cn('az-modal-body', className)}
+      {...props}
+    />
+  );
+}
+
 export {
   Dialog,
   DialogClose,
@@ -152,5 +162,6 @@ export {
   DialogOverlay,
   DialogPortal,
   DialogTitle,
+  DialogBody,
   DialogTrigger,
 };
