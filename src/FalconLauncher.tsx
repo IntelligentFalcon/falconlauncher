@@ -1,18 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
-import {
-  Grid,
-  Home,
-  List,
-  Package,
-  Play,
-  Settings,
-  X,
-  Plus,
-  Trash2,
-} from 'lucide-react';
+import { Home, Package, Play, Settings, X, Plus, Trash2 } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import LoginPopup from './LoginPopup';
 import { publicDir } from '@tauri-apps/api/path';
 import { Button } from './components/ui/button';
 import {
@@ -33,6 +22,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { LocaleButton } from './components/basic/locale-button';
 import { VersionSelectorPopup } from './components/block/version-manager';
+import { LoginPopup } from './components/block/profile-maker';
 
 export default function FalconLauncher() {
   const { t } = useTranslation();
@@ -44,10 +34,10 @@ export default function FalconLauncher() {
   const [selectedVersion, setSelectedVersion] = useState('');
   const [username, setUsername] = useState('');
   const [statusMessage, setStatusMessage] = useState('Ready to play');
-  const [isLoginPopupOpen, setIsLoginPopupPopupOpen] = useState(false);
   const [profiles, setProfiles] = useState([]);
 
   const [isVersionSelectorOpen, setIsVersionSelectorOpen] = useState(false);
+  const [isProfileMakerOpen, setIsProfileMakerOpen] = useState(false);
 
   const loadVersions = useCallback(async () => {
     try {
@@ -163,13 +153,29 @@ export default function FalconLauncher() {
               </SelectContent>
             </Select>
 
-            <Button
-              variant="secondary"
-              className="text-xs"
-              onClick={() => setIsLoginPopupPopupOpen(true)}
+            <Dialog
+              open={isProfileMakerOpen}
+              onOpenChange={setIsProfileMakerOpen}
             >
-              {t('create_profile')}
-            </Button>
+              <DialogTrigger asChild>
+                <Button className="w-full" variant="secondary">
+                  {t('create_profile')}
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>{t('create_profile')}</DialogTitle>
+                </DialogHeader>
+                <DialogBody>
+                  <LoginPopup
+                    close={() => {
+                      setIsProfileMakerOpen(false);
+                      reloadProfiles();
+                    }}
+                  />
+                </DialogBody>
+              </DialogContent>
+            </Dialog>
 
             <div className="border-t border-gray-700 pt-4">
               <h3 className="text-sm font-semibold mb-2 text-gray-400">
@@ -193,7 +199,10 @@ export default function FalconLauncher() {
                   ))}
                 </SelectContent>
               </Select>
-              <Dialog>
+              <Dialog
+                open={isVersionSelectorOpen}
+                onOpenChange={setIsVersionSelectorOpen}
+              >
                 <DialogTrigger asChild>
                   <Button className="w-full" variant="secondary">
                     {t('install_new_version')}
@@ -279,14 +288,6 @@ export default function FalconLauncher() {
           {activeTab === 'mods' && <ModsTab />}
         </main>
       </div>
-
-      <LoginPopup
-        isOpen={isLoginPopupOpen}
-        onClose={() => {
-          setIsLoginPopupPopupOpen(false);
-          reloadProfiles();
-        }}
-      />
     </div>
   );
 }
