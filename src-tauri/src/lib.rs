@@ -3,7 +3,6 @@ use crate::directory_manager::{
     create_necessary_dirs, get_falcon_launcher_directory, get_mods_folder,
 };
 use crate::downloader::{download_fabric, download_forge_version};
-use crate::error::Error;
 use crate::game_launcher::{launch_game, update_download_status};
 use crate::mod_manager::{load_mods, set_mod_enabled};
 use crate::structs::VersionBase::{FABRIC, FORGE};
@@ -31,18 +30,17 @@ mod profile_manager;
 mod structs;
 mod utils;
 
-mod error;
 mod version_manager;
 
 static CONFIG: LazyLock<Mutex<Config>> = LazyLock::new(|| Mutex::new(config::default_config()));
 
 #[command]
-async fn toggle_mod(mod_info: ModInfo, toggle: bool) -> Result<(), Error> {
+async fn toggle_mod(mod_info: ModInfo, toggle: bool) -> Result<(), String> {
     set_mod_enabled(mod_info, toggle);
     Ok(())
 }
 #[command]
-async fn play_button_handler(app: AppHandle, selected_version: String) -> Result<(), Error> {
+async fn play_button_handler(app: AppHandle, selected_version: String) -> Result<(), String> {
     launch_game(app, selected_version, &*CONFIG.lock().await).await;
     Ok(())
 }
@@ -52,11 +50,11 @@ async fn load_categorized_versions(
     forge: bool,
     neo_forge: bool,
     lite_loader: bool,
-)  -> Result<Vec<VersionCategory>, Error>  {
+)  -> Result<Vec<VersionCategory>, String>  {
     Ok(get_categorized_versions(fabric, forge, neo_forge, lite_loader).await)
 }
 #[command]
-async fn get_versions() -> Result<Vec<String>, Error>  {
+async fn get_versions() -> Result<Vec<String>, String>  {
     Ok(CONFIG
         .lock()
         .await
@@ -67,7 +65,7 @@ async fn get_versions() -> Result<Vec<String>, Error>  {
         .collect())
 }
 #[command]
-async fn get_mods()  -> Result<Vec<ModInfo>, Error> {
+async fn get_mods()  -> Result<Vec<ModInfo>, String> {
     Ok(load_mods())
 }
 
@@ -153,51 +151,51 @@ pub fn run() {
         .expect("error while running tauri application");
 }
 #[command]
-async fn get_total_ram()  -> Result<u64, Error> {
+async fn get_total_ram()  -> Result<u64, String> {
     let ram = sys_info::mem_info().unwrap();
     Ok(ram.total)
 }
 #[command]
-async fn save()  -> Result<(), Error>{
+async fn save()  -> Result<(), String>{
     let cfg = CONFIG.lock().await;
     cfg.write_to_file();
     Ok(())
 }
 #[command]
-async fn set_username(username: String) -> Result<(), Error> {
+async fn set_username(username: String) -> Result<(), String> {
     let mut config = CONFIG.lock().await;
     config.launch_options.username = username;
     Ok(())
 }
 #[command]
-async fn set_ram_usage(ram_usage: u64) -> Result<(), Error> {
+async fn set_ram_usage(ram_usage: u64) -> Result<(), String> {
     let mut config = CONFIG.lock().await;
     config.launch_options.ram_usage = ram_usage;
     Ok(())
 }
 #[command]
-async fn get_ram_usage() -> Result<u64, Error> {
+async fn get_ram_usage() -> Result<u64, String> {
     Ok(CONFIG.lock().await.launch_options.ram_usage)
 }
 #[command]
-async fn get_username() -> Result<String, Error> {
+async fn get_username() -> Result<String, String> {
     Ok(CONFIG.lock().await.launch_options.username.clone())
 }
 
 #[command]
-async fn get_profiles() -> Result<Vec<String>, Error> {
+async fn get_profiles() -> Result<Vec<String>, String> {
     let profiles = profile_manager::get_profiles();
     Ok(profiles.iter().map(|x| x.name.clone()).collect())
 }
 #[command]
-async fn create_offline_profile(username: String) -> Result<(), Error> {
+async fn create_offline_profile(username: String) -> Result<(), String> {
     profile_manager::create_new_profile(username.clone(), false);
     let mut config = CONFIG.lock().await;
     config.launch_options.username = username;
     Ok(())
 }
 #[command]
-async fn get_installed_versions() -> Result<Vec<String>, Error> {
+async fn get_installed_versions() -> Result<Vec<String>, String> {
     let conf = CONFIG.lock().await;
     let versions = conf.versions.clone();
     Ok(versions
@@ -207,7 +205,7 @@ async fn get_installed_versions() -> Result<Vec<String>, Error> {
         .collect())
 }
 #[command]
-async fn get_non_installed_versions() -> Result<Vec<String>, Error> {
+async fn get_non_installed_versions() -> Result<Vec<String>, String> {
     let conf = CONFIG.lock().await;
     let versions = conf.versions.clone();
     Ok(versions
@@ -218,18 +216,18 @@ async fn get_non_installed_versions() -> Result<Vec<String>, Error> {
 }
 
 #[command]
-async fn set_language(lang: String) -> Result<(), Error> {
+async fn set_language(lang: String) -> Result<(), String> {
     let mut config = CONFIG.lock().await;
     config.launcher_settings.language = lang;
     Ok(())
 }
 #[command]
-async fn get_language() -> Result<String, Error> {
+async fn get_language() -> Result<String, String> {
     Ok(CONFIG.lock().await.launcher_settings.language.clone())
 }
 
 #[command]
-async fn install_mod_from_local(app: AppHandle) -> Result<(), Error> {
+async fn install_mod_from_local(app: AppHandle) -> Result<(), String> {
     let paths = app
         .dialog()
         .file()
@@ -248,7 +246,7 @@ async fn install_mod_from_local(app: AppHandle) -> Result<(), Error> {
 async fn download_version(
     app_handle: AppHandle,
     version_loader: VersionLoader,
-) -> Result<(), Error> {
+) -> Result<(), String> {
     let version_id = version_loader.get_installed_id();
     if version_loader.base == FORGE {
         println!(

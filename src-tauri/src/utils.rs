@@ -8,25 +8,36 @@ use reqwest::Client;
 use serde_json::Value;
 use std::fs::File;
 use std::path::Path;
+use std::thread::spawn;
 use std::time::Duration;
+use tokio::fs::create_dir_all;
 
 pub fn get_current_os() -> String {
     structs::parse_os(sys_info::os_type().expect("Unsupported Operating System"))
 }
 fn load_downloaded_versions() {
     let dir = get_versions_directory();
-    for folder in dir
-        .read_dir()
-        .map_or(Vec::new(), |read_dir| read_dir.filter_map(|dir_ent| b.ok()))
-        .filter(|x| x.metadata().unwrap().is_dir())
-    {
-        folder
-            .path()
-            .read_dir()
-            .unwrap()
-            .map(|x| x.unwrap())
-            .filter(|x| x.path().extension().unwrap() == "json")
-            .for_each(|x| {})
+    let folders = dir.read_dir();
+    match folders {
+        Ok(folders) => {
+            for folder in folders.filter(|x| x.is_ok()).map(|x| x.unwrap()) {
+                folder
+                    .path()
+                    .read_dir()
+                    .unwrap()
+                    .map(|x| x.unwrap())
+                    .filter(|x| x.path().extension().unwrap() == "json")
+                    .for_each(|x| {})
+            }
+        }
+
+        _ => {
+            /// TODO: Handle error on no version folder found in .minecraft
+            spawn(|| async move {
+                create_dir_all(dir).await;
+            });
+            return;
+        }
     }
 }
 pub fn get_downloaded_versions() -> Vec<MinecraftVersion> {
