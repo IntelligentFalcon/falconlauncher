@@ -17,8 +17,7 @@ fn load_downloaded_versions() {
     let dir = get_versions_directory();
     for folder in dir
         .read_dir()
-        .unwrap()
-        .map(|x| x.unwrap())
+        .map_or(Vec::new(), |read_dir| read_dir.filter_map(|dir_ent| b.ok()))
         .filter(|x| x.metadata().unwrap().is_dir())
     {
         folder

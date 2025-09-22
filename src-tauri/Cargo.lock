@@ -1205,6 +1205,7 @@ dependencies = [
  "tauri-plugin-log",
  "tauri-plugin-notification",
  "tauri-plugin-opener",
+ "thiserror 1.0.69",
  "tokio",
  "toml 0.9.4",
  "uuid",

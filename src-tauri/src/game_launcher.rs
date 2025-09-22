@@ -9,19 +9,23 @@ use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use tauri::{AppHandle, Emitter};
+use crate::structs::MinecraftVersion;
 
 const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 pub async fn launch_game(app_handle: AppHandle, version: String, config: &Config) {
     let mut versions = config.versions.iter().filter(|x| x.id == version);
-    let version = versions.next().unwrap();
+    let ver_res = versions.next();
+    match ver_res {
+        None => {
+            // TODO: Error when no version is selected to play
+            return;
+        }
+        _ => {}
+    }
+    let version = ver_res.unwrap();
     let inherited_version = version.get_inherited();
     let inherited_json = inherited_version.load_json();
-    // if is_connected_to_internet().await {
-    //     update_download_status("Downloading version...", &app_handle);
-    //     download_version(&version, &app_handle).await;
-    //     download_version(&inherited_version, &app_handle).await;
-    // }
     let version_id = &version.id;
     let inherited_id = &inherited_version.id;
     update_download_status("Reading version metadata...", &app_handle);

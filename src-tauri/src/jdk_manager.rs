@@ -16,7 +16,7 @@ pub async fn download_java(id: &String) {
         format!("https://corretto.aws/downloads/latest/amazon-corretto-{id}-x64-macos-jdk.tar.gz")
     };
 
-    let file_name = url.split("/").last().unwrap();
+    let file_name = url.split("/").last().unwrap_or("");
     let zip_file_path = get_launcher_java_directory().join(file_name);
     let mut output_folder = get_launcher_java_directory().join(id);
     if output_folder.join("bin").exists() {

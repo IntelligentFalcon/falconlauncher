@@ -14,6 +14,8 @@ mod config;
 mod directory_manager;
 mod downloader;
 mod game_launcher;
+mod error;
+
 mod jdk_manager;
 mod structs;
 mod utils;
