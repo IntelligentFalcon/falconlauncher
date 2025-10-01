@@ -41,8 +41,7 @@ async fn toggle_mod(mod_info: ModInfo, toggle: bool) -> Result<(), String> {
 }
 #[command]
 async fn play_button_handler(app: AppHandle, selected_version: String) -> Result<(), String> {
-    launch_game(app, selected_version, &*CONFIG.lock().await).await;
-    Ok(())
+    launch_game(app, selected_version, &*CONFIG.lock().await).await
 }
 #[command]
 async fn load_categorized_versions(

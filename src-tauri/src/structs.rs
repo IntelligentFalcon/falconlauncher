@@ -306,3 +306,4 @@ pub struct VersionCategory {
 
 pub mod fabric;
 pub mod mod_identifiers;
+mod error;

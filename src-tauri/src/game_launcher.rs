@@ -3,23 +3,27 @@ use crate::directory_manager::*;
 use crate::downloader::{download_forge_version, download_version};
 use crate::jdk_manager::get_java;
 use crate::profile_manager::get_profile;
+use crate::structs::MinecraftVersion;
 use crate::utils::{extend_once, get_current_os, is_connected_to_internet, vec_to_string};
+use serde_ini::de::Trait;
 use serde_json::Value;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use tauri::{AppHandle, Emitter};
-use crate::structs::MinecraftVersion;
 
 const CREATE_NO_WINDOW: u32 = 0x08000000;
 
-pub async fn launch_game(app_handle: AppHandle, version: String, config: &Config) {
+pub async fn launch_game(
+    app_handle: AppHandle,
+    version: String,
+    config: &Config,
+) -> Result<(), String> {
     let mut versions = config.versions.iter().filter(|x| x.id == version);
     let ver_res = versions.next();
     match ver_res {
         None => {
-            // TODO: Error when no version is selected to play
-            return;
+            return Err("no_selected_version".to_string());
         }
         _ => {}
     }
@@ -73,9 +77,15 @@ pub async fn launch_game(app_handle: AppHandle, version: String, config: &Config
         .to_string();
     let typ = json["type"].as_str().unwrap();
     let mut run_args_iter = get_launch_args(&json);
+    if run_args_iter.is_err() {
+        return Err("Couldn't find launch arguments".to_string());
+    }
     let run_args_iter_inherited = get_launch_args(&inherited_json);
-    run_args_iter = extend_once(run_args_iter, run_args_iter_inherited);
-    let run_args = run_args_iter
+    if run_args_iter_inherited.is_err() {
+        return Err("Couldn't find launch arguments".to_string());
+    }
+    let run_args_iter_sum = extend_once(run_args_iter.unwrap(), run_args_iter_inherited.unwrap());
+    let run_args = run_args_iter_sum
         .iter()
         .map(|v| {
             v.replace("${auth_player_name}", username)
@@ -131,24 +141,27 @@ pub async fn launch_game(app_handle: AppHandle, version: String, config: &Config
     });
 
     update_download_status("", &app_handle);
+    Ok(())
 }
 
-pub fn get_launch_args(json: &Value) -> Vec<String> {
+pub fn get_launch_args(json: &Value) -> Result<Vec<String>, String> {
     if json.get("minecraftArguments").is_none() {
-        json["arguments"]["game"]
+        Ok(json["arguments"]["game"]
             .as_array()
             .unwrap()
             .iter()
             .filter(|v| v.is_string())
             .map(|v| v.as_str().unwrap().to_string())
-            .collect::<Vec<String>>()
-    } else {
-        json["minecraftArguments"]
+            .collect::<Vec<String>>())
+    } else if !json.get("minecraftArguments").is_none() {
+        Ok(json["minecraftArguments"]
             .as_str()
             .unwrap()
             .split(" ")
             .map(|v| v.to_string())
-            .collect::<Vec<String>>()
+            .collect::<Vec<String>>())
+    } else {
+        Err("invalid_version:no_launch_args".to_string())
     }
 }
 pub fn update_download_bar(progress: i64, app_handle: &AppHandle) {
