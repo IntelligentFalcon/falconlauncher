@@ -2,13 +2,14 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use crate::downloader::download_forge_version;
-use crate::mod_manager::load_mods;
+use crate::mods::mod_manager::load_mods;
 use discord_sdk::activity::{ActivityBuilder, Assets};
 use discord_sdk::DiscordHandler;
 use std::fs::File;
 use std::time::Duration;
 use tauri::async_runtime::block_on;
 use tauri::ipc::RuntimeCapability;
+use crate::mods::modrinth_helper::{search_for_mod, SearchFacet};
 
 mod config;
 mod directory_manager;
@@ -19,7 +20,8 @@ mod jdk_manager;
 mod structs;
 mod utils;
 
-mod mod_manager;
+mod mods;
+
 mod profile_manager;
 mod version_manager;
 
@@ -75,5 +77,14 @@ fn test_activity() {
         loop {
             tokio::time::sleep(Duration::from_millis(16)).await;
         }
+    });
+}
+
+#[test]
+fn test_facet_helper(){
+    block_on(async {
+        let results = search_for_mod("gravestone".to_string(), SearchFacet::new().version("1.21").category("forge").project_type("mod").get_str(),
+                                     "relevance".to_string(), 0, 0).await;
+        println!("{:?}", results.hits[0]);
     });
 }

@@ -41,7 +41,7 @@ pub async fn launch_game(
 
     let java_version = inherited_json["javaVersion"]["majorVersion"]
         .as_i64()
-        .unwrap()
+        .unwrap_or(8)
         .to_string();
 
     let game_directory = get_minecraft_directory().display().to_string();
@@ -53,7 +53,7 @@ pub async fn launch_game(
         .to_string();
 
     let libraries = version.get_libraries();
-    let asset_index = inherited_json["assetIndex"]["id"]
+    let asset_index = inherited_json["assets"]
         .as_str()
         .unwrap()
         .to_string();
@@ -102,7 +102,7 @@ pub async fn launch_game(
                 .replace("${clientid}", &uuid::Uuid::new_v4().to_string())
                 .replace("${auth_xuid}", "0")
         })
-        .collect::<Vec<String>>();
+    .collect::<Vec<String>>();
     let separator = if get_current_os() == "windows" {
         ";"
     } else {

@@ -4,12 +4,12 @@ use crate::directory_manager::{
 };
 use crate::downloader::{download_fabric, download_forge_version};
 use crate::game_launcher::{launch_game, update_download_status};
-use crate::mod_manager::{load_mods, set_mod_enabled};
+use crate::mods::mod_manager::{load_mods, set_mod_enabled};
 use crate::structs::VersionBase::{FABRIC, FORGE};
 use crate::structs::{MinecraftVersion, ModInfo, VersionCategory};
 use crate::utils::is_connected_to_internet;
 use crate::version_manager::{download_version_manifest, get_categorized_versions, VersionLoader};
-use std::fs::{create_dir_all, rename};
+use std::fs::create_dir_all;
 use std::io::Write;
 use std::ops::Deref;
 use std::string::ToString;
@@ -25,12 +25,12 @@ mod directory_manager;
 mod downloader;
 mod game_launcher;
 mod jdk_manager;
-mod mod_manager;
 mod profile_manager;
 mod structs;
 mod utils;
 
 mod version_manager;
+mod mods;
 
 static CONFIG: LazyLock<Mutex<Config>> = LazyLock::new(|| Mutex::new(config::default_config()));
 
