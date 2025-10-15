@@ -9,7 +9,7 @@ use std::fs::File;
 use std::time::Duration;
 use tauri::async_runtime::block_on;
 use tauri::ipc::RuntimeCapability;
-use crate::mods::modrinth_helper::{search_for_mod, SearchFacet};
+use crate::mods::modrinth_helper::{SearchFacet};
 
 mod config;
 mod directory_manager;

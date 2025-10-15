@@ -14,11 +14,13 @@ use std::io::Write;
 use std::ops::Deref;
 use std::string::ToString;
 use std::sync::LazyLock;
-use tauri::async_runtime::{block_on, Mutex};
-use tauri::{command, AppHandle, LogicalSize, Manager};
+use tauri::async_runtime::{spawn, Mutex};
+use tauri::{command, App, AppHandle, LogicalSize, Manager};
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_log::{Target, TargetKind};
 use tokio::fs::copy;
+use tokio::task::spawn_local;
+use crate::mods::mod_manager;
 
 mod config;
 mod directory_manager;
@@ -68,6 +70,11 @@ async fn get_mods()  -> Result<Vec<ModInfo>, String> {
     Ok(load_mods())
 }
 
+async fn initialize_app(handle: AppHandle) -> Result<(), String> {
+
+
+    Ok(())
+}
 #[command]
 async fn reload_versions() {}
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -91,16 +98,16 @@ pub fn run() {
             let _ = create_dir_all(fl_path);
             let _ = create_dir_all(jdk_path);
 
-            block_on(async move {
+            spawn(async {
                 create_necessary_dirs().await;
                 if is_connected_to_internet().await {
                     download_version_manifest().await;
                 }
                 load_config(&mut *CONFIG.lock().await).await;
+
             });
 
-            let handle = app.handle();
-            let window = handle.get_window("main").unwrap();
+            let window = app.handle().get_window("main").unwrap();
             let independant_multiplier = 1.2;
             let monitor = window.primary_monitor().unwrap().unwrap();
             let size = monitor.size();
@@ -122,6 +129,7 @@ pub fn run() {
                 .expect("Failed to remove maximizablity");
             window.set_focus().expect("Failed to set window on focus");
 
+
             return Ok(());
         })
         .invoke_handler(tauri::generate_handler![
@@ -134,6 +142,7 @@ pub fn run() {
             reload_versions,
             get_ram_usage,
             toggle_mod,
+            delete_mod,
             save,
             get_mods,
             download_version,
@@ -242,11 +251,17 @@ async fn install_mod_from_local(app: AppHandle) -> Result<(), String> {
     Ok(())
 }
 #[command]
+async fn delete_mod(mod_info: ModInfo){
+    mod_manager::delete_mod(&mod_info);
+}
+#[command]
 async fn download_version(
     app_handle: AppHandle,
     version_loader: VersionLoader,
 ) -> Result<(), String> {
+
     let version_id = version_loader.get_installed_id();
+
     if version_loader.base == FORGE {
         println!(
             "DEBUG: Forge version detected! {} installing it rn!",
@@ -261,12 +276,16 @@ async fn download_version(
         );
         download_fabric(&version_loader).await;
     }
+
     let version = MinecraftVersion::from_id(version_id);
     let inherited_version = version.get_inherited();
     update_download_status("Downloading version...", &app_handle);
     downloader::download_version(&version, &app_handle).await;
-    downloader::download_version(&inherited_version, &app_handle).await;
-    let dialog = app_handle
+    if inherited_version.id != version.id{
+        downloader::download_version(&inherited_version, &app_handle).await;
+    }
+    update_download_status("", &app_handle);
+     app_handle
         .dialog()
         .message("Successfully installed the selected version you can now play it")
         .title("Done!")

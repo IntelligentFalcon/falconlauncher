@@ -26,7 +26,7 @@ export function VersionSelectorPopup({
   });
 
   const [activeMajor, setActiveMajor] = useState('1.21');
-  const [activeSpecific, setActiveSpecific] = useState<string | null>(null);
+  const [activeSpecific, setActiveSpecific] = useState<any>(null);
 
   const { data: versionsData, isLoading } = useQuery({
     queryKey: ['versions', filters],
@@ -182,7 +182,7 @@ export function VersionSelectorPopup({
             <RadioGroup
               defaultValue={versionsData[activeMajor][0].v}
               onValueChange={(value) => {
-                setActiveSpecific(value);
+                setActiveSpecific(versionsData[activeMajor].find((x) => x.v === value));
               }}
               className={cn(
                 viewMode === 'grid'

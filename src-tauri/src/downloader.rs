@@ -3,10 +3,10 @@ use crate::directory_manager::{
     get_minecraft_directory, get_natives_folder, get_temp_directory, get_version_directory,
     get_versions_directory,
 };
-use crate::game_launcher::update_download;
+use crate::game_launcher::{update_download, update_download_status};
 use crate::structs::{library_from_value, LibraryRules, MinecraftVersion};
 use crate::utils::{
-    convert_to_full_path, convert_to_full_url, get_core_version, get_current_os,
+    convert_to_full_path, convert_to_full_url, get_current_os,
     verify_file_existence,
 };
 use crate::version_manager::{load_version_manifest, VersionLoader};
@@ -15,11 +15,9 @@ use crate::jdk_manager::get_java;
 use crate::structs::fabric::{FabricInstaller, FabricLoader, FabricMinecraftVersion};
 use serde_json::Value;
 use std::collections::HashMap;
-use std::fmt::format;
 use std::fs;
 use std::fs::{create_dir_all, exists, File};
-use std::io::{BufRead, BufReader, Write};
-use std::iter::Map;
+use std::io::{read_to_string, BufRead, BufReader, Write};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::sync::LazyLock;
@@ -57,16 +55,12 @@ async fn download_assets(value: &Value) {
         .unwrap()
         .to_string();
     download_file_if_not_exists(
-        &PathBuf::from(asset_index_path),
+        &PathBuf::from(&asset_index_path),
         url.to_string(),
         total_size,
     )
     .await;
-    let content = reqwest::get(url)
-        .await
-        .expect("Failed to download file.")
-        .text()
-        .await
+    let content = fs::read_to_string(PathBuf::from(&asset_index_path))
         .expect("Failed to read file.");
     json = Some(serde_json::from_str(content.as_str()).expect("JSON File isn't well formatted."));
     let url_template = "https://resources.download.minecraft.net/{id}/{hash}";
@@ -100,25 +94,26 @@ pub async fn download_version(version: &MinecraftVersion, app_handle: &AppHandle
     let id = &version.id;
 
     let manifest = load_version_manifest().await;
-    if !version.is_installed() {
         match manifest {
             None => {}
             Some(val) => {
                 download_from_manifest(id, val).await;
             }
         }
-    }
     let content = fs::read_to_string(PathBuf::from(version.get_json())).unwrap();
 
     let json: Value = serde_json::from_str(&content).unwrap();
 
     download_libraries(&json["libraries"], &id, app_handle).await;
     if !json.get("downloads").is_none() {
+        update_download_status("Downloading version...", &app_handle);
         download_client(&json["downloads"]["client"], &id).await;
-    }
 
-    if json.get("assetIndex") != None {
+    }
+    if json.get("assetIndex").is_some(){
+        update_download_status("Downloading assets...", &app_handle);
         download_assets(&json["assetIndex"]).await;
+
     }
 }
 

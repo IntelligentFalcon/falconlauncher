@@ -215,7 +215,7 @@ export default function FalconLauncher() {
                   <DialogBody>
                     <VersionSelectorPopup
                       close={() => setIsVersionSelectorOpen(false)}
-                      onVersionSelect={(version) =>
+                      onVersionSelect={(version) =>{
                         invoke('download_version', {
                           versionLoader: {
                             id: version.v,
@@ -227,9 +227,9 @@ export default function FalconLauncher() {
                             console.error('Failed to download version')
                           )
                           .then(() => {
-                            window.location.reload();
+                            loadVersions().catch(() => console.error("Failed to update version list"));
                           })
-                      }
+                      }}
                     />
                   </DialogBody>
                 </DialogContent>
@@ -407,19 +407,16 @@ function ModsTab() {
   }, [mods]);
 
   const handleToggleMod = (mod, enabled) => {
-    // Here you would invoke a Tauri command to enable/disable the mod
     mod.enabled = enabled;
     console.log(`Toggling mod ${mod.name} to ${enabled}`);
-    invoke('toggle_mod', { modInfo: mod, toggle: enabled }).catch('Error!');
-    // For now, we'll just update the local state for visual feedback
+    invoke('toggle_mod', { modInfo: mod, toggle: enabled }).catch(console.error);
     setMods(mods.map((m) => (m.name === mod.name ? mod : m)));
   };
 
   const handleDeleteMod = (mod) => {
     console.log(`Deleting mod ${mod.name}`);
-    // Here you would invoke a Tauri command to delete the mod
-    // invoke("delete_mod", { modInfo: mod }).catch("Error!");
-    // For now, we'll just update the local state for visual feedback
+    invoke('delete_mod', { modInfo: mod}).catch(console.error);
+
     setMods(mods.filter((m) => m.name !== mod.name));
   };
 

@@ -23,7 +23,7 @@ pub async fn launch_game(
     let ver_res = versions.next();
     match ver_res {
         None => {
-            return Err("no_selected_version".to_string());
+            return Err("Couldn't find any selected version. might have to try selecting a version before launching the game".to_string());
         }
         _ => {}
     }
@@ -117,7 +117,6 @@ pub async fn launch_game(
         .arg(format!("{}{}{}", class_path, separator, libraries_str))
         .arg(main_class)
         .args(&run_args)
-        // .creation_flags(CREATE_NO_WINDOW)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
@@ -161,7 +160,7 @@ pub fn get_launch_args(json: &Value) -> Result<Vec<String>, String> {
             .map(|v| v.to_string())
             .collect::<Vec<String>>())
     } else {
-        Err("invalid_version:no_launch_args".to_string())
+        Err("No launch arguments was found. report this to the launcher developers! ".to_string())
     }
 }
 pub fn update_download_bar(progress: i64, app_handle: &AppHandle) {
