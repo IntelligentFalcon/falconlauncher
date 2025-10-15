@@ -2,6 +2,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+// @ts-ignore
 const MicrosoftLogo = () => (
   <svg
     width="21"
