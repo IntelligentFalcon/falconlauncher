@@ -134,7 +134,6 @@ async fn download_from_manifest(id: &String, manifest: Value) {
             .to_string(),
     )
     .await;
-
 }
 
 async fn download_client(value: &Value, version: &String) {
