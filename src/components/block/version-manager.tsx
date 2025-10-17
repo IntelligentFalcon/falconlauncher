@@ -5,8 +5,9 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
-import { cn } from '@/lib/utils';
+import { cn, command } from '@/lib/utils';
 import { Button } from '../ui/button';
+import { LoadCategorizedVersions } from '@/types';
 
 export function VersionSelectorPopup({
   close,
@@ -31,16 +32,7 @@ export function VersionSelectorPopup({
   const { data: versionsData, isLoading } = useQuery({
     queryKey: ['versions', filters],
     queryFn: () =>
-      invoke<
-        {
-          name: string;
-          versions: {
-            id: string;
-            date: string;
-            base: string;
-          }[];
-        }[]
-      >('load_categorized_versions', filters),
+      command<LoadCategorizedVersions>('load_categorized_versions', filters),
     select: (data) => {
       const v: Record<string, { v: string; d: string; base: string }[]> = {};
       for (const category of data) {
@@ -182,7 +174,9 @@ export function VersionSelectorPopup({
             <RadioGroup
               defaultValue={versionsData[activeMajor][0].v}
               onValueChange={(value) => {
-                setActiveSpecific(versionsData[activeMajor].find((x) => x.v === value));
+                setActiveSpecific(
+                  versionsData[activeMajor].find((x) => x.v === value)
+                );
               }}
               className={cn(
                 viewMode === 'grid'

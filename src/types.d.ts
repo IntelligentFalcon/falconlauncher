@@ -30,11 +30,12 @@ interface MinecraftVersion {
   isInstalled: boolean;
   base: 'FABRIC' | 'FORGE' | 'NEO_FORGE' | 'LITE_LOADER' | 'VANILLA';
   inheritedVersion?: string;
+  date: string;
   // Add other relevant fields like type, release time, etc.
 }
 
 interface VersionCategory {
-  loader: string; // e.g., "Fabric", "Forge"
+  name: string; // e.g., "Fabric", "Forge"
   versions: MinecraftVersion[];
 }
 
@@ -90,8 +91,8 @@ type LoadCategorizedVersions = Command<
   {
     fabric: boolean;
     forge: boolean;
-    neo_forge: boolean;
-    lite_loader: boolean;
+    neoForge: boolean;
+    liteLoader: boolean;
   },
   VersionCategory[]
 >;

@@ -1,6 +1,7 @@
 import { command } from '@/lib/utils';
-import { CreateOfflineProfile, SetUsername } from '@/types';
-import { useState } from 'react';
+import { CreateOfflineProfile } from '@/types';
+import { useMutation } from '@tanstack/react-query';
+import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
 function MicrosoftLogo() {
@@ -22,33 +23,30 @@ function MicrosoftLogo() {
 
 export function LoginPopup({ close }: { close: () => void }) {
   const { t } = useTranslation();
-  const [username, setUsername] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const { mutate: createOfflineProfile } = useMutation({
+    mutationFn: () =>
+      command<CreateOfflineProfile>('create_offline_profile', {
+        username: inputRef.current?.value ?? '',
+      }),
+    onSuccess: () => close(),
+    onError: () => console.log('error'),
+  });
 
   return (
-    <form>
+    <form onSubmit={() => createOfflineProfile}>
       <div className="mb-4">
         <input
           type="text"
           placeholder="Username"
           className="w-full p-3 bg-gray-900 border border-gray-700 rounded-sm text-gray-200 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
-          onChange={(event) => {
-            setUsername(event.target.value);
-            command<SetUsername>('set_username', {
-              username: event.target.value,
-            }).catch(() => "Guess what? i couldn't save your username");
-          }}
+          ref={inputRef}
         />
       </div>
-
       <button
         type="submit"
         className="w-full mb-4 p-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-sm transition-colors"
-        onClick={() => {
-          command<CreateOfflineProfile>('create_offline_profile', {
-            username: username,
-          }).catch(() => 'Oh failed to create profile!');
-          close();
-        }}
       >
         {t('login')}
       </button>
