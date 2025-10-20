@@ -117,8 +117,6 @@ export default function FalconLauncher() {
       setSelectedVersion(versions[0]);
     setIsDownloading(true);
     try {
-      await invoke('set_username', { username: username });
-      await invoke('save');
       await invoke('play_button_handler', { selectedVersion: selectedVersion });
     } catch (e) {
       console.error('Failed to launch game:', e);

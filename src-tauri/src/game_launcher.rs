@@ -173,3 +173,7 @@ pub fn update_download(progress: i64, text: &str, app_handle: &AppHandle) {
     app_handle.emit("progress", text).unwrap();
     app_handle.emit("progressBar", progress).unwrap();
 }
+
+fn veriy_game_files(){
+
+}

@@ -4,6 +4,7 @@ use crate::directory_manager::{
 };
 use crate::downloader::{download_fabric, download_forge_version};
 use crate::game_launcher::{launch_game, update_download_status};
+use crate::mods::mod_manager;
 use crate::mods::mod_manager::{load_mods, set_mod_enabled};
 use crate::structs::VersionBase::{FABRIC, FORGE};
 use crate::structs::{MinecraftVersion, ModInfo, VersionCategory};
@@ -20,7 +21,6 @@ use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_log::{Target, TargetKind};
 use tokio::fs::copy;
 use tokio::task::spawn_local;
-use crate::mods::mod_manager;
 
 mod config;
 mod directory_manager;
@@ -31,8 +31,8 @@ mod profile_manager;
 mod structs;
 mod utils;
 
-mod version_manager;
 mod mods;
+mod version_manager;
 
 static CONFIG: LazyLock<Mutex<Config>> = LazyLock::new(|| Mutex::new(config::default_config()));
 
@@ -51,11 +51,11 @@ async fn load_categorized_versions(
     forge: bool,
     neo_forge: bool,
     lite_loader: bool,
-)  -> Result<Vec<VersionCategory>, String>  {
+) -> Result<Vec<VersionCategory>, String> {
     Ok(get_categorized_versions(fabric, forge, neo_forge, lite_loader).await)
 }
 #[command]
-async fn get_versions() -> Result<Vec<String>, String>  {
+async fn get_versions() -> Result<Vec<String>, String> {
     Ok(CONFIG
         .lock()
         .await
@@ -66,13 +66,11 @@ async fn get_versions() -> Result<Vec<String>, String>  {
         .collect())
 }
 #[command]
-async fn get_mods()  -> Result<Vec<ModInfo>, String> {
+async fn get_mods() -> Result<Vec<ModInfo>, String> {
     Ok(load_mods())
 }
 
 async fn initialize_app(handle: AppHandle) -> Result<(), String> {
-
-
     Ok(())
 }
 #[command]
@@ -104,7 +102,6 @@ pub fn run() {
                     download_version_manifest().await;
                 }
                 load_config(&mut *CONFIG.lock().await).await;
-
             });
 
             let window = app.handle().get_window("main").unwrap();
@@ -129,15 +126,14 @@ pub fn run() {
                 .expect("Failed to remove maximizablity");
             window.set_focus().expect("Failed to set window on focus");
 
-
             return Ok(());
         })
         .invoke_handler(tauri::generate_handler![
             play_button_handler,
             get_versions,
             get_total_ram,
-            set_username,
             set_ram_usage,
+            set_config,
             get_username,
             reload_versions,
             get_ram_usage,
@@ -159,21 +155,23 @@ pub fn run() {
         .expect("error while running tauri application");
 }
 #[command]
-async fn get_total_ram()  -> Result<u64, String> {
+async fn get_total_ram() -> Result<u64, String> {
     let ram = sys_info::mem_info().unwrap();
     Ok(ram.total)
 }
 #[command]
-async fn save()  -> Result<(), String>{
+async fn save() -> Result<(), String> {
     let cfg = CONFIG.lock().await;
     cfg.write_to_file();
     Ok(())
 }
 #[command]
-async fn set_username(username: String) -> Result<(), String> {
-    let mut config = CONFIG.lock().await;
-    config.launch_options.username = username;
-    Ok(())
+async fn set_config(config: Config) {
+    let mut cfg = CONFIG.lock().await;
+    cfg.launch_options = config.launch_options;
+    cfg.launcher_settings = config.launcher_settings;
+    cfg.versions = config.versions;
+    cfg.write_to_file();
 }
 #[command]
 async fn set_ram_usage(ram_usage: u64) -> Result<(), String> {
@@ -251,7 +249,7 @@ async fn install_mod_from_local(app: AppHandle) -> Result<(), String> {
     Ok(())
 }
 #[command]
-async fn delete_mod(mod_info: ModInfo){
+async fn delete_mod(mod_info: ModInfo) {
     mod_manager::delete_mod(&mod_info);
 }
 #[command]
@@ -259,7 +257,6 @@ async fn download_version(
     app_handle: AppHandle,
     version_loader: VersionLoader,
 ) -> Result<(), String> {
-
     let version_id = version_loader.get_installed_id();
 
     if version_loader.base == FORGE {
@@ -281,11 +278,11 @@ async fn download_version(
     let inherited_version = version.get_inherited();
     update_download_status("Downloading version...", &app_handle);
     downloader::download_version(&version, &app_handle).await;
-    if inherited_version.id != version.id{
+    if inherited_version.id != version.id {
         downloader::download_version(&inherited_version, &app_handle).await;
     }
     update_download_status("", &app_handle);
-     app_handle
+    app_handle
         .dialog()
         .message("Successfully installed the selected version you can now play it")
         .title("Done!")
