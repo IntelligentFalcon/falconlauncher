@@ -119,13 +119,13 @@ export default function App() {
   };
 
   return (
-    <div className="flex flex-col w-full h-screen bg-gray-900 text-gray-200 overflow-hidden">
-      <div className="flex justify-between items-center px-4 sm:px-6 py-3 bg-gray-800 border-b border-gray-700">
+    <div className="flex flex-col w-full h-screen overflow-hidden">
+      <div className="flex justify-between items-center px-4 sm:px-6 py-3 bg-stone-800 border-b border-stone-700">
         <div className="flex items-center flex-wrap gap-2">
           <h1 className="text-lg sm:text-xl font-bold text-indigo-400">
             {t('app_name')}
           </h1>
-          <span className="text-xs text-gray-400">v1.0.0</span>
+          <span className="text-xs text-stone-400">v1.0.0</span>
         </div>
         <div className="flex items-center">
           <LocaleButton />
@@ -133,9 +133,9 @@ export default function App() {
       </div>
 
       <div className="flex flex-1 overflow-hidden">
-        <div className="w-full lg:w-64 md:w-48 bg-gray-800 flex flex-col">
+        <div className="w-full lg:w-64 md:w-48 bg-stone-800 flex flex-col">
           <div className="p-4 sm:p-6 flex flex-col">
-            {/*WEIRD ISSUE HERE Background gray color is not working*/}
+            {/*WEIRD ISSUE HERE Background stone color is not working*/}
             <Select
               onValueChange={async (value) => {
                 setUsername(value);
@@ -184,8 +184,8 @@ export default function App() {
               </DialogContent>
             </Dialog>
 
-            <div className="border-t border-gray-700 pt-4">
-              <h3 className="text-sm font-semibold mb-2 text-gray-400">
+            <div className="border-t border-stone-700 pt-4">
+              <h3 className="text-sm font-semibold mb-2 text-stone-400">
                 {t('game_version')}
               </h3>
               <Select onValueChange={(value) => setSelectedVersion(value)}>
@@ -267,7 +267,7 @@ export default function App() {
             />
           </nav>
 
-          <div className="p-4 sm:p-6 border-t border-gray-700">
+          <div className="p-4 sm:p-6 border-t border-stone-700">
             <Button
               disabled={isDownloading || username === ''}
               variant="success"
@@ -278,14 +278,14 @@ export default function App() {
               {isDownloading ? t('downloading') : t('play')}
             </Button>
             {isDownloading && (
-              <div className="w-full bg-gray-700 rounded-full h-2 mt-4">
+              <div className="w-full bg-stone-700 rounded-full h-2 mt-4">
                 <div
                   className="bg-indigo-500 h-2 rounded-full"
                   style={{ width: `${downloadProgress}%` }}
                 ></div>
               </div>
             )}
-            <p className="text-xs mt-2 text-gray-400 text-center">
+            <p className="text-xs mt-2 text-stone-400 text-center">
               {statusMessage}
             </p>
           </div>
@@ -308,12 +308,12 @@ function NavItem({ icon, title, active, onClick }) {
     <div
       className={`flex items-center px-6 py-3 cursor-pointer ${
         active
-          ? 'bg-gray-700 border-r-4 border-indigo-500'
-          : 'hover:bg-gray-700'
+          ? 'bg-stone-700 border-r-4 border-indigo-500'
+          : 'hover:bg-stone-700'
       }`}
       onClick={onClick}
     >
-      <div className={`ml-3 ${active ? 'text-indigo-400' : 'text-gray-400'}`}>
+      <div className={`ml-3 ${active ? 'text-indigo-400' : 'text-stone-400'}`}>
         {icon}
       </div>
       <span className={`${active ? 'font-semibold' : ''}`}>{title}</span>
@@ -339,9 +339,9 @@ function HomeTab() {
 
       <div className="space-y-4">
         {newsArticles.map((article, index) => (
-          <div key={index} className="bg-gray-800 p-6 rounded-sm">
+          <div key={index} className="bg-stone-800 p-6 rounded-sm">
             <h3 className="text-xl font-semibold mb-2">{article.title}</h3>
-            <p className="text-gray-300 mb-3">{article.content}</p>
+            <p className="text-stone-300 mb-3">{article.content}</p>
             <p className="text-sm text-indigo-400 italic">{article.date}</p>
           </div>
         ))}
@@ -368,10 +368,10 @@ function AddModPopup({ isOpen, onClose }) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50">
-      <div className="bg-gray-800 p-8 rounded-lg shadow-xl w-full max-w-sm relative text-gray-200">
+      <div className="bg-stone-800 p-8 rounded-lg shadow-xl w-full max-w-sm relative text-stone-200">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"
+          className="absolute top-4 right-4 text-stone-400 hover:text-white transition-colors"
         >
           <X size={24} />
         </button>
@@ -465,7 +465,7 @@ function ModsTab() {
           <input
             type="text"
             placeholder={t('mod_search')}
-            className="w-64 p-2 bg-gray-800 border border-gray-700 rounded-sm"
+            className="w-64 p-2 bg-stone-800 border border-stone-700 rounded-sm"
           />
           <button
             onClick={() => setAddModPopupOpen(true)}
@@ -480,11 +480,11 @@ function ModsTab() {
         {mods.map((mod, index) => (
           <div
             key={index}
-            className="bg-gray-800 p-4 rounded-sm flex justify-between items-center"
+            className="bg-stone-800 p-4 rounded-sm flex justify-between items-center"
           >
             <div>
               <h3 className="font-semibold">{mod.name}</h3>
-              <p className="text-sm text-gray-400">{mod.description}</p>
+              <p className="text-sm text-stone-400">{mod.description}</p>
             </div>
             <div className="flex items-center">
               <span className="text-xs text-indigo-400 mr-3">
@@ -502,7 +502,7 @@ function ModsTab() {
                     checked={mod.enabled}
                     onChange={(e) => handleToggleMod(mod, e.target.checked)}
                   />
-                  <div className="block bg-gray-600 w-14 h-8 rounded-full"></div>
+                  <div className="block bg-stone-600 w-14 h-8 rounded-full"></div>
                   <div className="dot absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition-transform"></div>
                 </div>
               </label>
@@ -542,9 +542,11 @@ function RamUsageBar({ totalRam, ramUsage, setRamUsage }) {
   };
 
   return (
-    <div className="bg-gray-800 p-6 rounded-sm">
+    <div className="bg-stone-800 p-6 rounded-sm">
       <h3 className="text-lg font-semibold mb-1">{t('mem_alloc_title')}</h3>
-      <p className="text-sm text-gray-400 mb-4">{t('mem_alloc_description')}</p>
+      <p className="text-sm text-stone-400 mb-4">
+        {t('mem_alloc_description')}
+      </p>
       <div className="flex items-center">
         <input
           type="range"
@@ -607,9 +609,9 @@ function SettingsTab() {
           setRamUsage={setRamUsage}
         />
 
-        {/*<div className="bg-gray-800 p-6 rounded-sm">*/}
+        {/*<div className="bg-stone-800 p-6 rounded-sm">*/}
         {/* <h3 className="text-lg font-semibold mb-1">{t("launch_options_title")}</h3>*/}
-        {/* <p className="text-sm text-gray-400 mb-4">{t("launch_options_description")}</p>*/}
+        {/* <p className="text-sm text-stone-400 mb-4">{t("launch_options_description")}</p>*/}
         {/* <div className="space-y-3">*/}
         {/* <div className="flex items-center">*/}
         {/* <input type="checkbox" id="fullscreen" className="mr-2"/>*/}
