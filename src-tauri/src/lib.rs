@@ -114,12 +114,12 @@ pub fn run() {
                 }
                 load_config(&mut *CONFIG.lock().await).await;
             });
-            let client_id = env::var("CLIENT_ID").expect("No client ID Found");
-            let auth_url = format!(
-                "https://login.live.com/oauth20_authorize.srf?client_id={}&response_type=code&redirect_uri={}&scope=XboxLive.signin%20offline_access",
-                client_id, "falconLauncher://auth"
-            );
-            app.opener().open_url(auth_url,None::<&str>);
+            // let client_id = env::var("CLIENT_ID").expect("No client ID Found");
+            // let auth_url = format!(
+            //     "https://login.live.com/oauth20_authorize.srf?client_id={}&response_type=code&redirect_uri={}&scope=XboxLive.signin%20offline_access",
+            //     client_id, "falconLauncher://auth"
+            // );
+            // app.opener().open_url(auth_url,None::<&str>);
             let window = app.handle().get_window("main").unwrap();
             let independant_multiplier = 1.2;
             let monitor = window.primary_monitor().unwrap().unwrap();

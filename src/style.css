@@ -1,5 +1,5 @@
 @import '@usegrand/azta-css/azta.min.css' layer(base);
-@import 'tailwindcss';
+@import "tailwindcss";
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
