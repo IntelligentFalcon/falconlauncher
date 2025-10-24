@@ -35,7 +35,7 @@ fn load_downloaded_versions() {
             /// TODO: Handle error on no version folder found in .minecraft
             spawn(|| async move {
                 create_dir_all(dir).await;
-            }); 
+            });
             return;
         }
     }

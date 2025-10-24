@@ -1,10 +1,21 @@
-use std::fmt::format;
 use serde::{Deserialize, Serialize};
+use std::fmt::format;
 
-pub async fn search_for_project(name: String, facets: String, index: String, offset: u64, limit: u64) -> ModrinthSearchResults{
+pub async fn search_for_project(
+    name: String,
+    facets: String,
+    index: String,
+    offset: u64,
+    limit: u64,
+) -> ModrinthSearchResults {
     let api = format!("https://api.modrinth.com/v2/search?name={name}&facets={facets}&offset={offset}&limit={limit}&index={index}");
     println!("{}", api);
-    let results = reqwest::get(&api).await.unwrap().json::<ModrinthSearchResults>().await.unwrap();
+    let results = reqwest::get(&api)
+        .await
+        .unwrap()
+        .json::<ModrinthSearchResults>()
+        .await
+        .unwrap();
     results
 }
 pub async fn get_project(project_id: String) {
@@ -16,9 +27,9 @@ pub struct ModrinthSearchResults {
     pub hits: Vec<ModrinthSearchResult>,
     pub offset: u64,
     pub limit: u64,
-    pub total_hits: u64
+    pub total_hits: u64,
 }
-#[derive(Serialize,Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct ModrinthSearchResult {
     pub project_id: String,
     pub author: String,
@@ -31,7 +42,7 @@ pub struct ModrinthSearchResult {
     pub categories: Option<Vec<String>>,
     pub project_type: String,
     pub downloads: u64,
-    pub slug: Option<String>
+    pub slug: Option<String>,
 }
 
 pub struct SearchFacet {

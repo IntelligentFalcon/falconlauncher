@@ -112,7 +112,11 @@ impl MinecraftVersion {
         MinecraftVersion::new(id.clone(), id)
     }
     pub fn from_folder(directory: PathBuf) -> MinecraftVersion {
-        let ignored_jsons = vec!["tlauncheradditional.json", "usercache.json", "usernamecache.json"];
+        let ignored_jsons = vec![
+            "tlauncheradditional.json",
+            "usercache.json",
+            "usernamecache.json",
+        ];
         let file: PathBuf = directory
             .read_dir()
             .unwrap()
@@ -260,6 +264,7 @@ impl MinecraftVersion {
         libraries
     }
 }
+
 #[derive(Deserialize, Serialize)]
 pub struct ModInfo {
     pub path: String,
@@ -304,6 +309,7 @@ pub struct VersionCategory {
     pub name: String,
 }
 
+pub mod error;
 pub mod fabric;
 pub mod mod_identifiers;
-pub mod error;
+mod version_manifest;

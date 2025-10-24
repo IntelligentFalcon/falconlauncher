@@ -53,10 +53,7 @@ pub async fn launch_game(
         .to_string();
 
     let libraries = version.get_libraries();
-    let asset_index = inherited_json["assets"]
-        .as_str()
-        .unwrap()
-        .to_string();
+    let asset_index = inherited_json["assets"].as_str().unwrap().to_string();
     let main_class = json["mainClass"].as_str().unwrap();
     let class_path = version_directory
         .join(format!("{inherited_id}.jar"))
@@ -102,7 +99,7 @@ pub async fn launch_game(
                 .replace("${clientid}", &uuid::Uuid::new_v4().to_string())
                 .replace("${auth_xuid}", "0")
         })
-    .collect::<Vec<String>>();
+        .collect::<Vec<String>>();
     let separator = if get_current_os() == "windows" {
         ";"
     } else {
@@ -174,6 +171,6 @@ pub fn update_download(progress: i64, text: &str, app_handle: &AppHandle) {
     app_handle.emit("progressBar", progress).unwrap();
 }
 
-fn veriy_game_files(){
-
+fn verify_game_files(id: &MinecraftVersion) -> bool {
+    return true;
 }

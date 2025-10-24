@@ -3,13 +3,15 @@
 
 use crate::downloader::download_forge_version;
 use crate::mods::mod_manager::load_mods;
+use crate::mods::modrinth_helper::{search_for_project, SearchFacet};
 use discord_sdk::activity::{ActivityBuilder, Assets};
 use discord_sdk::DiscordHandler;
+use reqwest::Client;
+use serde_json::json;
 use std::fs::File;
 use std::time::Duration;
 use tauri::async_runtime::block_on;
 use tauri::ipc::RuntimeCapability;
-use crate::mods::modrinth_helper::{SearchFacet};
 
 mod config;
 mod directory_manager;
@@ -81,10 +83,45 @@ fn test_activity() {
 }
 
 #[test]
-fn test_facet_helper(){
+fn test_facet_helper() {
     block_on(async {
-        let results = search_for_mod("gravestone".to_string(), SearchFacet::new().version("1.21").category("forge").project_type("mod").get_str(),
-                                     "relevance".to_string(), 0, 0).await;
+        let results = search_for_project(
+            "gravestone".to_string(),
+            SearchFacet::new()
+                .version("1.21")
+                .category("forge")
+                .project_type("mod")
+                .get_str(),
+            "relevance".to_string(),
+            0,
+            0,
+        )
+        .await;
         println!("{:?}", results.hits[0]);
     });
+}
+
+#[test]
+fn test_auth() {
+    block_on(async {
+        let url = "https://user.auth.xboxlive.com/user/authenticate";
+        let client = Client::new();
+        let resp = client
+            .post(url)
+            .json(&json!(
+                        {
+              "Properties": {
+                "AuthMethod": "RPS",
+                "SiteName": "user.auth.xboxlive.com",
+                "RpsTicket": "d=MICROSOFT_ACCESS_TOKEN"
+              },
+              "RelyingParty": "https://auth.xboxlive.com",
+              "TokenType": "JWT"
+            }
+                    ))
+            .send()
+            .await
+            .unwrap();
+        println!("resp: {}", resp.headers().await.unwrap());
+    })
 }

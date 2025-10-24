@@ -26,10 +26,9 @@ pub fn set_mod_enabled(m: ModInfo, toggle: bool) {
     };
     fs::rename(&path, &new_path).unwrap();
 }
-pub fn delete_mod(mod_info: &ModInfo){
+pub fn delete_mod(mod_info: &ModInfo) {
     let path = PathBuf::from(&mod_info.path);
     fs::remove_file(&path).unwrap();
-
 }
 pub fn load_mod(mut zip: Mutex<ZipArchive<File>>, path: String) -> ModInfo {
     let enabled = path.to_lowercase().ends_with("jar");

@@ -1,3 +1,4 @@
+use std::env;
 use crate::config::{load_config, Config};
 use crate::directory_manager::{
     create_necessary_dirs, get_falcon_launcher_directory, get_mods_folder,
@@ -17,8 +18,10 @@ use std::string::ToString;
 use std::sync::LazyLock;
 use tauri::async_runtime::{spawn, Mutex};
 use tauri::{command, App, AppHandle, LogicalSize, Manager};
+use tauri_plugin_deep_link::DeepLinkExt;
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_log::{Target, TargetKind};
+use tauri_plugin_opener::OpenerExt;
 use tokio::fs::copy;
 use tokio::task::spawn_local;
 
@@ -77,7 +80,15 @@ async fn initialize_app(handle: AppHandle) -> Result<(), String> {
 async fn reload_versions() {}
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    dotenvy::dotenv().ok();
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|_app, argv, _cwd| {
+            let _ = _app
+                .get_webview_window("main")
+                .expect("no main window")
+                .set_focus();
+        }))
+        .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_log::Builder::new().build())
         .plugin(tauri_plugin_notification::init())
@@ -103,7 +114,12 @@ pub fn run() {
                 }
                 load_config(&mut *CONFIG.lock().await).await;
             });
-
+            let client_id = env::var("CLIENT_ID").expect("No client ID Found");
+            let auth_url = format!(
+                "https://login.live.com/oauth20_authorize.srf?client_id={}&response_type=code&redirect_uri={}&scope=XboxLive.signin%20offline_access",
+                client_id, "falconLauncher://auth"
+            );
+            app.opener().open_url(auth_url,None::<&str>);
             let window = app.handle().get_window("main").unwrap();
             let independant_multiplier = 1.2;
             let monitor = window.primary_monitor().unwrap().unwrap();
@@ -125,7 +141,16 @@ pub fn run() {
                 .set_maximizable(false)
                 .expect("Failed to remove maximizablity");
             window.set_focus().expect("Failed to set window on focus");
-
+            #[cfg(any(windows, target_os = "linux"))]
+            {
+                use tauri_plugin_deep_link::DeepLinkExt;
+                app.deep_link().register("falconLauncher")?;
+                app.deep_link().register_all()?;
+            }
+            app.deep_link().on_open_url(|event| {
+                println!("Yooooo");
+                println!("deep link URLs: {:?}", event.urls());
+            });
             return Ok(());
         })
         .invoke_handler(tauri::generate_handler![
