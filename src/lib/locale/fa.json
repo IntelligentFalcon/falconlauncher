@@ -31,5 +31,6 @@
   "login": "ورود",
   "save_settings": "ذخیره تنظیمات",
   "install_mod": "نصب ماد",
-  "select_mod_file": "انتخاب ماد از طریق فایل"
+  "select_mod_file": "انتخاب ماد از طریق فایل",
+  "version_installer_title": "انتخاب نسخه برای نصب"
 }

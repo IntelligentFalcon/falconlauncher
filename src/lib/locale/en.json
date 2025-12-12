@@ -31,5 +31,6 @@
   "login": "Log in",
   "save_settings": "Save Settings",
   "install_mod": "Install mod",
-  "select_mod_file": "Select mod from file"
+  "select_mod_file": "Select mod from file",
+  "version_installer_title": "Version Installer"
 }

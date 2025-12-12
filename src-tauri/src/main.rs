@@ -1,14 +1,12 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use crate::downloader::download_forge_version;
 use crate::mods::mod_manager::load_mods;
 use crate::mods::modrinth_helper::{search_for_project, SearchFacet};
 use discord_sdk::activity::{ActivityBuilder, Assets};
 use discord_sdk::DiscordHandler;
 use reqwest::Client;
 use serde_json::json;
-use std::fs::File;
 use std::time::Duration;
 use tauri::async_runtime::block_on;
 use tauri::ipc::RuntimeCapability;

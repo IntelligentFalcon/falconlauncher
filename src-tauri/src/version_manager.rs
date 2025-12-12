@@ -8,7 +8,6 @@ use crate::utils::load_json_url;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::cmp::PartialEq;
-use std::fmt::format;
 
 pub async fn load_version_manifest() -> Option<Value> {
     let url = "https://launchermeta.mojang.com/mc/game/version_manifest.json";
