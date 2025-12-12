@@ -1,4 +1,4 @@
-import { Command, CommandError } from '@/types';
+import { InvokeError, Invokes } from '@/invokes';
 import { invoke } from '@tauri-apps/api/core';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -7,16 +7,16 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function command<T extends Command<any, any>>(
-  command: string,
-  args: Parameters<T>['0']
-): Promise<ReturnType<T>> {
+export function command<T extends keyof Invokes>(
+  name: T,
+  args?: Invokes[T]['args']
+) {
   return new Promise((resolve, reject) => {
-    invoke<ReturnType<T>>(command, args)
+    invoke<Invokes[T]['returns']>(name, args)
       .then((result) => {
         resolve(result);
       })
-      .catch((error: CommandError) => {
+      .catch((error: InvokeError<Invokes[T]['custom_error']>) => {
         reject(error);
       });
   });
