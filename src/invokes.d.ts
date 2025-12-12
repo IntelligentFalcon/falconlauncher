@@ -15,6 +15,21 @@ type WithDefaultError<T> = T &
   >;
 
 type Invokes = WithDefaultError<{
+  load_categorized_versions: {
+    args: {
+      fabric: boolean;
+      forge: boolean;
+      neoForge: boolean;
+      liteLoader: boolean;
+    };
+    returns: VersionCategory[];
+  };
+  create_offline_profile: {
+    args: {
+      username: string;
+    };
+    returns: void;
+  };
   toggle_mod: {
     args: {
       modInfo: ModInfo;
@@ -31,3 +46,16 @@ type Invokes = WithDefaultError<{
     returns: ModInfo[];
   };
 }>;
+
+interface MinecraftVersion {
+  id: string;
+  isInstalled: boolean;
+  base: 'FABRIC' | 'FORGE' | 'NEO_FORGE' | 'LITE_LOADER' | 'VANILLA';
+  inheritedVersion?: string;
+  date: string;
+  // Add other relevant fields like type, release time, etc.
+}
+interface VersionCategory {
+  name: string; // e.g., "Fabric", "Forge"
+  versions: MinecraftVersion[];
+}

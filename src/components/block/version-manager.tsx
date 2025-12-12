@@ -4,9 +4,8 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
-import { cn, command } from '@/lib/utils';
+import { cn, api } from '@/lib/utils';
 import { Button } from '../ui/button';
-import { LoadCategorizedVersions } from '@/types';
 
 export function VersionSelectorPopup({
   close,
@@ -30,8 +29,7 @@ export function VersionSelectorPopup({
 
   const { data: versionsData, isLoading } = useQuery({
     queryKey: ['versions', filters],
-    queryFn: () =>
-      command<LoadCategorizedVersions>('load_categorized_versions', filters),
+    queryFn: () => api('load_categorized_versions', filters),
     select: (data) => {
       const v: Record<string, { v: string; d: string; base: string }[]> = {};
       for (const category of data) {

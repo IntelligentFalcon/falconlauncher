@@ -1,5 +1,4 @@
-import { command } from '@/lib/utils';
-import { CreateOfflineProfile } from '@/types';
+import { api } from '@/lib/utils';
 import { useMutation } from '@tanstack/react-query';
 import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -27,7 +26,7 @@ export function LoginPopup({ close }: { close: () => void }) {
 
   const { mutate: createOfflineProfile } = useMutation({
     mutationFn: () =>
-      command<CreateOfflineProfile>('create_offline_profile', {
+      api('create_offline_profile', {
         username: inputRef.current?.value ?? '',
       }),
     onSuccess: () => close(),

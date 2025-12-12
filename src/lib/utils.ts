@@ -7,10 +7,10 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function command<T extends keyof Invokes>(
+export function api<T extends keyof Invokes>(
   name: T,
   args?: Invokes[T]['args']
-) {
+): Promise<Invokes[T]['returns']> {
   return new Promise((resolve, reject) => {
     invoke<Invokes[T]['returns']>(name, args)
       .then((result) => {
