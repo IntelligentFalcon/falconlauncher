@@ -315,7 +315,7 @@ pub async fn get_available_forge_versions(version_id: &String) -> Vec<String> {
     map.clone()
         .unwrap()
         .iter()
-        .find(|(key, _)| key.clone() == version_id)
+        .find(|(key, _)| key.as_str() == version_id.as_str())
         .map(|(key, val)| val.clone())
         .unwrap_or(Vec::new())
 }
