@@ -13,8 +13,10 @@
     "windows": [
       {
         "title": "Falcon Launcher",
-        "width": 1000,
-        "height": 800
+        "minWidth": 450,
+        "minHeight": 300,
+        "maxWidth": 1200,
+        "maxHeight": 800
       }
     ],
     "security": {
