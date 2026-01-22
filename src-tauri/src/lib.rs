@@ -122,24 +122,6 @@ pub fn run() {
             // );
             // app.opener().open_url(auth_url,None::<&str>);
             let window = app.handle().get_window("main").unwrap();
-            std::thread::spawn( move || {
-                let independent_multiplier = 1.2;
-                let monitor = window.primary_monitor().expect("Error on getting monitor").expect("How is this even happening...");
-                let size = monitor.size();
-                let width = size.width;
-                let height = size.height;
-                let aspect_ratio = width as f64 / height as f64;
-                println!("{aspect_ratio}");
-                println!("{height}");
-                println!("{width}");
-                let width = (width as f64 / aspect_ratio) * independent_multiplier;
-                let height = (height as f64 / aspect_ratio) * independent_multiplier;
-                &window
-                    .set_size(LogicalSize::new(width, height))
-                    .expect("Failed to change the window size");
-
-            });
-            let window = app.handle().get_window("main").unwrap();
 
             window.center().expect("Failed to center the window");
             window
