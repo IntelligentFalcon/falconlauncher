@@ -124,12 +124,6 @@ pub fn run() {
             let window = app.handle().get_window("main").unwrap();
 
             window.center().expect("Failed to center the window");
-            window
-                .set_resizable(false)
-                .expect("Failed to rmeove resiazability");
-            window
-                .set_maximizable(false)
-                .expect("Failed to remove maximizablity");
             window.set_focus().expect("Failed to set window on focus");
             #[cfg(any(windows, target_os = "linux"))]
             {
