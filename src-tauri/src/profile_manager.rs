@@ -1,9 +1,7 @@
 use crate::directory_manager::get_profiles_file;
 use crate::structs::Profile;
-use serde_json::json;
 use std::fs;
 use std::fs::{read_to_string, File};
-use toml::Value;
 use uuid::Uuid;
 
 pub fn create_new_profile(username: String, online: bool) {

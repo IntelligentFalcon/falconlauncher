@@ -2,7 +2,7 @@ use crate::directory_manager::{get_libraries_directory, get_versions_directory};
 use crate::structs;
 use crate::structs::MinecraftVersion;
 use crate::version_manager::{
-    download_version_manifest, load_version_manifest_local, Manifest, VersionType,
+    load_version_manifest_local, Manifest, VersionType,
 };
 use reqwest::Client;
 use serde_json::Value;
@@ -41,6 +41,8 @@ fn load_downloaded_versions() {
     }
 }
 pub fn get_downloaded_versions() -> Vec<MinecraftVersion> {
+    /// TEMP 
+    
     if !get_versions_directory().exists() {
         return Vec::new();
     }
@@ -69,7 +71,6 @@ pub fn get_downloaded_versions() -> Vec<MinecraftVersion> {
 }
 /// Loads downloaded versions and non-downloaded versions (if it is connected to the internet)
 pub async fn load_versions(snapshots: bool, old_versions: bool) -> Vec<MinecraftVersion> {
-    let mut versions = Vec::new();
     if !get_versions_directory().exists() {
         std::fs::create_dir(get_versions_directory()).unwrap();
     }
@@ -82,7 +83,7 @@ pub async fn load_versions(snapshots: bool, old_versions: bool) -> Vec<Minecraft
         filtered_types.push(VersionType::OldBeta);
     }
 
-    versions = get_versions_directory()
+    let mut versions = get_versions_directory()
         .read_dir()
         .unwrap()
         .map(|x| x.unwrap())

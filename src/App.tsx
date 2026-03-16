@@ -429,6 +429,7 @@ function ModsTab() {
     invoke('toggle_mod', { modInfo: mod, toggle: enabled }).catch(
       console.error
     );
+
     // @ts-ignore
     setMods(mods.map((m) => (m.name === mod.name ? mod : m)));
   };

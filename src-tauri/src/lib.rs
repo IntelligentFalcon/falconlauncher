@@ -1,4 +1,3 @@
-use std::env;
 use crate::config::{load_config, Config};
 use crate::directory_manager::{
     create_necessary_dirs, get_falcon_launcher_directory, get_mods_folder,
@@ -11,20 +10,17 @@ use crate::structs::VersionBase::{FABRIC, FORGE};
 use crate::structs::{MinecraftVersion, ModInfo, VersionCategory};
 use crate::utils::is_connected_to_internet;
 use crate::version_manager::{download_version_manifest, get_categorized_versions, VersionLoader};
+use std::env;
 use std::fs::create_dir_all;
-use std::io::Write;
-use std::ops::Deref;
 use std::string::ToString;
 use std::sync::LazyLock;
-use serde_ini::de::Trait;
 use tauri::async_runtime::{spawn, Mutex};
-use tauri::{command, App, AppHandle, LogicalSize, Manager};
+use tauri::ipc::private::ResultFutureKind;
+use tauri::{command, AppHandle, Manager};
 use tauri_plugin_deep_link::DeepLinkExt;
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_log::{Target, TargetKind};
-use tauri_plugin_opener::OpenerExt;
 use tokio::fs::copy;
-use tokio::task::spawn_local;
 
 mod config;
 mod directory_manager;
@@ -41,13 +37,12 @@ mod version_manager;
 static CONFIG: LazyLock<Mutex<Config>> = LazyLock::new(|| Mutex::new(config::default_config()));
 
 #[command]
-async fn toggle_mod(mod_info: ModInfo, toggle: bool) -> Result<(), String> {
+async fn toggle_mod(mod_info: ModInfo, toggle: bool){
     set_mod_enabled(mod_info, toggle);
-    Ok(())
 }
 #[command]
-async fn play_button_handler(app: AppHandle, selected_version: String) -> Result<(), String> {
-    launch_game(app, selected_version, &*CONFIG.lock().await).await
+async fn play_button_handler(app: AppHandle, selected_version: String)  {
+    launch_game(app, selected_version, &*CONFIG.lock().await).await.unwrap();
 }
 #[command]
 async fn load_categorized_versions(
@@ -55,35 +50,32 @@ async fn load_categorized_versions(
     forge: bool,
     neo_forge: bool,
     lite_loader: bool,
-) -> Result<Vec<VersionCategory>, String> {
-    Ok(get_categorized_versions(fabric, forge, neo_forge, lite_loader).await)
+) -> Vec<VersionCategory> {
+    get_categorized_versions(fabric, forge, neo_forge, lite_loader).await
 }
 #[command]
-async fn get_versions() -> Result<Vec<String>, String> {
-    Ok(CONFIG
+async fn get_versions() -> Vec<String> {
+    CONFIG
         .lock()
         .await
         .versions
         .iter()
         .map(|x| x.id.to_string())
         .clone()
-        .collect())
+        .collect()
 }
 #[command]
-async fn get_mods() -> Result<Vec<ModInfo>, String> {
-    Ok(load_mods())
+async fn get_mods() ->Vec<ModInfo>{
+    load_mods()
 }
 
-async fn initialize_app(handle: AppHandle) -> Result<(), String> {
-    Ok(())
-}
 #[command]
 async fn reload_versions() {}
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     dotenvy::dotenv().ok();
     tauri::Builder::default()
-        .plugin(tauri_plugin_single_instance::init(|_app, argv, _cwd| {
+        .plugin(tauri_plugin_single_instance::init(|_app, _argv, _cwd| {
             let _ = _app
                 .get_webview_window("main")
                 .expect("no main window")
@@ -132,7 +124,6 @@ pub fn run() {
                 app.deep_link().register_all()?;
             }
             app.deep_link().on_open_url(|event| {
-                println!("Yooooo");
                 println!("deep link URLs: {:?}", event.urls());
             });
             return Ok(());
@@ -164,15 +155,14 @@ pub fn run() {
         .expect("error while running tauri application");
 }
 #[command]
-async fn get_total_ram() -> Result<u64, String> {
+async fn get_total_ram() -> u64 {
     let ram = sys_info::mem_info().unwrap();
-    Ok(ram.total)
+    ram.total
 }
 #[command]
-async fn save() -> Result<(), String> {
+async fn save() {
     let cfg = CONFIG.lock().await;
     cfg.write_to_file();
-    Ok(())
 }
 #[command]
 async fn set_config(config: Config) {
@@ -183,66 +173,68 @@ async fn set_config(config: Config) {
     cfg.write_to_file();
 }
 #[command]
-async fn set_ram_usage(ram_usage: u64) -> Result<(), String> {
+async fn set_ram_usage(ram_usage: u64)  {
     let mut config = CONFIG.lock().await;
     config.launch_options.ram_usage = ram_usage;
-    Ok(())
 }
 #[command]
-async fn get_ram_usage() -> Result<u64, String> {
-    Ok(CONFIG.lock().await.launch_options.ram_usage)
-}
-#[command]
-async fn get_username() -> Result<String, String> {
-    Ok(CONFIG.lock().await.launch_options.username.clone())
+async fn get_ram_usage() -> u64 {
+    CONFIG.lock().await.launch_options.ram_usage
 }
 
 #[command]
-async fn get_profiles() -> Result<Vec<String>, String> {
-    let profiles = profile_manager::get_profiles();
-    Ok(profiles.iter().map(|x| x.name.clone()).collect())
+async fn get_username() -> String{
+    CONFIG.lock().await.launch_options.username.clone()
 }
+
 #[command]
-async fn create_offline_profile(username: String) -> Result<(), String> {
+async fn get_profiles() -> Vec<String> {
+    let profiles = profile_manager::get_profiles();
+    profiles.iter().map(|x| x.name.clone()).collect()
+}
+
+/*
+BUG: the function doesn't invoke on call.
+*/
+#[command]
+async fn create_offline_profile(username: String) {
     profile_manager::create_new_profile(username.clone(), false);
     let mut config = CONFIG.lock().await;
     config.launch_options.username = username;
-    Ok(())
 }
 #[command]
-async fn get_installed_versions() -> Result<Vec<String>, String> {
+async fn get_installed_versions() -> Vec<String> {
     let conf = CONFIG.lock().await;
     let versions = conf.versions.clone();
-    Ok(versions
+    versions
         .iter()
         .filter(|x| x.is_installed())
         .map(|x| x.id.clone())
-        .collect())
+        .collect()
 }
 #[command]
-async fn get_non_installed_versions() -> Result<Vec<String>, String> {
+async fn get_non_installed_versions() -> Vec<String> {
     let conf = CONFIG.lock().await;
     let versions = conf.versions.clone();
-    Ok(versions
+    versions
         .iter()
         .filter(|x| !x.is_installed())
         .map(|x| x.id.clone())
-        .collect())
+        .collect()
 }
 
 #[command]
-async fn set_language(lang: String) -> Result<(), String> {
+async fn set_language(lang: String){
     let mut config = CONFIG.lock().await;
     config.launcher_settings.language = lang;
-    Ok(())
 }
 #[command]
-async fn get_language() -> Result<String, String> {
-    Ok(CONFIG.lock().await.launcher_settings.language.clone())
+async fn get_language() -> String {
+    CONFIG.lock().await.launcher_settings.language.clone()
 }
 
 #[command]
-async fn install_mod_from_local(app: AppHandle) -> Result<(), String> {
+async fn install_mod_from_local(app: AppHandle){
     let paths = app
         .dialog()
         .file()
@@ -255,7 +247,6 @@ async fn install_mod_from_local(app: AppHandle) -> Result<(), String> {
         let new_path = get_mods_folder().join(file_name);
         copy(p, new_path).await.unwrap();
     }
-    Ok(())
 }
 #[command]
 async fn delete_mod(mod_info: ModInfo) {
@@ -265,7 +256,7 @@ async fn delete_mod(mod_info: ModInfo) {
 async fn download_version(
     app_handle: AppHandle,
     version_loader: VersionLoader,
-) -> Result<(), String> {
+){
     let version_id = version_loader.get_installed_id();
 
     if version_loader.base == FORGE {
@@ -298,5 +289,4 @@ async fn download_version(
         .blocking_show();
     let mut conf = CONFIG.lock().await;
     conf.versions.push(version);
-    Ok(())
 }

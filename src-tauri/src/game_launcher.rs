@@ -1,11 +1,10 @@
 use crate::config::Config;
 use crate::directory_manager::*;
-use crate::downloader::{download_forge_version, download_version};
+use crate::downloader::generate_stdout;
 use crate::jdk_manager::get_java;
 use crate::profile_manager::get_profile;
 use crate::structs::MinecraftVersion;
-use crate::utils::{extend_once, get_current_os, is_connected_to_internet, vec_to_string};
-use serde_ini::de::Trait;
+use crate::utils::{extend_once, get_current_os, vec_to_string};
 use serde_json::Value;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
@@ -73,7 +72,7 @@ pub async fn launch_game(
         .display()
         .to_string();
     let typ = json["type"].as_str().unwrap();
-    let mut run_args_iter = get_launch_args(&json);
+    let run_args_iter = get_launch_args(&json);
     if run_args_iter.is_err() {
         return Err("Couldn't find launch arguments".to_string());
     }
@@ -126,15 +125,8 @@ pub async fn launch_game(
         }
     });
 
-    let stdout = child.stdout.take().expect("Failed to open stdout");
-    std::thread::spawn(move || {
-        let reader = BufReader::new(stdout);
-        for line in reader.lines() {
-            if let Ok(line) = line {
-                println!("[java stdout] {}", line);
-            }
-        }
-    });
+    generate_stdout(&mut child);
+
 
     update_download_status("", &app_handle);
     Ok(())
@@ -172,5 +164,5 @@ pub fn update_download(progress: i64, text: &str, app_handle: &AppHandle) {
 }
 
 fn verify_game_files(id: &MinecraftVersion) -> bool {
-    return true;
+    true
 }

@@ -4,8 +4,21 @@ use crate::utils::get_downloaded_versions;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::fs::create_dir_all;
-use std::io::Read;
 use std::path::PathBuf;
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct LaunchOptions {
+    pub username: String,
+    pub ram_usage: u64,
+}
+#[derive(Debug, Serialize, Deserialize)]
+pub struct LauncherSettings {
+    pub language: String,
+}
+#[derive(Debug, Serialize, Deserialize)]
+pub struct DownloadSettings {
+    pub mirror: String,
+}
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Config {
     #[serde(rename = "LaunchOptions")]
@@ -14,6 +27,8 @@ pub struct Config {
     pub versions: Vec<MinecraftVersion>,
     #[serde(rename = "LauncherSettings")]
     pub launcher_settings: LauncherSettings,
+    #[serde(rename = "DownloadSettings")]
+    pub download_settings: DownloadSettings
 }
 
 impl Config {
@@ -28,15 +43,7 @@ pub async fn load_config(cfg: &mut Config) {
     cfg.versions = conf.versions;
     cfg.launcher_settings = conf.launcher_settings;
 }
-#[derive(Debug, Serialize, Deserialize)]
-pub struct LaunchOptions {
-    pub username: String,
-    pub ram_usage: u64,
-}
-#[derive(Debug, Serialize, Deserialize)]
-pub struct LauncherSettings {
-    pub language: String,
-}
+
 async fn load() -> Config {
     initialize_configuration_file();
     let content = fs::read_to_string(get_config_directory());

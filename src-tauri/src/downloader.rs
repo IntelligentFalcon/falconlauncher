@@ -1,3 +1,5 @@
+#![allow(deprecated)]
+
 use crate::directory_manager::{
     get_assets_directory, get_falcon_launcher_directory, get_libraries_directory,
     get_minecraft_directory, get_natives_folder, get_temp_directory, get_version_directory,
@@ -16,9 +18,9 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::fs;
 use std::fs::{create_dir_all, exists, File};
-use std::io::{read_to_string, BufRead, BufReader, Write};
+use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
-use std::process::{Command, Stdio};
+use std::process::{Child, Command, Stdio};
 use std::sync::LazyLock;
 use tauri::async_runtime::block_on;
 use tauri::AppHandle;
@@ -39,55 +41,6 @@ pub struct Global {
     pub fabric_loaders: Option<Vec<FabricLoader>>,
     pub fabric_installers: Option<Vec<FabricInstaller>>,
     pub fabric_mc_versions: Option<Vec<FabricMinecraftVersion>>,
-}
-
-async fn download_assets(value: &Value) {
-    let id = value["id"].as_str().unwrap();
-    let url = value["url"].as_str().unwrap();
-    let total_size = value["totalSize"].as_u64().unwrap();
-    let size = value["size"].as_u64().unwrap();
-    let mut json: Option<Value> = None;
-    let asset_index_path = get_assets_directory()
-        .join("indexes")
-        .join(format!("{id}.json"))
-        .to_str()
-        .unwrap()
-        .to_string();
-    download_file_if_not_exists(
-        &PathBuf::from(&asset_index_path),
-        url.to_string(),
-        total_size,
-    )
-    .await;
-    let content =
-        fs::read_to_string(PathBuf::from(&asset_index_path)).expect("Failed to read file.");
-    json = Some(serde_json::from_str(content.as_str()).expect("JSON File isn't well formatted."));
-    let url_template = "https://resources.download.minecraft.net/{id}/{hash}";
-    match json {
-        Some(val) => {
-            for (name, asset_object) in val["objects"].as_object().unwrap() {
-                let hash = asset_object["hash"].as_str().unwrap();
-                let id = hash[0..2].to_string().clone();
-                let size = asset_object["size"].as_u64().unwrap();
-                let url = url_template
-                    .replace("{id}", id.as_str())
-                    .replace("{hash}", hash)
-                    .clone();
-                let path = get_assets_directory()
-                    .join("objects")
-                    .join(id.as_str())
-                    .join(hash);
-                download_file_if_not_exists(&path, url, size).await;
-            }
-        }
-        None => {}
-    }
-}
-
-pub async fn download_file_if_not_exists(path: &PathBuf, url: String, size: u64) {
-    if !verify_file_existence(&path.to_str().unwrap().to_string(), size) {
-        download_file(url, path.to_str().unwrap().to_string()).await;
-    }
 }
 pub async fn download_version(version: &MinecraftVersion, app_handle: &AppHandle) {
     let id = &version.id;
@@ -111,6 +64,55 @@ pub async fn download_version(version: &MinecraftVersion, app_handle: &AppHandle
     if json.get("assetIndex").is_some() {
         update_download_status("Downloading assets...", &app_handle);
         download_assets(&json["assetIndex"]).await;
+    }
+}
+
+async fn download_assets(value: &Value) {
+    let id = value["id"].as_str().unwrap();
+    let url = value["url"].as_str().unwrap();
+    let total_size = value["totalSize"].as_u64().unwrap();
+    let _size = value["size"].as_u64().unwrap();
+    let mut json: Option<Value> = None;
+    let asset_index_path = get_assets_directory()
+        .join("indexes")
+        .join(format!("{id}.json"))
+        .to_str()
+        .unwrap()
+        .to_string();
+    download_file_if_not_exists(
+        &PathBuf::from(&asset_index_path),
+        url.to_string(),
+        total_size,
+    )
+    .await;
+    let content =
+        fs::read_to_string(PathBuf::from(&asset_index_path)).expect("Failed to read file.");
+    json = Some(serde_json::from_str(content.as_str()).expect("JSON File isn't well formatted."));
+    let url_template = "https://resources.download.minecraft.net/{id}/{hash}";
+    match json {
+        Some(val) => {
+            for (_, asset_object) in val["objects"].as_object().unwrap() {
+                let hash = asset_object["hash"].as_str().unwrap();
+                let id = hash[0..2].to_string().clone();
+                let size = asset_object["size"].as_u64().unwrap();
+                let url = url_template
+                    .replace("{id}", id.as_str())
+                    .replace("{hash}", hash)
+                    .clone();
+                let path = get_assets_directory()
+                    .join("objects")
+                    .join(id.as_str())
+                    .join(hash);
+                download_file_if_not_exists(&path, url, size).await;
+            }
+        }
+        None => {}
+    }
+}
+
+pub async fn download_file_if_not_exists(path: &PathBuf, url: String, size: u64) {
+    if !verify_file_existence(&path.to_str().unwrap().to_string(), size) {
+        download_file(url, path.to_str().unwrap().to_string()).await;
     }
 }
 
@@ -286,7 +288,7 @@ fn download_file_async_thread(url: String, dest: String) {
 }
 
 pub async fn download_file(url: String, dest: String) {
-    let mut resp = reqwest::get(&url)
+    let resp = reqwest::get(&url)
         .await
         .expect(&format!("Downloading file failed. {url}").to_string());
     let dest_folder = PathBuf::from(&dest)
@@ -316,7 +318,7 @@ pub async fn get_available_forge_versions(version_id: &String) -> Vec<String> {
         .unwrap()
         .iter()
         .find(|(key, _)| key.as_str() == version_id.as_str())
-        .map(|(key, val)| val.clone())
+        .map(|(_key, val)| val.clone())
         .unwrap_or(Vec::new())
 }
 
@@ -361,15 +363,8 @@ pub async fn download_forge_version(version: &String, app_handle: &AppHandle) {
             }
         });
 
-        let stdout = child.stdout.take().expect("Failed to open stdout");
-        std::thread::spawn(move || {
-            let reader = BufReader::new(stdout);
-            for line in reader.lines() {
-                if let Ok(line) = line {
-                    println!("[java stdout] {}", line);
-                }
-            }
-        });
+        generate_stdout(&mut child);
+
         fs::remove_dir_all(launcher_dir.join("temp")).unwrap();
 
         return;
@@ -554,6 +549,10 @@ pub async fn download_fabric(version_loader: &VersionLoader) {
         }
     });
 
+    generate_stdout(&mut child)
+}
+
+pub fn generate_stdout(child: &mut Child){
     let stdout = child.stdout.take().expect("Failed to open stdout");
     std::thread::spawn(move || {
         let reader = BufReader::new(stdout);
@@ -564,7 +563,6 @@ pub async fn download_fabric(version_loader: &VersionLoader) {
         }
     });
 }
-
 pub async fn get_available_fabric_versions(version_id: &String) -> Vec<String> {
     let mut global_cache = GLOBAL_CACHE.lock().await;
     if global_cache.fabric_mc_versions.is_none() {

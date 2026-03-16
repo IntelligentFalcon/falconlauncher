@@ -1,6 +1,6 @@
 use crate::directory_manager::{get_libraries_directory, get_versions_directory};
 use crate::utils::{extend_once, get_current_os, parse_library_name_to_path};
-use crate::version_manager::{VersionInfo, VersionLoader};
+use crate::version_manager::VersionLoader;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::fs;
