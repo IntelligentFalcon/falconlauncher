@@ -23,8 +23,6 @@ pub struct DownloadSettings {
 pub struct Config {
     #[serde(rename = "LaunchOptions")]
     pub launch_options: LaunchOptions,
-    #[serde(skip)]
-    pub versions: Vec<MinecraftVersion>,
     #[serde(rename = "LauncherSettings")]
     pub launcher_settings: LauncherSettings,
     #[serde(rename = "DownloadSettings")]
@@ -40,16 +38,14 @@ impl Config {
 pub async fn load_config(cfg: &mut Config) {
     let conf = load().await;
     cfg.launch_options = conf.launch_options;
-    cfg.versions = conf.versions;
     cfg.launcher_settings = conf.launcher_settings;
 }
 
 async fn load() -> Config {
     initialize_configuration_file();
     let content = fs::read_to_string(get_config_directory());
-    let mut config: Config = serde_ini::from_str(content.unwrap().as_str()).unwrap();
-    config.versions = get_downloaded_versions();
-
+    let config: Config = serde_ini::from_str(content.unwrap().as_str()).unwrap_or(default_config());
+    
     config
 }
 pub fn default_config() -> Config {
@@ -58,10 +54,10 @@ pub fn default_config() -> Config {
             username: "".to_string(),
             ram_usage: 2048,
         },
-        versions: get_downloaded_versions(),
         launcher_settings: LauncherSettings {
             language: "en".to_string(),
         },
+        download_settings: DownloadSettings { mirror: "9craft".to_string() },
     }
 }
 fn initialize_configuration_file() {

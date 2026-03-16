@@ -34,6 +34,7 @@ pub static GLOBAL_CACHE: LazyLock<Mutex<Global>> = LazyLock::new(|| {
         fabric_loaders: None,
         fabric_installers: None,
         fabric_mc_versions: None,
+        versions: Vec::new()
     })
 });
 pub struct Global {
@@ -41,6 +42,7 @@ pub struct Global {
     pub fabric_loaders: Option<Vec<FabricLoader>>,
     pub fabric_installers: Option<Vec<FabricInstaller>>,
     pub fabric_mc_versions: Option<Vec<FabricMinecraftVersion>>,
+    pub versions: Vec<MinecraftVersion>,
 }
 pub async fn download_version(version: &MinecraftVersion, app_handle: &AppHandle) {
     let id = &version.id;

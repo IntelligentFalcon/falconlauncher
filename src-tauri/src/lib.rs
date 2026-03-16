@@ -2,7 +2,7 @@ use crate::config::{load_config, Config};
 use crate::directory_manager::{
     create_necessary_dirs, get_falcon_launcher_directory, get_mods_folder,
 };
-use crate::downloader::{download_fabric, download_forge_version};
+use crate::downloader::{download_fabric, download_forge_version, GLOBAL_CACHE};
 use crate::game_launcher::{launch_game, update_download_status};
 use crate::mods::mod_manager;
 use crate::mods::mod_manager::{load_mods, set_mod_enabled};
@@ -42,7 +42,7 @@ async fn toggle_mod(mod_info: ModInfo, toggle: bool){
 }
 #[command]
 async fn play_button_handler(app: AppHandle, selected_version: String)  {
-    launch_game(app, selected_version, &*CONFIG.lock().await).await.unwrap();
+    launch_game(app, selected_version, &*CONFIG.lock().await, &*GLOBAL_CACHE.lock().await).await.unwrap();
 }
 #[command]
 async fn load_categorized_versions(
@@ -55,7 +55,7 @@ async fn load_categorized_versions(
 }
 #[command]
 async fn get_versions() -> Vec<String> {
-    CONFIG
+    GLOBAL_CACHE
         .lock()
         .await
         .versions
@@ -169,7 +169,6 @@ async fn set_config(config: Config) {
     let mut cfg = CONFIG.lock().await;
     cfg.launch_options = config.launch_options;
     cfg.launcher_settings = config.launcher_settings;
-    cfg.versions = config.versions;
     cfg.write_to_file();
 }
 #[command]
@@ -204,8 +203,8 @@ async fn create_offline_profile(username: String) {
 }
 #[command]
 async fn get_installed_versions() -> Vec<String> {
-    let conf = CONFIG.lock().await;
-    let versions = conf.versions.clone();
+    let global = GLOBAL_CACHE.lock().await;
+    let versions = global.versions.clone();
     versions
         .iter()
         .filter(|x| x.is_installed())
@@ -214,8 +213,8 @@ async fn get_installed_versions() -> Vec<String> {
 }
 #[command]
 async fn get_non_installed_versions() -> Vec<String> {
-    let conf = CONFIG.lock().await;
-    let versions = conf.versions.clone();
+    let global = GLOBAL_CACHE.lock().await;
+    let versions = global.versions.clone();
     versions
         .iter()
         .filter(|x| !x.is_installed())
@@ -287,6 +286,6 @@ async fn download_version(
         .message("Successfully installed the selected version you can now play it")
         .title("Done!")
         .blocking_show();
-    let mut conf = CONFIG.lock().await;
-    conf.versions.push(version);
+    let mut global = GLOBAL_CACHE.lock().await;
+    global.versions.push(version);
 }

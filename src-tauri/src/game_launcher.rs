@@ -1,6 +1,6 @@
 use crate::config::Config;
 use crate::directory_manager::*;
-use crate::downloader::generate_stdout;
+use crate::downloader::{generate_stdout, Global, GLOBAL_CACHE};
 use crate::jdk_manager::get_java;
 use crate::profile_manager::get_profile;
 use crate::structs::MinecraftVersion;
@@ -17,8 +17,9 @@ pub async fn launch_game(
     app_handle: AppHandle,
     version: String,
     config: &Config,
+    global_cache: &Global
 ) -> Result<(), String> {
-    let mut versions = config.versions.iter().filter(|x| x.id == version);
+    let mut versions = global_cache.versions.iter().filter(|x| x.id == version);
     let ver_res = versions.next();
     match ver_res {
         None => {
