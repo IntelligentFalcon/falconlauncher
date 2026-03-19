@@ -6,7 +6,7 @@
   "play": "PLAY",
   "mod_manager": "Mod Manager",
   "mod_search": "Search mods...",
-  "mem_alloc_title": "Memory_Allocation",
+  "mem_alloc_title": "Memory Allocation",
   "mem_alloc_description": "Adjust how much RAM is allocated to Minecraft",
   "launch_options_title": "Launch Options",
   "launch_options_description": "Configure how Minecraft starts",

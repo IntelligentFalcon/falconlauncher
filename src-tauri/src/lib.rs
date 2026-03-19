@@ -1,6 +1,6 @@
 use crate::config::{load_config, Config};
 use crate::directory_manager::{
-    create_necessary_dirs, get_falcon_launcher_directory, get_mods_folder,
+    create_necessary_dirs, get_falcon_launcher_directory, get_mods_folder, get_versions_directory,
 };
 use crate::downloader::{download_fabric, download_forge_version, GLOBAL_CACHE};
 use crate::game_launcher::{launch_game, update_download_status};
@@ -9,12 +9,15 @@ use crate::mods::mod_manager::{load_mods, set_mod_enabled};
 use crate::structs::VersionBase::{FABRIC, FORGE};
 use crate::structs::{MinecraftVersion, ModInfo, VersionCategory};
 use crate::utils::is_connected_to_internet;
-use crate::version_manager::{download_version_manifest, get_categorized_versions, VersionLoader};
+use crate::version_manager::{
+    download_version_manifest, get_categorized_versions, initialize_versions,
+    reload_installed_versions, VersionLoader,
+};
 use std::env;
 use std::fs::create_dir_all;
 use std::string::ToString;
 use std::sync::LazyLock;
-use tauri::async_runtime::{spawn, Mutex};
+use tauri::async_runtime::{block_on, spawn, Mutex};
 use tauri::ipc::private::ResultFutureKind;
 use tauri::{command, AppHandle, Manager};
 use tauri_plugin_deep_link::DeepLinkExt;
@@ -37,12 +40,19 @@ mod version_manager;
 static CONFIG: LazyLock<Mutex<Config>> = LazyLock::new(|| Mutex::new(config::default_config()));
 
 #[command]
-async fn toggle_mod(mod_info: ModInfo, toggle: bool){
+async fn toggle_mod(mod_info: ModInfo, toggle: bool) {
     set_mod_enabled(mod_info, toggle);
 }
 #[command]
-async fn play_button_handler(app: AppHandle, selected_version: String)  {
-    launch_game(app, selected_version, &*CONFIG.lock().await, &*GLOBAL_CACHE.lock().await).await.unwrap();
+async fn play_button_handler(app: AppHandle, selected_version: String) {
+    launch_game(
+        app,
+        selected_version,
+        &*CONFIG.lock().await,
+        &*GLOBAL_CACHE.lock().await,
+    )
+    .await
+    .unwrap();
 }
 #[command]
 async fn load_categorized_versions(
@@ -55,9 +65,8 @@ async fn load_categorized_versions(
 }
 #[command]
 async fn get_versions() -> Vec<String> {
-    GLOBAL_CACHE
-        .lock()
-        .await
+    let global = GLOBAL_CACHE.lock().await;
+    global
         .versions
         .iter()
         .map(|x| x.id.to_string())
@@ -65,7 +74,7 @@ async fn get_versions() -> Vec<String> {
         .collect()
 }
 #[command]
-async fn get_mods() ->Vec<ModInfo>{
+async fn get_mods() -> Vec<ModInfo> {
     load_mods()
 }
 
@@ -99,7 +108,6 @@ pub fn run() {
             let jdk_path = directory_manager::get_launcher_java_directory();
             let _ = create_dir_all(fl_path);
             let _ = create_dir_all(jdk_path);
-
             spawn(async {
                 create_necessary_dirs().await;
                 if is_connected_to_internet().await {
@@ -107,12 +115,9 @@ pub fn run() {
                 }
                 load_config(&mut *CONFIG.lock().await).await;
             });
-            // let client_id = env::var("CLIENT_ID").expect("No client ID Found");
-            // let auth_url = format!(
-            //     "https://login.live.com/oauth20_authorize.srf?client_id={}&response_type=code&redirect_uri={}&scope=XboxLive.signin%20offline_access",
-            //     client_id, "falconLauncher://auth"
-            // );
-            // app.opener().open_url(auth_url,None::<&str>);
+            block_on(async {
+                reload_installed_versions().await;
+            });
             let window = app.handle().get_window("main").unwrap();
 
             window.center().expect("Failed to center the window");
@@ -171,8 +176,9 @@ async fn set_config(config: Config) {
     cfg.launcher_settings = config.launcher_settings;
     cfg.write_to_file();
 }
+
 #[command]
-async fn set_ram_usage(ram_usage: u64)  {
+async fn set_ram_usage(ram_usage: u64) {
     let mut config = CONFIG.lock().await;
     config.launch_options.ram_usage = ram_usage;
 }
@@ -182,7 +188,7 @@ async fn get_ram_usage() -> u64 {
 }
 
 #[command]
-async fn get_username() -> String{
+async fn get_username() -> String {
     CONFIG.lock().await.launch_options.username.clone()
 }
 
@@ -223,7 +229,7 @@ async fn get_non_installed_versions() -> Vec<String> {
 }
 
 #[command]
-async fn set_language(lang: String){
+async fn set_language(lang: String) {
     let mut config = CONFIG.lock().await;
     config.launcher_settings.language = lang;
 }
@@ -233,7 +239,7 @@ async fn get_language() -> String {
 }
 
 #[command]
-async fn install_mod_from_local(app: AppHandle){
+async fn install_mod_from_local(app: AppHandle) {
     let paths = app
         .dialog()
         .file()
@@ -252,10 +258,7 @@ async fn delete_mod(mod_info: ModInfo) {
     mod_manager::delete_mod(&mod_info);
 }
 #[command]
-async fn download_version(
-    app_handle: AppHandle,
-    version_loader: VersionLoader,
-){
+async fn download_version(app_handle: AppHandle, version_loader: VersionLoader) {
     let version_id = version_loader.get_installed_id();
 
     if version_loader.base == FORGE {

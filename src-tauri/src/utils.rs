@@ -108,7 +108,7 @@ pub async fn load_versions(snapshots: bool, old_versions: bool) -> Vec<Minecraft
         .join("version_manifest_v2.json")
         .exists()
     {
-        let json = load_version_manifest_local().await;
+        let json = load_version_manifest_local();
         let founded_versions = match json {
             None => Vec::new(),
             Some(v) => load_versions_through_json(v, filtered_types),

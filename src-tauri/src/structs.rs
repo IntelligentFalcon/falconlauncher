@@ -6,10 +6,12 @@ use serde_json::Value;
 use std::fs;
 use std::path::PathBuf;
 
+#[derive(Serialize, Deserialize, Debug)]
 pub struct AssetIndex {
     pub id: String,
     pub sha1: String,
     pub size: u64,
+    #[serde(rename = "totalSize")]
     pub total_size: u64,
     pub url: String,
 }
@@ -69,6 +71,13 @@ pub fn parse_os(os: String) -> String {
 pub struct LibraryRules {
     pub allowed_oses: Vec<String>,
     pub disallowed_oses: Vec<String>,
+}
+#[derive(Debug, Deserialize, Serialize)]
+pub struct MinecraftManifestVersion {
+    pub libraries: Value,
+    #[serde(rename = "assetIndex")]
+    pub asset_index: Option<AssetIndex>,
+    pub downloads: Option<Value>
 }
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct MinecraftVersion {

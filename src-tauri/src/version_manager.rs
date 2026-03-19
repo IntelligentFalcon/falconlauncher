@@ -1,30 +1,48 @@
 use crate::directory_manager::get_versions_directory;
-use crate::downloader::{
-    download_file, get_available_fabric_versions, get_available_forge_versions,
-};
+use crate::downloader::{download_file, get_available_fabric_versions, get_available_forge_versions, GLOBAL_CACHE};
 use crate::structs::VersionBase::{FABRIC, FORGE};
-use crate::structs::{VersionBase, VersionCategory};
+use crate::structs::{MinecraftVersion, VersionBase, VersionCategory};
 use crate::utils::load_json_url;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::cmp::PartialEq;
 
-pub async fn load_version_manifest() -> Option<Value> {
-    let url = "https://launchermeta.mojang.com/mc/game/version_manifest.json";
-    load_json_url(&url.to_string()).await
+pub async fn load_version_manifest() -> Option<Manifest> {
+    // let url = "https://launchermeta.mojang.com/mc/game/version_manifest.json";
+    download_version_manifest().await;
+    load_version_manifest_local()
 }
 
-pub async fn load_version_manifest_local() -> Option<Manifest> {
+pub fn load_version_manifest_local() -> Option<Manifest> {
     let path = get_versions_directory().join("version_manifest_v2.json");
     let text = std::fs::read_to_string(&path);
     serde_json::from_str(text.unwrap().as_str()).expect("Failed to parse json")
 }
+pub async fn reload_installed_versions() {
+    let versions_dir = get_versions_directory().read_dir().unwrap();
+    let versions = versions_dir.filter_map(|x| {
+        let d = x.unwrap();
+        if d.file_type().unwrap().is_file() {
+            return None;
+        }
 
-// impl PartialEq for VersionType {
-//     fn eq(&self, other: &Self) -> bool {
-//         other == self
-//     }
-// }
+        if d.path().read_dir().unwrap().find(|x| {
+            let ent = x.as_ref().unwrap();
+            ent.file_name().to_str().unwrap().to_lowercase().contains(".json")
+        }).is_some() {
+            return  Some(MinecraftVersion::from_folder(d.path()));
+        }
+        return None;
+    }).collect::<Vec<MinecraftVersion>>();
+    let mut global = GLOBAL_CACHE.lock().await;
+    global.versions = versions;
+
+}
+impl PartialEq for VersionType {
+    fn eq(&self, other: &Self) -> bool {
+        other == self
+    }
+}
 
 pub async fn get_categorized_versions(
     fabric: bool,
@@ -32,9 +50,7 @@ pub async fn get_categorized_versions(
     neo_forge: bool,
     lite_loader: bool,
 ) -> Vec<VersionCategory> {
-    let manifest = load_version_manifest_local()
-        .await
-        .expect("Failed to parse the manifest version");
+    let manifest = load_version_manifest_local().expect("Failed to parse the manifest version");
     let mut result: Vec<VersionCategory> = Vec::new();
     let versions: Vec<&VersionInfo> = manifest
         .versions
@@ -131,6 +147,13 @@ pub async fn get_categorized_versions(
 
     result
 }
+pub async fn initialize_versions(){
+    let mut global = GLOBAL_CACHE.lock().await;
+    let manifest = load_version_manifest_local().expect("Failed to parse the manifest version");
+    for v in &manifest.versions {
+        global.versions.push(MinecraftVersion::from_id(v.id.clone()));
+    }
+}
 pub async fn download_version_manifest() {
     let url = "https://launchermeta.mojang.com/mc/game/version_manifest.json";
     download_file(
@@ -204,7 +227,7 @@ impl VersionLoader {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "snake_case")]
-#[derive(PartialEq)]
+// #[derive(PartialEq)]
 pub enum VersionType {
     Release,
     Snapshot,

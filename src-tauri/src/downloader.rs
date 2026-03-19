@@ -6,11 +6,11 @@ use crate::directory_manager::{
     get_versions_directory,
 };
 use crate::game_launcher::{update_download, update_download_status};
-use crate::structs::{library_from_value, LibraryRules, MinecraftVersion};
+use crate::structs::{library_from_value, AssetIndex, LibraryRules, MinecraftManifestVersion, MinecraftVersion};
 use crate::utils::{
     convert_to_full_path, convert_to_full_url, get_current_os, verify_file_existence,
 };
-use crate::version_manager::{load_version_manifest, VersionLoader};
+use crate::version_manager::{load_version_manifest, Manifest, VersionLoader};
 
 use crate::jdk_manager::get_java;
 use crate::structs::fabric::{FabricInstaller, FabricLoader, FabricMinecraftVersion};
@@ -51,29 +51,29 @@ pub async fn download_version(version: &MinecraftVersion, app_handle: &AppHandle
     match manifest {
         None => {}
         Some(val) => {
-            download_from_manifest(id, val).await;
+            download_from_manifest(id, &val).await;
         }
     }
     let content = fs::read_to_string(PathBuf::from(version.get_json())).unwrap();
 
-    let json: Value = serde_json::from_str(&content).unwrap();
+    let json: MinecraftManifestVersion = serde_json::from_str(&content).unwrap();
 
-    download_libraries(&json["libraries"], &id, app_handle).await;
-    if !json.get("downloads").is_none() {
+    download_libraries(&json.libraries, &id, app_handle).await;
+    if json.downloads.is_some() {
         update_download_status("Downloading version...", &app_handle);
-        download_client(&json["downloads"]["client"], &id).await;
+        download_client(&json.downloads.unwrap()["client"], &id).await;
     }
-    if json.get("assetIndex").is_some() {
+    if json.asset_index.is_some() {
         update_download_status("Downloading assets...", &app_handle);
-        download_assets(&json["assetIndex"]).await;
+        download_assets(&json.asset_index.unwrap()).await;
     }
 }
 
-async fn download_assets(value: &Value) {
-    let id = value["id"].as_str().unwrap();
-    let url = value["url"].as_str().unwrap();
-    let total_size = value["totalSize"].as_u64().unwrap();
-    let _size = value["size"].as_u64().unwrap();
+async fn download_assets(value: &AssetIndex) {
+    let id = &value.id;
+    let url = &value.url;
+    let total_size = value.total_size;
+    let _size = value.size;
     let mut json: Option<Value> = None;
     let asset_index_path = get_assets_directory()
         .join("indexes")
@@ -118,14 +118,12 @@ pub async fn download_file_if_not_exists(path: &PathBuf, url: String, size: u64)
     }
 }
 
-async fn download_from_manifest(id: &String, manifest: Value) {
-    let version = manifest["versions"]
-        .as_array()
-        .unwrap()
+async fn download_from_manifest(id: &String, manifest: &Manifest) {
+    let version = manifest.versions
         .iter()
-        .find(|v| v["id"].as_str().unwrap() == id)
+        .find(|v| &v.id == id)
         .expect(format!("Couldn't find version in manifest. {id}").as_str());
-    let version_url = version["url"].as_str().unwrap();
+    let version_url = &version.url;
     download_file(
         version_url.to_string(),
         get_version_directory(&id)
