@@ -36,6 +36,7 @@ mod utils;
 
 mod mods;
 mod version_manager;
+mod mirrors;
 
 static CONFIG: LazyLock<Mutex<Config>> = LazyLock::new(|| Mutex::new(config::default_config()));
 
@@ -279,9 +280,10 @@ async fn download_version(app_handle: AppHandle, version_loader: VersionLoader) 
     let version = MinecraftVersion::from_id(version_id);
     let inherited_version = version.get_inherited();
     update_download_status("Downloading version...", &app_handle);
-    downloader::download_version(&version, &app_handle).await;
+    let cfg = &CONFIG.lock().await;
+    downloader::download_version(&version, &app_handle, &*cfg).await;
     if inherited_version.id != version.id {
-        downloader::download_version(&inherited_version, &app_handle).await;
+        downloader::download_version(&inherited_version, &app_handle, &*cfg).await;
     }
     update_download_status("", &app_handle);
     app_handle

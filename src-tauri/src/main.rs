@@ -20,6 +20,7 @@ mod mods;
 
 mod profile_manager;
 mod version_manager;
+mod mirrors;
 
 #[allow(unused_imports)]
 fn main() {

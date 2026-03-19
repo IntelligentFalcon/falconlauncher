@@ -27,6 +27,8 @@ use tauri::AppHandle;
 use tokio::sync::Mutex;
 use zip::ZipArchive;
 use zip_extract::extract;
+use crate::config::Config;
+use crate::mirrors::{mirror, mojang_mirror, ninecraft_mirror, Mirror};
 
 pub static GLOBAL_CACHE: LazyLock<Mutex<Global>> = LazyLock::new(|| {
     Mutex::new(Global {
@@ -44,34 +46,35 @@ pub struct Global {
     pub fabric_mc_versions: Option<Vec<FabricMinecraftVersion>>,
     pub versions: Vec<MinecraftVersion>,
 }
-pub async fn download_version(version: &MinecraftVersion, app_handle: &AppHandle) {
+pub async fn download_version(version: &MinecraftVersion, app_handle: &AppHandle, cfg: &Config) {
     let id = &version.id;
+    let mirror = if cfg.download_settings.mirror == "9craft" { ninecraft_mirror() } else { mojang_mirror() };
 
     let manifest = load_version_manifest().await;
     match manifest {
         None => {}
         Some(val) => {
-            download_from_manifest(id, &val).await;
+            download_from_manifest(id, &val, &mirror).await;
         }
     }
     let content = fs::read_to_string(PathBuf::from(version.get_json())).unwrap();
 
     let json: MinecraftManifestVersion = serde_json::from_str(&content).unwrap();
 
-    download_libraries(&json.libraries, &id, app_handle).await;
+    download_libraries(&json.libraries, &id, app_handle, &mirror).await;
     if json.downloads.is_some() {
         update_download_status("Downloading version...", &app_handle);
-        download_client(&json.downloads.unwrap()["client"], &id).await;
+        download_client(&json.downloads.unwrap()["client"], &id, &mirror).await;
     }
     if json.asset_index.is_some() {
         update_download_status("Downloading assets...", &app_handle);
-        download_assets(&json.asset_index.unwrap()).await;
+        download_assets(&json.asset_index.unwrap(), &mirror).await;
     }
 }
 
-async fn download_assets(value: &AssetIndex) {
+async fn download_assets(value: &AssetIndex, mirror: &Mirror) {
     let id = &value.id;
-    let url = &value.url;
+    let url = mirror.parse_url(&value.url);
     let total_size = value.total_size;
     let _size = value.size;
     let mut json: Option<Value> = None;
@@ -97,10 +100,10 @@ async fn download_assets(value: &AssetIndex) {
                 let hash = asset_object["hash"].as_str().unwrap();
                 let id = hash[0..2].to_string().clone();
                 let size = asset_object["size"].as_u64().unwrap();
-                let url = url_template
+                let url = mirror.parse_url(&url_template
                     .replace("{id}", id.as_str())
                     .replace("{hash}", hash)
-                    .clone();
+                    .clone());
                 let path = get_assets_directory()
                     .join("objects")
                     .join(id.as_str())
@@ -118,12 +121,12 @@ pub async fn download_file_if_not_exists(path: &PathBuf, url: String, size: u64)
     }
 }
 
-async fn download_from_manifest(id: &String, manifest: &Manifest) {
+async fn download_from_manifest(id: &String, manifest: &Manifest, mir: &Mirror) {
     let version = manifest.versions
         .iter()
         .find(|v| &v.id == id)
         .expect(format!("Couldn't find version in manifest. {id}").as_str());
-    let version_url = &version.url;
+    let version_url = mir.parse_url(&version.url);
     download_file(
         version_url.to_string(),
         get_version_directory(&id)
@@ -135,16 +138,16 @@ async fn download_from_manifest(id: &String, manifest: &Manifest) {
     .await;
 }
 
-async fn download_client(value: &Value, version: &String) {
+async fn download_client(value: &Value, version: &String, mirror: &Mirror) {
     let size = value["size"].as_u64().unwrap();
-    let url = value["url"].as_str().unwrap();
+    let url = mirror.parse_url(&value["url"].as_str().unwrap().to_string());
     let path = get_versions_directory()
         .join(&version)
         .join(format!("{}.jar", version));
     download_file_if_not_exists(&path, url.to_string(), size).await;
 }
 
-async fn download_libraries(libraries: &Value, version: &String, app_handle: &AppHandle) {
+async fn download_libraries(libraries: &Value, version: &String, app_handle: &AppHandle, mirror: &Mirror) {
     let libraries_path = get_libraries_directory();
     let array = libraries.as_array().unwrap();
     for library_index in 0..array.len() {
@@ -157,7 +160,7 @@ async fn download_libraries(libraries: &Value, version: &String, app_handle: &Ap
             let version = parts[2];
             let path = format!("{group}/{artifact}/{version}/{artifact}-{version}.jar");
             if group.to_lowercase() == "net/minecraft" {
-                let url = format!("https://libraries.minecraft.net/{path}");
+                let url = mirror.parse_url(&format!("https://libraries.minecraft.net/{path}"));
                 let full_path = get_libraries_directory().join(path);
                 download_file_if_not_exists(&full_path, url, 0).await;
             } else {
@@ -180,7 +183,7 @@ async fn download_libraries(libraries: &Value, version: &String, app_handle: &Ap
             continue;
         }
         if library["downloads"].get("artifact").is_none() {
-            download_classifiers(library["downloads"].get("classifiers"), version).await;
+            download_classifiers(library["downloads"].get("classifiers"), version, mirror).await;
             continue;
         }
         let library_info = library_from_value(library);
@@ -191,14 +194,14 @@ async fn download_libraries(libraries: &Value, version: &String, app_handle: &Ap
         );
         let os = get_current_os();
         let rules = fetch_rules(library.get("rules"));
-        download_classifiers(library["downloads"].get("classifiers"), version).await;
+        download_classifiers(library["downloads"].get("classifiers"), version, mirror).await;
         if rules.allowed_oses.contains(&os) && !rules.disallowed_oses.contains(&os) {
             let path = libraries_path.join(&library_info.path.as_str());
-            download_file_if_not_exists(&path, library_info.url, library_info.size).await;
+            download_file_if_not_exists(&path, mirror.parse_url(&library_info.url), library_info.size).await;
         }
     }
 }
-async fn download_classifiers(classifiers: Option<&Value>, version: &String) {
+async fn download_classifiers(classifiers: Option<&Value>, version: &String, mirror: &Mirror) {
     if classifiers.is_none() {
         return;
     }
@@ -210,7 +213,7 @@ async fn download_classifiers(classifiers: Option<&Value>, version: &String) {
     match natives {
         None => {}
         Some(val) => {
-            let url = val["url"].as_str().unwrap();
+            let url = mirror.parse_url(&val["url"].as_str().unwrap().to_string());
             let url_https_less = url.replace("https://", "").replace("http://", "");
             let path = if val.get("path").is_none() {
                 let url_args = url_https_less.split("/").collect::<Vec<&str>>();
