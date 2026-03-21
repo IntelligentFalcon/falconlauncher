@@ -1,3 +1,7 @@
+use serde::{Deserialize, Serialize};
+use tauri::ipc::{InvokeResponseBody, IpcResponse};
+
+#[derive(Debug,Serialize,Deserialize)]
 pub struct InvokeError <T>{
     pub code: u32,
     pub message: String,

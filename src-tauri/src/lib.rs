@@ -24,6 +24,7 @@ use tauri_plugin_deep_link::DeepLinkExt;
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_log::{Target, TargetKind};
 use tokio::fs::copy;
+use crate::structs::error::InvokeError;
 
 mod config;
 mod directory_manager;
@@ -155,10 +156,17 @@ pub fn run() {
             set_language,
             load_categorized_versions,
             get_language,
-            install_mod_from_local
+            install_mod_from_local,
+            debug
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+/// LINUX Debugger for the js side. use the developer console if you are on windows build to check logs
+#[command]
+async fn debug(text: String){
+    println!("{}", text);
 }
 #[command]
 async fn get_total_ram() -> u64 {
@@ -203,10 +211,12 @@ async fn get_profiles() -> Vec<String> {
 BUG: the function doesn't invoke on call.
 */
 #[command]
-async fn create_offline_profile(username: String) {
-    profile_manager::create_new_profile(username.clone(), false);
+async fn create_offline_profile(username: String) -> Result<(), InvokeError<()>>{
+    profile_manager::create_new_profile(username.clone(),false);
     let mut config = CONFIG.lock().await;
     config.launch_options.username = username;
+    println!("Te");
+    Ok(())
 }
 #[command]
 async fn get_installed_versions() -> Vec<String> {

@@ -2,6 +2,7 @@ import { api } from '@/lib/utils';
 import { useMutation } from '@tanstack/react-query';
 import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import {invoke} from "@tauri-apps/api/core";
 
 function MicrosoftLogo() {
   return (
@@ -23,12 +24,12 @@ function MicrosoftLogo() {
 export function LoginPopup({ close }: { close: () => void }) {
   const { t } = useTranslation();
   const inputRef = useRef<HTMLInputElement>(null);
-
   const { mutate: createOfflineProfile } = useMutation({
-    mutationFn: () =>
-      api('create_offline_profile', {
-        username: inputRef.current?.value ?? '',
-      }),
+    mutationFn: () => {
+        return api('create_offline_profile', {
+            username: inputRef.current?.value ?? '',
+        });
+    },
     onSuccess: () => close(),
     onError: () => console.log('error'),
   });
