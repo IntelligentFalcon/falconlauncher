@@ -1,13 +1,21 @@
 use crate::directory_manager::get_profiles_file;
+use crate::structs::error::{io_err_create_file, json_read_err, InvokeError};
 use crate::structs::Profile;
 use std::fs;
 use std::fs::{read_to_string, File};
 use uuid::Uuid;
 
-pub fn create_new_profile(username: String, online: bool) {
+pub fn create_new_profile(username: String, online: bool) -> Result<(), InvokeError<()>> {
     let mut profiles: Vec<Profile> = get_profiles();
+    let result = Ok(());
     if !get_profiles_file().exists() {
-        File::create(&get_profiles_file()).expect("Failed to create the file!");
+        let res = File::create(&get_profiles_file());
+        if res.is_err() {
+            return Err(io_err_create_file(
+                get_profiles_file().to_str().unwrap().to_string(),
+                res.err().unwrap(),
+            ));
+        }
     }
     let uid = Uuid::new_v4();
 
@@ -17,8 +25,12 @@ pub fn create_new_profile(username: String, online: bool) {
         uuid: uid,
     });
 
-    let json_string = serde_json::to_string_pretty(&profiles).unwrap();
-    fs::write(get_profiles_file(), json_string).expect("Failed to write the file!");
+    let json_string = serde_json::to_string_pretty(&profiles);
+    if json_string.is_err() {
+        return Err(json_read_err(json_string.err().unwrap()));
+    }
+    fs::write(get_profiles_file(), json_string.unwrap()).expect("Failed to write the file!");
+    result
 }
 
 pub fn get_profiles() -> Vec<Profile> {

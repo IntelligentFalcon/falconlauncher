@@ -35,7 +35,7 @@ export function LoginPopup({ close }: { close: () => void }) {
   });
 
   return (
-    <form onSubmit={() => createOfflineProfile}>
+    <form onSubmit={() => createOfflineProfile()}>
       <div className="mb-4">
         <input
           type="text"

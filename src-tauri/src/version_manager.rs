@@ -6,10 +6,11 @@ use crate::utils::load_json_url;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::cmp::PartialEq;
+use crate::mirrors::Mirror;
 
-pub async fn load_version_manifest() -> Option<Manifest> {
+pub async fn load_version_manifest(mirror: &Mirror) -> Option<Manifest> {
     // let url = "https://launchermeta.mojang.com/mc/game/version_manifest.json";
-    download_version_manifest().await;
+    download_version_manifest(mirror).await;
     load_version_manifest_local()
 }
 
@@ -54,13 +55,12 @@ pub async fn get_categorized_versions(
     let mut result: Vec<VersionCategory> = Vec::new();
     let versions: Vec<&VersionInfo> = manifest
         .versions
-        .iter()
-        .filter(|x| x.version_type == VersionType::Release)
+        .iter().filter(|x| matches!(x.version_type, VersionType::Release))
         .collect();
     let snapshots: Vec<VersionLoader> = manifest
         .versions
         .iter()
-        .filter(|x| x.version_type == VersionType::Snapshot)
+        .filter(|x| matches!(x.version_type, VersionType::Snapshot))
         .map(|x| VersionLoader {
             id: x.id.to_string(),
             base: VersionBase::VANILLA,
@@ -70,7 +70,7 @@ pub async fn get_categorized_versions(
     let old_beta: Vec<VersionLoader> = manifest
         .versions
         .iter()
-        .filter(|x| x.version_type == VersionType::OldBeta)
+        .filter(|x| matches!(x.version_type, VersionType::OldBeta))
         .map(|x| VersionLoader {
             id: x.id.to_string(),
             base: VersionBase::VANILLA,
@@ -80,7 +80,7 @@ pub async fn get_categorized_versions(
     let old_alpha: Vec<VersionLoader> = manifest
         .versions
         .iter()
-        .filter(|x| x.version_type == VersionType::OldAlpha)
+        .filter(|x| matches!(x.version_type, VersionType::OldAlpha))
         .map(|x| VersionLoader {
             id: x.id.to_string(),
             base: VersionBase::VANILLA,
@@ -154,8 +154,8 @@ pub async fn initialize_versions(){
         global.versions.push(MinecraftVersion::from_id(v.id.clone()));
     }
 }
-pub async fn download_version_manifest() {
-    let url = "https://launchermeta.mojang.com/mc/game/version_manifest.json";
+pub async fn download_version_manifest(mirror: &Mirror) {
+    let url = mirror.parse_url(&"https://launchermeta.mojang.com/mc/game/version_manifest.json".to_string());
     download_file(
         url.to_string(),
         get_versions_directory()

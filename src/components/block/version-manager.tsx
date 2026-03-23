@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { cn, api } from '@/lib/utils';
 import { Button } from '../ui/button';
+import {invoke} from "@tauri-apps/api/core";
 
 export function VersionSelectorPopup({
   close,

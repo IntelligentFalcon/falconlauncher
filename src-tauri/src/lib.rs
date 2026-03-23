@@ -24,6 +24,7 @@ use tauri_plugin_deep_link::DeepLinkExt;
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_log::{Target, TargetKind};
 use tokio::fs::copy;
+use crate::mirrors::mojang_mirror;
 use crate::structs::error::InvokeError;
 
 mod config;
@@ -62,8 +63,8 @@ async fn load_categorized_versions(
     forge: bool,
     neo_forge: bool,
     lite_loader: bool,
-) -> Vec<VersionCategory> {
-    get_categorized_versions(fabric, forge, neo_forge, lite_loader).await
+) -> Result<Vec<VersionCategory>, InvokeError<()>> {
+    Ok(get_categorized_versions(fabric, forge, neo_forge, lite_loader).await)
 }
 #[command]
 async fn get_versions() -> Vec<String> {
@@ -112,10 +113,10 @@ pub fn run() {
             let _ = create_dir_all(jdk_path);
             spawn(async {
                 create_necessary_dirs().await;
-                if is_connected_to_internet().await {
-                    download_version_manifest().await;
-                }
                 load_config(&mut *CONFIG.lock().await).await;
+                if is_connected_to_internet().await {
+                    download_version_manifest(&mojang_mirror()).await;
+                }
             });
             block_on(async {
                 reload_installed_versions().await;
@@ -212,10 +213,9 @@ BUG: the function doesn't invoke on call.
 */
 #[command]
 async fn create_offline_profile(username: String) -> Result<(), InvokeError<()>>{
-    profile_manager::create_new_profile(username.clone(),false);
+    let result = profile_manager::create_new_profile(username.clone(),false);
     let mut config = CONFIG.lock().await;
     config.launch_options.username = username;
-    println!("Te");
     Ok(())
 }
 #[command]
@@ -271,7 +271,7 @@ async fn delete_mod(mod_info: ModInfo) {
 #[command]
 async fn download_version(app_handle: AppHandle, version_loader: VersionLoader) {
     let version_id = version_loader.get_installed_id();
-
+    println!("DEBUG: Downloading version {} from 9craft mirror", version_loader.id);
     if version_loader.base == FORGE {
         println!(
             "DEBUG: Forge version detected! {} installing it rn!",

@@ -49,8 +49,7 @@ pub struct Global {
 pub async fn download_version(version: &MinecraftVersion, app_handle: &AppHandle, cfg: &Config) {
     let id = &version.id;
     let mirror = if cfg.download_settings.mirror == "9craft" { ninecraft_mirror() } else { mojang_mirror() };
-
-    let manifest = load_version_manifest().await;
+    let manifest = load_version_manifest(&mirror).await;
     match manifest {
         None => {}
         Some(val) => {
