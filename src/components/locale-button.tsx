@@ -5,7 +5,6 @@ export function LocaleButton() {
 
   return (
     <button
-      className="p-1 rounded-full hover:bg-gray-700 transition-colors"
       onClick={() => setLocale(locale === 'fa' ? 'en' : 'fa')}
       title="Change Locale"
     >

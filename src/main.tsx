@@ -4,16 +4,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import App from './App';
 
-export const queryClient = new QueryClient();
-
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <div className="min-h-screen antialiased">
-        <App />
-      </div>
-    </QueryClientProvider>
-  </React.StrictMode>
+    <App />
+  </React.StrictMode>,
 );
 
 document.addEventListener('DOMContentLoaded', () => {

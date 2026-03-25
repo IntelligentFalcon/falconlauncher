@@ -1,4 +1,7 @@
 import { InvokeArgs } from '@tauri-apps/api/core';
+import { app } from '@tauri-apps/api';
+
+type AppHandle = typeof app;
 
 type InvokeError<T = unknown> = {
   code: number;
@@ -19,10 +22,56 @@ type Invokes = WithDefaultError<{
     args: {
       fabric: boolean;
       forge: boolean;
-      neoForge: boolean;
-      liteLoader: boolean;
+      neo_forge: boolean;
+      lite_loader: boolean;
     };
     returns: VersionCategory[];
+  };
+  get_versions: {
+    args: undefined;
+    returns: string[];
+  };
+  get_mods: {
+    args: undefined;
+    returns: ModInfo[];
+  };
+  debug: {
+    args: {
+      text: string;
+    };
+    returns: void;
+  };
+  get_total_ram: {
+    args: undefined;
+    returns: int;
+  };
+  save: {
+    args: undefined;
+    returns: void;
+  };
+  set_config: {
+    args: {
+      config: Config;
+    };
+    returns: void;
+  };
+  set_ram_usage: {
+    args: {
+      ram_usage: int;
+    };
+    returns: void;
+  };
+  get_ram_usage: {
+    args: undefined;
+    returns: int;
+  };
+  get_username: {
+    args: undefined;
+    returns: string;
+  };
+  get_profiles: {
+    args: undefined;
+    returns: string[];
   };
   create_offline_profile: {
     args: {
@@ -30,20 +79,58 @@ type Invokes = WithDefaultError<{
     };
     returns: void;
   };
+  get_installed_versions: {
+    args: undefined;
+    returns: string[];
+  };
+  get_non_installed_versions: {
+    args: undefined;
+    returns: string[];
+  };
+  set_language: {
+    args: {
+      lang: string | 'fa' | 'en';
+    };
+    returns: void;
+  };
+  get_language: {
+    args: undefined;
+    returns: string;
+  };
+  install_mod_from_local: {
+    args: {
+      app: AppHandle;
+    };
+    returns: void;
+  };
+  download_version: {
+    args: {
+      app_handle: AppHandle;
+      version_loader: VersionLoader;
+    };
+    returns: void;
+  };
   toggle_mod: {
     args: {
-      modInfo: ModInfo;
+      mod_info: ModInfo;
       toggle: boolean;
     };
     returns: void;
   };
   delete_mod: {
-    args: ModInfo;
+    args: { mod_info: ModInfo };
     returns: void;
   };
   get_mods: {
     args: undefined;
     returns: ModInfo[];
+  };
+  play_button_handler: {
+    args: {
+      app: AppHandle;
+      selected_version: string;
+    };
+    returns: void;
   };
 }>;
 
@@ -58,4 +145,33 @@ interface MinecraftVersion {
 interface VersionCategory {
   name: string; // e.g., "Fabric", "Forge"
   versions: MinecraftVersion[];
+}
+
+interface Config {
+  launchoptions: LaunchOptions;
+  launchersettings: LauncherSettings;
+  downloadsettings: DownloadSettings;
+}
+interface DownloadSettings {
+  mirror: String;
+}
+interface LauncherSettings {
+  language: String;
+}
+interface LaunchOptions {
+  username: String;
+  ramusage: u64;
+}
+interface ModInfo {
+  path: String;
+  modid: String;
+  name: String;
+  version: String;
+  description: String;
+  enabled: bool;
+}
+interface VersionLoader {
+  id: String;
+  base: VersionBase;
+  date: String;
 }
