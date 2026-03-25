@@ -128,7 +128,7 @@ type Invokes = WithDefaultError<{
   play_button_handler: {
     args: {
       app: AppHandle;
-      selected_version: string;
+      selectedVersion: string;
     };
     returns: void;
   };

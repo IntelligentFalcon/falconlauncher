@@ -62,9 +62,6 @@ importers:
       lucide-react:
         specifier: ^0.507.0
         version: 0.507.0(react@19.2.0)
-      next-themes:
-        specifier: ^0.4.6
-        version: 0.4.6(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       pnpm:
         specifier: ^10.25.0
         version: 10.26.0

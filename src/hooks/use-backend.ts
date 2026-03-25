@@ -10,14 +10,13 @@ import {
 
 export function useBackend<
   Invoke extends keyof Invokes,
-  TQueryFnData = unknown,
-  TData = TQueryFnData,
+  TData = Invokes[Invoke]['returns'],
 >({
   name,
   args,
   ...params
 }: Omit<
-  UseQueryOptions<TData, InvokeError<Invokes[Invoke]['custom_error']>>,
+  UseQueryOptions<Invokes[Invoke]['returns'], unknown, TData>,
   'queryFn' | 'queryKey'
 > & { name: Invoke; args?: Invokes[Invoke]['args']; queryKey?: QueryKey }) {
   const query = useQuery({
