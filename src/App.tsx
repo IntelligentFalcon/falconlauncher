@@ -77,7 +77,15 @@ function ProfileSelect() {
 
   return (
     <div className="flex items-center gap-1">
-      <Select value={profile} onValueChange={(profile) => setProfile(profile)}>
+      <Select value={profile} onValueChange={(profile) => {
+         useBackendMutation({
+          name: 'set_username',
+          args: {
+            username: profile ?? ''
+          }
+        });
+        setProfile(profile);
+      }}>
         <SelectTrigger className="w-full">
           <SelectValue placeholder="Select Profile" />
         </SelectTrigger>

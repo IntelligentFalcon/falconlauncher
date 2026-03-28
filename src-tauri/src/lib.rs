@@ -41,10 +41,17 @@ mod version_manager;
 mod mirrors;
 
 static CONFIG: LazyLock<Mutex<Config>> = LazyLock::new(|| Mutex::new(config::default_config()));
-
+/// Result<T, InvokeError<E>>
+pub type ReturnTypeErrType<T,E> = Result<T, InvokeError<E>>;
+/// Result<T, InvokeError<()>>
+pub type ReturnType<T> = ReturnTypeErrType<T, ()>;
+/// Result<(), InvokeError<E>>
+pub type VoidType<E> = ReturnTypeErrType<(), E>;
+/// Result<(), InvokeError<()>>
+pub type Void = VoidType<()>;
 #[command]
-async fn toggle_mod(mod_info: ModInfo, toggle: bool) {
-    set_mod_enabled(mod_info, toggle);
+async fn toggle_mod(mod_info: ModInfo, toggle: bool) -> Void {
+    set_mod_enabled(mod_info, toggle)
 }
 #[command]
 async fn play_button_handler(app: AppHandle, selected_version: String) {
@@ -81,8 +88,6 @@ async fn get_mods() -> Vec<ModInfo> {
     load_mods()
 }
 
-#[command]
-async fn reload_versions() {}
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     dotenvy::dotenv().ok();
@@ -143,7 +148,7 @@ pub fn run() {
             set_ram_usage,
             set_config,
             get_username,
-            reload_versions,
+            set_username,
             get_ram_usage,
             toggle_mod,
             delete_mod,
@@ -203,6 +208,15 @@ async fn get_username() -> String {
 }
 
 #[command]
+async fn set_username(username: String) -> Void {
+    println!("Heres a test {username}");
+    let mut cfg = CONFIG.lock().await;
+    cfg.launch_options.username = username;
+    save().await;
+    Ok(())
+}
+
+#[command]
 async fn get_profiles() -> Vec<String> {
     let profiles = profile_manager::get_profiles();
     profiles.iter().map(|x| x.name.clone()).collect()
@@ -212,7 +226,7 @@ async fn get_profiles() -> Vec<String> {
 BUG: the function doesn't invoke on call.
 */
 #[command]
-async fn create_offline_profile(username: String) -> Result<(), InvokeError<()>>{
+async fn create_offline_profile(username: String) -> Void {
     let result = profile_manager::create_new_profile(username.clone(),false);
     let mut config = CONFIG.lock().await;
     config.launch_options.username = username;

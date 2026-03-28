@@ -1,4 +1,3 @@
-import { InvokeArgs } from '@tauri-apps/api/core';
 import { app } from '@tauri-apps/api';
 
 type AppHandle = typeof app;
@@ -27,6 +26,7 @@ type Invokes = WithDefaultError<{
     };
     returns: VersionCategory[];
   };
+
   get_versions: {
     args: undefined;
     returns: string[];
@@ -44,6 +44,12 @@ type Invokes = WithDefaultError<{
   get_total_ram: {
     args: undefined;
     returns: int;
+  };
+  set_username: {
+      args: {
+          username: string
+      };
+      returns: void;
   };
   save: {
     args: undefined;
