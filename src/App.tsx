@@ -68,24 +68,39 @@ export default function App() {
 }
 
 function ProfileSelect() {
-  const { profile, setProfile } = useConfig();
+  const queryClient = useQueryClient();
 
   const { data: profiles } = useBackend({
     name: 'get_profiles',
     queryKey: ['profiles'],
   });
 
+  const { data: profile } = useBackend({
+    name: 'get_username',
+    queryKey: ['profiles', 'me'],
+  });
+
+  const { mutate } = useBackendMutation({
+    name: 'set_username',
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['profiles', 'me'] });
+    },
+  });
+
+  console.log(profile);
+
   return (
     <div className="flex items-center gap-1">
-      <Select value={profile} onValueChange={(profile) => {
-         useBackendMutation({
-          name: 'set_username',
-          args: {
-            username: profile ?? ''
+      <Select
+        value={profile}
+        onValueChange={(profile) => {
+          if (profile) {
+            mutate({
+              username: profile,
+            });
           }
-        });
-        setProfile(profile);
-      }}>
+        }}
+      >
         <SelectTrigger className="w-full">
           <SelectValue placeholder="Select Profile" />
         </SelectTrigger>
