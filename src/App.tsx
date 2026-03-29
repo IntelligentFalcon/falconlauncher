@@ -46,6 +46,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { UserPlus } from '@hugeicons/core-free-icons';
+import { AppSidebar } from './components/app-sidebar';
+import { SidebarProvider } from './components/ui/sidebar';
 
 export default function App() {
   const { t } = useTranslation();
@@ -53,15 +55,18 @@ export default function App() {
   return (
     <ThemeProvider>
       <QueryClientProvider client={queryClient}>
-        <div className="min-h-screen antaliased flex items-center justify-center">
-          <div className="max-w-sm space-y-4">
-            <h1 className="text-4xl text-center mb-0">Falcon</h1>
-            <h2 className="text-2xl text-center mb-8">Launcher</h2>
-            <ProfileSelect />
-            <VersionSelect />
-            <PlayButton />
+        <SidebarProvider>
+          <AppSidebar />
+          <div className="min-h-screen w-full antaliased flex items-center justify-center">
+            <div className="max-w-sm space-y-4">
+              <h1 className="text-4xl text-center mb-0">Falcon</h1>
+              <h2 className="text-2xl text-center mb-8">Launcher</h2>
+              <ProfileSelect />
+              <VersionSelect />
+              <PlayButton />
+            </div>
           </div>
-        </div>
+        </SidebarProvider>
       </QueryClientProvider>
     </ThemeProvider>
   );
@@ -86,8 +91,6 @@ function ProfileSelect() {
       queryClient.invalidateQueries({ queryKey: ['profiles', 'me'] });
     },
   });
-
-  console.log(profile);
 
   return (
     <div className="flex items-center gap-1">
