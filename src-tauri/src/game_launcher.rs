@@ -21,6 +21,7 @@ pub async fn launch_game(
 ) -> Result<(), String> {
     let mut versions = global_cache.versions.iter().filter(|x| x.id == version);
     let ver_res = versions.next();
+    println!("DEBUG: Starting game with {version} ");
     match ver_res {
         None => {
             return Err("Couldn't find any selected version. might have to try selecting a version before launching the game".to_string());

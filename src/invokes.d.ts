@@ -131,7 +131,7 @@ type Invokes = WithDefaultError<{
     args: undefined;
     returns: ModInfo[];
   };
-  play_button_handler: {
+  play: {
     args: {
       app: AppHandle;
       selectedVersion: string;

@@ -5,22 +5,28 @@ pub struct Mirror {
     pub maps: HashMap<String, String>,
 }
 impl Mirror {
-    pub fn parse_url(&self, url: &String) -> String{
+    pub fn parse_url(&self, url: &String) -> String {
         let mut url = url.to_lowercase();
-        url = url.replace("http://","https://");
-        let domain = url.strip_prefix("https://").unwrap().split("/").next().unwrap();
+        url = url.replace("http://", "https://");
+        let domain = url
+            .strip_prefix("https://")
+            .unwrap()
+            .split("/")
+            .next()
+            .unwrap();
         let https_domain = format!("https://{domain}/");
         println!("{}", url);
         println!("{}", https_domain);
         println!("{}", self.maps[https_domain.as_str()].as_str());
         if self.maps.contains_key(https_domain.as_str()) {
-            println!("{}", url.replace(https_domain.as_str(), &*self.maps[&https_domain]));
+            println!(
+                "{}",
+                url.replace(https_domain.as_str(), &*self.maps[&https_domain])
+            );
             url.replace(https_domain.as_str(), &*self.maps[&https_domain])
-
-        }else {
+        } else {
             url.clone()
         }
-
     }
 }
 pub fn mirror(
@@ -31,7 +37,10 @@ pub fn mirror(
     libraries: String,
 ) -> Mirror {
     let mut maps = HashMap::new();
-    maps.insert("https://launchermeta.mojang.com/".to_string(), launcher_meta);
+    maps.insert(
+        "https://launchermeta.mojang.com/".to_string(),
+        launcher_meta,
+    );
     maps.insert("https://piston-meta.mojang.com/".to_string(), piston_meta);
     maps.insert("https://piston-data.mojang.com/".to_string(), piston_data);
     maps.insert(
@@ -59,4 +68,12 @@ pub fn mojang_mirror() -> Mirror {
         "https://resources.download.minecraft.net/".to_string(),
         "https://libraries.minecraft.net/".to_string(),
     )
+}
+
+pub fn mirror_from(name: &String) -> Mirror {
+    if name == "9craft" {
+        ninecraft_mirror()
+    } else {
+        mojang_mirror()
+    }
 }

@@ -1,5 +1,5 @@
 use crate::directory_manager::get_mods_folder;
-use crate::structs::error::{launcher_error, InvokeError};
+use crate::structs::error::{io_err_rename_file, Void};
 use crate::structs::mod_identifiers::{FabricModInfo, McModInfo};
 use crate::structs::ModInfo;
 use std::fs;
@@ -10,7 +10,7 @@ use std::sync::Mutex;
 use toml::Value;
 use zip::ZipArchive;
 
-pub fn set_mod_enabled(m: ModInfo, toggle: bool) -> Result<(), InvokeError<()>> {
+pub fn set_mod_enabled(m: ModInfo, toggle: bool) -> Void {
     let mut path = PathBuf::from(&m.path);
     let new_path = if toggle {
         let mut new = path.clone();
@@ -23,7 +23,7 @@ pub fn set_mod_enabled(m: ModInfo, toggle: bool) -> Result<(), InvokeError<()>> 
         new.set_extension("disabled");
         new
     };
-    fs::rename(&path, &new_path).map_err(|x| launcher_error(format!("Failed to enable/disable mod in {} ", path.display()),1))
+    fs::rename(&path, &new_path).map_err(|x| io_err_rename_file(path.display().to_string(), x))
 
 }
 pub fn delete_mod(mod_info: &ModInfo) {

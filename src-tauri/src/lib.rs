@@ -4,10 +4,10 @@ use crate::directory_manager::{
 };
 use crate::downloader::{download_fabric, download_forge_version, GLOBAL_CACHE};
 use crate::game_launcher::{launch_game, update_download_status};
-use crate::mirrors::mojang_mirror;
+use crate::mirror::mojang_mirror;
 use crate::mods::mod_manager;
 use crate::mods::mod_manager::{load_mods, set_mod_enabled};
-use crate::structs::error::InvokeError;
+use crate::structs::error::{InvokeError, Returns, Void};
 use crate::structs::VersionBase::{FABRIC, FORGE};
 use crate::structs::{MinecraftVersion, ModInfo, VersionCategory};
 use crate::utils::is_connected_to_internet;
@@ -36,25 +36,17 @@ mod profile_manager;
 mod structs;
 mod utils;
 
-mod mirrors;
+mod mirror;
 mod mods;
 mod version_manager;
 
 static CONFIG: LazyLock<Mutex<Config>> = LazyLock::new(|| Mutex::new(config::default_config()));
-/// Result<T, InvokeError<E>>
-pub type ReturnTypeErrType<T, E> = Result<T, InvokeError<E>>;
-/// Result<T, InvokeError<()>>
-pub type ReturnType<T> = ReturnTypeErrType<T, ()>;
-/// Result<(), InvokeError<E>>
-pub type VoidType<E> = ReturnTypeErrType<(), E>;
-/// Result<(), InvokeError<()>>
-pub type Void = VoidType<()>;
 #[command]
 async fn toggle_mod(mod_info: ModInfo, toggle: bool) -> Void {
     set_mod_enabled(mod_info, toggle)
 }
 #[command]
-async fn play_button_handler(app: AppHandle, selected_version: String) -> Void {
+async fn play(app: AppHandle, selected_version: String) -> Void {
     launch_game(
         app,
         selected_version,
@@ -71,11 +63,11 @@ async fn load_categorized_versions(
     forge: bool,
     neo_forge: bool,
     lite_loader: bool,
-) -> ReturnType<Vec<VersionCategory>> {
+) -> Returns<Vec<VersionCategory>> {
     Ok(get_categorized_versions(fabric, forge, neo_forge, lite_loader).await)
 }
 #[command]
-async fn get_versions() -> ReturnType<Vec<String>> {
+async fn get_versions() -> Returns<Vec<String>> {
     let global = GLOBAL_CACHE.lock().await;
     Ok(global
         .versions
@@ -85,8 +77,8 @@ async fn get_versions() -> ReturnType<Vec<String>> {
         .collect())
 }
 #[command]
-async fn get_mods() -> Vec<ModInfo> {
-    load_mods()
+async fn get_mods() -> Returns<Vec<ModInfo>> {
+    Ok(load_mods())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -143,7 +135,7 @@ pub fn run() {
             return Ok(());
         })
         .invoke_handler(tauri::generate_handler![
-            play_button_handler,
+            play,
             get_versions,
             get_total_ram,
             set_ram_usage,
@@ -177,7 +169,7 @@ async fn debug(text: String) -> Void {
     Ok(())
 }
 #[command]
-async fn get_total_ram() -> ReturnType<u64> {
+async fn get_total_ram() -> Returns<u64> {
     let ram = sys_info::mem_info().unwrap();
     Ok(ram.total)
 }
@@ -203,18 +195,17 @@ async fn set_ram_usage(ram_usage: u64) -> Void{
     Ok(())
 }
 #[command]
-async fn get_ram_usage() -> ReturnType<u64> {
+async fn get_ram_usage() -> Returns<u64> {
     Ok(CONFIG.lock().await.launch_options.ram_usage)
 }
 
 #[command]
-async fn get_username() -> ReturnType<String> {
+async fn get_username() -> Returns<String> {
     Ok(CONFIG.lock().await.launch_options.username.clone())
 }
 
 #[command]
 async fn set_username(username: String) -> Void {
-    println!("Heres a test {username}");
     let mut cfg = CONFIG.lock().await;
     cfg.launch_options.username = username;
     save().await;
@@ -222,7 +213,7 @@ async fn set_username(username: String) -> Void {
 }
 
 #[command]
-async fn get_profiles() -> ReturnType<Vec<String>> {
+async fn get_profiles() -> Returns<Vec<String>> {
     let profiles = profile_manager::get_profiles();
     Ok(profiles.iter().map(|x| x.name.clone()).collect())
 }
@@ -238,7 +229,7 @@ async fn create_offline_profile(username: String) -> Void {
     Ok(())
 }
 #[command]
-async fn get_installed_versions() -> ReturnType<Vec<String>> {
+async fn get_installed_versions() -> Returns<Vec<String>> {
     let global = GLOBAL_CACHE.lock().await;
     let versions = global.versions.clone();
     Ok(versions
@@ -248,7 +239,7 @@ async fn get_installed_versions() -> ReturnType<Vec<String>> {
         .collect())
 }
 #[command]
-async fn get_non_installed_versions() -> ReturnType<Vec<String>> {
+async fn get_non_installed_versions() -> Returns<Vec<String>> {
     let global = GLOBAL_CACHE.lock().await;
     let versions = global.versions.clone();
     Ok(versions
@@ -265,7 +256,7 @@ async fn set_language(lang: String) -> Void{
     Ok(())
 }
 #[command]
-async fn get_language() -> ReturnType<String> {
+async fn get_language() -> Returns<String> {
     Ok(CONFIG.lock().await.launcher_settings.language.clone())
 }
 

@@ -28,7 +28,8 @@ use tokio::sync::Mutex;
 use zip::ZipArchive;
 use zip_extract::extract;
 use crate::config::Config;
-use crate::mirrors::{mirror, mojang_mirror, ninecraft_mirror, Mirror};
+use crate::mirror::{mirror, mirror_from, mojang_mirror, ninecraft_mirror, Mirror};
+use crate::structs::error::{download_error, io_err_read_file, json_read_err, launcher_file_not_found, launcher_manifest_not_found, Void};
 
 pub static GLOBAL_CACHE: LazyLock<Mutex<Global>> = LazyLock::new(|| {
     Mutex::new(Global {
@@ -46,18 +47,26 @@ pub struct Global {
     pub fabric_mc_versions: Option<Vec<FabricMinecraftVersion>>,
     pub versions: Vec<MinecraftVersion>,
 }
-pub async fn download_version(version: &MinecraftVersion, app_handle: &AppHandle, cfg: &Config) {
+pub async fn download_version(version: &MinecraftVersion, app_handle: &AppHandle, cfg: &Config) -> Void {
     let id = &version.id;
-    let mirror = if cfg.download_settings.mirror == "9craft" { ninecraft_mirror() } else { mojang_mirror() };
+    let mirror = mirror_from(&cfg.download_settings.mirror);
     let manifest = load_version_manifest(&mirror).await;
     match manifest {
-        None => {}
+        None => {
+            return Err(launcher_manifest_not_found());
+        }
         Some(val) => {
-            download_from_manifest(id, &val, &mirror).await;
+            let res = download_from_manifest(id, &val, &mirror).await;
+            if res.is_err(){
+                return Err(launcher_file_not_found(format!("{id}.json")));
+            }
         }
     }
-    let content = fs::read_to_string(PathBuf::from(version.get_json())).unwrap();
-
+    let content_res = fs::read_to_string(PathBuf::from(version.get_json()));
+    if content_res.is_err() {
+        return Err(io_err_read_file(content_res.unwrap_err()));
+    }
+    let content = content_res.unwrap();
     let json: MinecraftManifestVersion = serde_json::from_str(&content).unwrap();
 
     download_libraries(&json.libraries, &id, app_handle, &mirror).await;
@@ -69,6 +78,7 @@ pub async fn download_version(version: &MinecraftVersion, app_handle: &AppHandle
         update_download_status("Downloading assets...", &app_handle);
         download_assets(&json.asset_index.unwrap(), &mirror).await;
     }
+    Ok(())
 }
 
 async fn download_assets(value: &AssetIndex, mirror: &Mirror) {
@@ -120,7 +130,7 @@ pub async fn download_file_if_not_exists(path: &PathBuf, url: String, size: u64)
     }
 }
 
-async fn download_from_manifest(id: &String, manifest: &Manifest, mir: &Mirror) {
+async fn download_from_manifest(id: &String, manifest: &Manifest, mir: &Mirror) -> Void{
     let version = manifest.versions
         .iter()
         .find(|v| &v.id == id)
@@ -134,7 +144,7 @@ async fn download_from_manifest(id: &String, manifest: &Manifest, mir: &Mirror) 
             .unwrap()
             .to_string(),
     )
-    .await;
+    .await
 }
 
 async fn download_client(value: &Value, version: &String, mirror: &Mirror) {
@@ -289,10 +299,13 @@ fn download_file_async_thread(url: String, dest: String) {
     });
 }
 
-pub async fn download_file(url: String, dest: String) {
-    let resp = reqwest::get(&url)
-        .await
-        .expect(&format!("Downloading file failed. {url}").to_string());
+pub async fn download_file(url: String, dest: String) -> Void {
+    let resp_res = reqwest::get(&url)
+        .await;
+    if resp_res.is_err() {
+        return Err(download_error(format!("Failed to downnload file from {url}, {}",resp_res.err().unwrap())));
+    }
+    let resp = resp_res.unwrap();
     let dest_folder = PathBuf::from(&dest)
         .parent()
         .unwrap()
@@ -306,6 +319,7 @@ pub async fn download_file(url: String, dest: String) {
         File::create(&dest).expect(format!("Unable to create file. at {}", dest.as_str()).as_str());
     out.write_all(&resp.bytes().await.unwrap())
         .expect("Writing file failed.");
+    Ok(())
 }
 pub async fn get_available_forge_versions(version_id: &String) -> Vec<String> {
     let mut global_cache = GLOBAL_CACHE.lock().await;

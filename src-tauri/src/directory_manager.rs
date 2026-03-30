@@ -60,3 +60,8 @@ pub async fn create_necessary_dirs() {
     create_dir_all(get_assets_directory()).await.unwrap();
     create_dir_all(get_launcher_java_directory()).await.unwrap();
 }
+
+pub fn version_manifest_directory() -> PathBuf {
+    get_versions_directory()
+        .join("version_manifest_v2.json")
+}

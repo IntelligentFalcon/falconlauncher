@@ -1,4 +1,4 @@
-use crate::directory_manager::{get_libraries_directory, get_versions_directory};
+use crate::directory_manager::{get_libraries_directory, get_versions_directory, version_manifest_directory};
 use crate::structs;
 use crate::structs::MinecraftVersion;
 use crate::version_manager::{
@@ -104,8 +104,7 @@ pub async fn load_versions(snapshots: bool, old_versions: bool) -> Vec<Minecraft
             )
         })
         .collect();
-    if get_versions_directory()
-        .join("version_manifest_v2.json")
+    if version_manifest_directory()
         .exists()
     {
         let json = load_version_manifest_local();
