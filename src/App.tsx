@@ -16,6 +16,16 @@ import {
   ItemDescription,
   ItemTitle,
 } from '@/components/ui/item';
+import {
+  Menubar,
+  MenubarContent,
+  MenubarGroup,
+  MenubarItem,
+  MenubarMenu,
+  MenubarSeparator,
+  MenubarShortcut,
+  MenubarTrigger,
+} from '@/components/ui/menubar';
 import { Card, CardContent } from './components/ui/card';
 import { ThemeProvider } from './components/theme-provider';
 import { app } from '@tauri-apps/api';
@@ -45,7 +55,7 @@ import { Field, FieldGroup } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { UserPlus } from '@hugeicons/core-free-icons';
+import { BookXIcon, UserPlus } from '@hugeicons/core-free-icons';
 import { AppSidebar } from './components/app-sidebar';
 import { SidebarProvider } from './components/ui/sidebar';
 
@@ -57,13 +67,43 @@ export default function App() {
       <QueryClientProvider client={queryClient}>
         <SidebarProvider>
           <AppSidebar />
-          <div className="min-h-screen w-full antaliased flex items-center justify-center">
-            <div className="max-w-sm space-y-4">
-              <h1 className="text-4xl text-center mb-0">Falcon</h1>
-              <h2 className="text-2xl text-center mb-8">Launcher</h2>
-              <ProfileSelect />
-              <VersionSelect />
-              <PlayButton />
+          <div className="min-h-screen w-full antaliased ">
+            <div className="pl-4 pr-1 tauri-drag-region bg-sidebar flex items-center justify-between">
+              <Menubar className="border-0  rounded-none ">
+                <MenubarMenu>
+                  <MenubarTrigger>File</MenubarTrigger>
+                  <MenubarContent>
+                    <MenubarGroup>
+                      <MenubarItem>
+                        New Tab <MenubarShortcut>⌘T</MenubarShortcut>
+                      </MenubarItem>
+                      <MenubarItem>New Window</MenubarItem>
+                    </MenubarGroup>
+                    <MenubarSeparator />
+                    <MenubarGroup>
+                      <MenubarItem>Share</MenubarItem>
+                      <MenubarItem>Print</MenubarItem>
+                    </MenubarGroup>
+                  </MenubarContent>
+                </MenubarMenu>
+              </Menubar>
+              <div className="space-x-1">
+                <Button variant="outline" size="icon-xs">
+                  <HugeiconsIcon icon={BookXIcon} />
+                </Button>
+                <Button variant="destructive" size="icon-xs">
+                  <HugeiconsIcon icon={BookXIcon} />
+                </Button>
+              </div>
+            </div>
+            <div className="flex items-center justify-center">
+              <div className="max-w-sm space-y-4">
+                <h1 className="text-4xl text-center mb-0">Falcon</h1>
+                <h2 className="text-2xl text-center mb-8">Launcher</h2>
+                <ProfileSelect />
+                <VersionSelect />
+                <PlayButton />
+              </div>
             </div>
           </div>
         </SidebarProvider>

@@ -158,7 +158,17 @@ const data = {
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar collapsible="icon" {...props}>
-      <SidebarHeader></SidebarHeader>
+      <SidebarHeader>
+        <div className="flex gap-2 items-center justify-center group-data-[state=collapsed]:gap-0 mt-2">
+          <img
+            src="/icon.png"
+            className="size-8 dark:brightness-100 dark:-hue-rotate-60"
+          />
+          <h2 className="font-bold text-2xl mt-1 group-data-[state=collapsed]:w-0 w-46 overflow-hidden transition-[width] line-clamp-1">
+            Falcon Launcher
+          </h2>
+        </div>
+      </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
         <NavProjects projects={data.projects} />
