@@ -1,9 +1,9 @@
-use crate::directory_manager::get_profiles_file;
-use crate::structs::error::{io_err_create_file, json_read_err, InvokeError};
-use crate::structs::Profile;
+use crate::services::directory_manager::get_profiles_file;
+use crate::models::error::{io_err_create_file, json_read_err, InvokeError};
 use std::fs;
 use std::fs::{read_to_string, File};
 use uuid::Uuid;
+use serde::{Deserialize, Serialize};
 
 pub fn create_new_profile(username: String, online: bool) -> Result<(), InvokeError<()>> {
     let mut profiles: Vec<Profile> = get_profiles();
@@ -47,4 +47,11 @@ pub fn get_profile(username: &String) -> Option<Profile> {
     let temp = get_profiles().clone();
     let found = temp.iter().find(|x| x.name == un_clone).cloned();
     found
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct Profile {
+    pub name: String,
+    pub online: bool,
+    pub uuid: uuid::Uuid,
 }

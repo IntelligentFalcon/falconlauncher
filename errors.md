@@ -2,6 +2,8 @@
 
 *     launcher_manifest_not_found: occurs when version_manifest file doesnt exist in the game directory. code 1
 *     launcher_file_not_found: occurs when specific file doesnt exist in the game/launcher directory. code 2
+*     launcher_version_not_found: occurs when launcher fails to find the selected version to launch. code: 3
+*     launcher_launch_args_not_found: occurs when launher fails to find run arguments on the version's json file. code: 4
 
 ---
 ## IO Errors

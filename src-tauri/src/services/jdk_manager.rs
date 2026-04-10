@@ -1,19 +1,20 @@
-use crate::directory_manager::get_launcher_java_directory;
-use crate::utils;
+use crate::services::directory_manager::get_launcher_java_directory;
 use std::fs;
 use std::fs::{remove_file, File};
 use std::io::Write;
 use std::path::PathBuf;
 use zip_extract::extract;
+use crate::models::mirror::Mirror;
+use crate::models::platform;
 
-pub async fn download_java(id: &String) {
-    let os = utils::get_current_os();
+pub async fn download_java(id: &String, mirror: &Mirror) {
+    let os = platform::get_current_os();
     let mut url = if os == "windows" {
-        format!("https://corretto.aws/downloads/latest/amazon-corretto-{id}-x64-windows-jdk.zip")
+        mirror.parse_url(&format!("https://corretto.aws/downloads/latest/amazon-corretto-{id}-x64-windows-jdk.zip"))
     } else if os == "linux" {
-        format!("https://corretto.aws/downloads/latest/amazon-corretto-{id}-x64-linux-jdk.tar.gz")
+        mirror.parse_url(&format!("https://corretto.aws/downloads/latest/amazon-corretto-{id}-x64-linux-jdk.tar.gz"))
     } else {
-        format!("https://corretto.aws/downloads/latest/amazon-corretto-{id}-x64-macos-jdk.tar.gz")
+        mirror.parse_url(&format!("https://corretto.aws/downloads/latest/amazon-corretto-{id}-x64-macos-jdk.tar.gz"))
     };
 
     let file_name = url.split("/").last().unwrap_or("");
@@ -52,9 +53,9 @@ pub async fn download_java(id: &String) {
     }
 }
 
-pub async fn get_java(id: String) -> PathBuf {
-    download_java(&id).await;
-    let os = utils::get_current_os();
+pub async fn get_java(id: String, mirror: &Mirror) -> PathBuf {
+    download_java(&id,mirror).await;
+    let os = platform::get_current_os();
     if os == "windows" {
         get_launcher_java_directory()
             .join(&id)

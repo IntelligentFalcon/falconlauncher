@@ -133,7 +133,7 @@ type Invokes = WithDefaultError<{
   };
   play: {
     args: {
-      app: AppHandle;
+      // app: AppHandle;
       selectedVersion: string;
     };
     returns: void;

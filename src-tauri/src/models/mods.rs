@@ -1,4 +1,7 @@
 use serde::{Deserialize, Serialize};
+fn default_true() -> bool {
+    true
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -46,4 +49,34 @@ pub struct FabricModInfoContact {
     pub sources: Option<String>,
     pub twitter: Option<String>,
     pub discord: Option<String>,
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct ModInfo {
+    pub path: String,
+    pub mod_id: String,
+    pub name: String,
+    pub version: String,
+    pub description: String,
+    #[serde(default = "default_true")]
+    pub enabled: bool,
+}
+
+impl ModInfo {
+    pub fn new(
+        path: String,
+        mod_id: String,
+        display_name: String,
+        version: String,
+        description: String,
+    ) -> Self {
+        Self {
+            path,
+            mod_id,
+            name: display_name,
+            version,
+            description,
+            enabled: true,
+        }
+    }
 }

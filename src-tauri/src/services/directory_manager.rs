@@ -1,4 +1,4 @@
-use crate::utils::get_current_os;
+use crate::models::platform::get_current_os;
 use std::env::{home_dir, var_os};
 use std::path::PathBuf;
 use tokio::fs::create_dir_all;
@@ -64,4 +64,7 @@ pub async fn create_necessary_dirs() {
 pub fn version_manifest_directory() -> PathBuf {
     get_versions_directory()
         .join("version_manifest_v2.json")
+}
+pub fn get_config_directory() -> PathBuf {
+    get_falcon_launcher_directory().join("launcher-settings.ini")
 }

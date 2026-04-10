@@ -1,19 +1,19 @@
 #![allow(deprecated)]
 
-use crate::directory_manager::{
+use crate::services::directory_manager::{
     get_assets_directory, get_falcon_launcher_directory, get_libraries_directory,
     get_minecraft_directory, get_natives_folder, get_temp_directory, get_version_directory,
     get_versions_directory,
 };
-use crate::game_launcher::{update_download, update_download_status};
-use crate::structs::{library_from_value, AssetIndex, LibraryRules, MinecraftManifestVersion, MinecraftVersion};
-use crate::utils::{
-    convert_to_full_path, convert_to_full_url, get_current_os, verify_file_existence,
+use crate::services::game_launcher::{update_download, update_download_status};
+use crate::models::versions::MinecraftVersion;
+use crate::services::utils::{
+    convert_to_full_path, convert_to_full_url, verify_file_existence,
 };
-use crate::version_manager::{load_version_manifest, Manifest, VersionLoader};
+use crate::services::version_manager::load_version_manifest;
 
-use crate::jdk_manager::get_java;
-use crate::structs::fabric::{FabricInstaller, FabricLoader, FabricMinecraftVersion};
+use crate::services::jdk_manager::get_java;
+use crate::models::fabric::{FabricInstaller, FabricLoader, FabricMinecraftVersion};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::fs;
@@ -27,9 +27,11 @@ use tauri::AppHandle;
 use tokio::sync::Mutex;
 use zip::ZipArchive;
 use zip_extract::extract;
-use crate::config::Config;
-use crate::mirror::{mirror, mirror_from, mojang_mirror, ninecraft_mirror, Mirror};
-use crate::structs::error::{download_error, io_err_read_file, json_read_err, launcher_file_not_found, launcher_manifest_not_found, Void};
+use crate::models::config::Config;
+use crate::models::downloader::{library_from_value, AssetIndex, LibraryRules, Manifest, MinecraftManifestVersion, VersionLoader};
+use crate::models::mirror::{mirror_from, Mirror};
+use crate::models::error::{download_error, io_err_read_file, launcher_file_not_found, launcher_manifest_not_found, Void};
+use crate::models::platform::get_current_os;
 
 pub static GLOBAL_CACHE: LazyLock<Mutex<Global>> = LazyLock::new(|| {
     Mutex::new(Global {
@@ -338,7 +340,7 @@ pub async fn get_available_forge_versions(version_id: &String) -> Vec<String> {
         .unwrap_or(Vec::new())
 }
 
-pub async fn download_forge_version(version: &String, app_handle: &AppHandle) {
+pub async fn download_forge_version(version: &String, app_handle: &AppHandle, mirror: &Mirror) {
     let url = format!("https://maven.minecraftforge.net/net/minecraftforge/forge/{version}/forge-{version}-installer.jar");
     let launcher_dir = get_falcon_launcher_directory();
 
@@ -360,7 +362,7 @@ pub async fn download_forge_version(version: &String, app_handle: &AppHandle) {
     let version_mid = mc_args[1].parse::<i32>().unwrap();
     if version_mid > 12 {
         println!("DEBUG: Non legacy version detected!");
-        let jdk_8 = get_java("8".to_string());
+        let jdk_8 = get_java("8".to_string(),mirror);
         let mut child = Command::new(jdk_8.await.display().to_string())
             .arg("-jar")
             .arg(PathBuf::from(path_str).display().to_string())
@@ -503,7 +505,7 @@ pub async fn download_forge_version(version: &String, app_handle: &AppHandle) {
     fs::remove_dir_all(launcher_dir.join("temp")).unwrap();
 }
 
-pub async fn download_fabric(version_loader: &VersionLoader) {
+pub async fn download_fabric(version_loader: &VersionLoader, mirror: &Mirror) {
     let loaders_url = "https://meta.fabricmc.net/v2/versions/loader";
     let installers_url = "https://meta.fabricmc.net/v2/versions/installer";
     type FabricLoaders = Vec<FabricLoader>;
@@ -536,7 +538,7 @@ pub async fn download_fabric(version_loader: &VersionLoader) {
         installer_path_download.clone(),
     )
     .await;
-    let mut child = Command::new(get_java("8".to_string()).await)
+    let mut child = Command::new(get_java("8".to_string(), mirror).await)
         .arg("-jar")
         .arg(installer_path_download.clone())
         .arg("client")

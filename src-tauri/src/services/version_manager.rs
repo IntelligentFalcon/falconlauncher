@@ -1,11 +1,10 @@
-use crate::directory_manager::{get_versions_directory, version_manifest_directory};
-use crate::downloader::{download_file, get_available_fabric_versions, get_available_forge_versions, GLOBAL_CACHE};
-use crate::mirror::Mirror;
-use crate::structs::error::Void;
-use crate::structs::VersionBase::{FABRIC, FORGE};
-use crate::structs::{MinecraftVersion, VersionBase, VersionCategory};
-use serde::{Deserialize, Serialize};
-use std::cmp::PartialEq;
+use crate::models::downloader::{Manifest, VersionInfo, VersionLoader};
+use crate::services::directory_manager::{get_versions_directory, version_manifest_directory};
+use crate::services::downloader::{download_file, get_available_fabric_versions, get_available_forge_versions, GLOBAL_CACHE};
+use crate::models::mirror::Mirror;
+use crate::models::error::Void;
+use crate::models::versions::VersionBase::{FABRIC, FORGE};
+use crate::models::versions::{MinecraftVersion, VersionBase, VersionCategory, VersionType};
 
 pub async fn load_version_manifest(mirror: &Mirror) -> Option<Manifest> {
     // let url = "https://launchermeta.mojang.com/mc/game/version_manifest.json";
@@ -37,11 +36,6 @@ pub async fn reload_installed_versions() {
     let mut global = GLOBAL_CACHE.lock().await;
     global.versions = versions;
 
-}
-impl PartialEq for VersionType {
-    fn eq(&self, other: &Self) -> bool {
-        other == self
-    }
 }
 
 pub async fn get_categorized_versions(
@@ -163,71 +157,4 @@ pub async fn download_version_manifest(mirror: &Mirror) -> Void {
     )
     .await
 }
-#[derive(Deserialize, Debug)]
-pub struct Manifest {
-    pub latest: LatestVersionDetail,
-    pub versions: Vec<VersionInfo>,
-}
-#[derive(Debug, Deserialize)]
 
-pub struct LatestVersionDetail {
-    pub release: String,
-    pub snapshot: String,
-}
-#[derive(Debug, Deserialize)]
-pub struct VersionInfo {
-    pub id: String,
-    #[serde(rename = "type")]
-    pub version_type: VersionType,
-    pub url: String,
-    pub time: String,
-    #[serde(rename = "releaseTime")]
-    pub release_time: String,
-}
-#[derive(Debug, Deserialize, Serialize)]
-pub struct VersionLoader {
-    pub id: String,
-    pub base: VersionBase,
-    pub date: String,
-}
-
-impl VersionLoader {
-    pub fn get_fabric_loader_id(&self) -> String {
-        self.id.split("-").collect::<Vec<&str>>()[1].to_string()
-    }
-    pub fn get_fabric_version_id(&self) -> String {
-        self.id.split("-").collect::<Vec<&str>>()[0].to_string()
-    }
-}
-
-impl VersionLoader {
-    pub fn get_installed_id(&self) -> String {
-        match self.base {
-            VersionBase::VANILLA => self.id.clone(),
-            FORGE => {
-                let id_clone = self.id.clone();
-                let args = id_clone.split("-").collect::<Vec<_>>();
-                let vanilla_id = args[0];
-                let forge_ver = args[1].split("-").last().unwrap();
-                format!("{}-forge-{}", vanilla_id, forge_ver)
-            }
-            /// FIX THESE LATER
-            VersionBase::NEOFORGE => self.id.clone(),
-            FABRIC => {
-                let args = self.id.split("-").collect::<Vec<_>>();
-                format!("fabric-loader-{}-{}", args[1], args[0])
-            }
-            VersionBase::LITELOADER => self.id.clone(),
-        }
-    }
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "snake_case")]
-// #[derive(PartialEq)]
-pub enum VersionType {
-    Release,
-    Snapshot,
-    OldAlpha,
-    OldBeta,
-}

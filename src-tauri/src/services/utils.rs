@@ -1,9 +1,6 @@
-use crate::directory_manager::{get_libraries_directory, get_versions_directory, version_manifest_directory};
-use crate::structs;
-use crate::structs::MinecraftVersion;
-use crate::version_manager::{
-    load_version_manifest_local, Manifest, VersionType,
-};
+use crate::services::directory_manager::{get_libraries_directory, get_versions_directory, version_manifest_directory};
+use crate::models::versions::MinecraftVersion;
+use crate::services::version_manager::load_version_manifest_local;
 use reqwest::Client;
 use serde_json::Value;
 use std::fs::File;
@@ -11,10 +8,9 @@ use std::path::Path;
 use std::thread::spawn;
 use std::time::Duration;
 use tokio::fs::create_dir_all;
+use crate::models::downloader::Manifest;
+use crate::models::versions::VersionType;
 
-pub fn get_current_os() -> String {
-    structs::parse_os(sys_info::os_type().expect("Unsupported Operating System"))
-}
 fn load_downloaded_versions() {
     let dir = get_versions_directory();
     let folders = dir.read_dir();

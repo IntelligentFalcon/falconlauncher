@@ -1,7 +1,7 @@
-use crate::directory_manager::get_mods_folder;
-use crate::structs::error::{io_err_rename_file, Void};
-use crate::structs::mod_identifiers::{FabricModInfo, McModInfo};
-use crate::structs::ModInfo;
+use crate::services::directory_manager::get_mods_folder;
+use crate::models::error::{io_err_rename_file, Void};
+use crate::models::mods::{FabricModInfo, McModInfo};
+use crate::models::mods::ModInfo;
 use std::fs;
 use std::fs::File;
 use std::io::Read;

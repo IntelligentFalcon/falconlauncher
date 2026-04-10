@@ -65,6 +65,7 @@ pub fn launcher_error_data<T>(message: String, code: u32, data: Option<T>) -> In
 pub fn launcher_error(message: String, code: u32) -> EmptyError {
     launcher_error_data(message, code, None)
 }
+
 pub fn launcher_manifest_not_found() -> EmptyError {
     launcher_error(
         "Failed to load version manifest. make sure you are connected to the internet".to_string(),
@@ -79,7 +80,14 @@ pub fn launcher_file_not_found(file: String) -> EmptyError {
     )
 }
 
-
+pub fn launcher_version_not_found() -> EmptyError {
+    launcher_error("Couldn't find any selected version. might have to try selecting a version before launching the game".to_string(),
+    3)
+}
+pub fn launcher_launch_args_not_found() -> EmptyError {
+    launcher_error("Couldn't find launch arguments".to_string(),
+    4)
+}
 pub fn request_error(message: String, code: u32) -> EmptyError {
     InvokeError {
         code,

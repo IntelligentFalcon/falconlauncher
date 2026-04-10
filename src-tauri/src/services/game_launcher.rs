@@ -1,30 +1,35 @@
-use crate::config::Config;
-use crate::directory_manager::*;
-use crate::downloader::{generate_stdout, Global, GLOBAL_CACHE};
-use crate::jdk_manager::get_java;
-use crate::profile_manager::get_profile;
-use crate::structs::MinecraftVersion;
-use crate::utils::{extend_once, get_current_os, vec_to_string};
+use crate::services::directory_manager::*;
+use crate::services::downloader::{generate_stdout, Global};
+use crate::services::jdk_manager::get_java;
+use crate::models::profiles::get_profile;
+use crate::models::versions::MinecraftVersion;
+use crate::services::utils::{extend_once, vec_to_string};
 use serde_json::Value;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
+pub use crate::AppState;
+use crate::models::mirror::mirror_from;
+use crate::models::error::{launcher_launch_args_not_found, launcher_version_not_found, Void};
+use crate::models::platform::get_current_os;
 
 const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 pub async fn launch_game(
     app_handle: AppHandle,
     version: String,
-    config: &Config,
     global_cache: &Global
-) -> Result<(), String> {
+) -> Void {
+    println!("DEBUG: Starting game with {version} ");
     let mut versions = global_cache.versions.iter().filter(|x| x.id == version);
     let ver_res = versions.next();
-    println!("DEBUG: Starting game with {version} ");
+    let state = &app_handle.state::<AppState>();
+    let config = state.config.read().await;
+    let mirror = mirror_from(&config.download_settings.mirror);
     match ver_res {
         None => {
-            return Err("Couldn't find any selected version. might have to try selecting a version before launching the game".to_string());
+            return Err(launcher_version_not_found());
         }
         _ => {}
     }
@@ -39,7 +44,7 @@ pub async fn launch_game(
     let uid = profile.uuid;
     let version_directory = PathBuf::from(&inherited_version.version_path);
     let json: Value = version.load_json();
-
+    
     let java_version = inherited_json["javaVersion"]["majorVersion"]
         .as_i64()
         .unwrap_or(8)
@@ -69,18 +74,18 @@ pub async fn launch_game(
     update_download(100, "Launching game...", &app_handle);
 
     let ram_usage = config.launch_options.ram_usage.to_string() + "M";
-    let java = get_java(java_version.to_string())
+    let java = get_java(java_version.to_string(), &mirror)
         .await
         .display()
         .to_string();
     let typ = json["type"].as_str().unwrap();
     let run_args_iter = get_launch_args(&json);
     if run_args_iter.is_err() {
-        return Err("Couldn't find launch arguments".to_string());
+        return Err(launcher_launch_args_not_found());
     }
     let run_args_iter_inherited = get_launch_args(&inherited_json);
     if run_args_iter_inherited.is_err() {
-        return Err("Couldn't find launch arguments".to_string());
+        return Err(launcher_launch_args_not_found());
     }
     let run_args_iter_sum = extend_once(run_args_iter.unwrap(), run_args_iter_inherited.unwrap());
     let run_args = run_args_iter_sum

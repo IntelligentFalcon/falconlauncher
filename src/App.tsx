@@ -46,6 +46,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { UserPlus } from '@hugeicons/core-free-icons';
+import {debug} from "@tauri-apps/plugin-log";
+import {invoke} from "@tauri-apps/api/core";
 
 export default function App() {
   const { t } = useTranslation();
@@ -208,7 +210,7 @@ function PlayButton() {
   const { mutateAsync } = useBackendMutation({
     name: 'play',
     args: {
-      app,
+      // app,
       selectedVersion: version ?? '',
     },
   });
@@ -216,7 +218,7 @@ function PlayButton() {
   return (
     <ActionButton
       action={async () => {
-        await mutateAsync();
+        await mutateAsync().catch(e => invoke("debug", {text: e}))
       }}
       disabled={version === null || profile === null}
       className="w-full"

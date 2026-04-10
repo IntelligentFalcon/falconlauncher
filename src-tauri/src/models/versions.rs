@@ -1,103 +1,29 @@
-use crate::directory_manager::{get_libraries_directory, get_versions_directory};
-use crate::utils::{extend_once, get_current_os, parse_library_name_to_path};
-use crate::version_manager::VersionLoader;
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use std::fs;
 use std::path::PathBuf;
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use crate::models::downloader;
+use crate::models::downloader::VersionLoader;
+use crate::models::platform::get_current_os;
+use crate::services::directory_manager::{get_libraries_directory, get_versions_directory};
+use crate::services::utils::{extend_once, parse_library_name_to_path};
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct AssetIndex {
-    pub id: String,
-    pub sha1: String,
-    pub size: u64,
-    #[serde(rename = "totalSize")]
-    pub total_size: u64,
-    pub url: String,
-}
-
-pub struct LibraryInfo {
-    pub name: String,
-    pub size: u64,
-    pub path: String,
-    pub url: String,
-}
-pub fn library_from_value(value: &Value) -> LibraryInfo {
-    let library_name = value
-        .get("name")
-        .expect("Parsing library_name failed")
-        .as_str()
-        .expect("Parsing library_name failed");
-    let library_downloads = value.get("downloads").unwrap();
-    let library_artifact = library_downloads
-        .get("artifact")
-        .expect("Parsing library_downloads failed");
-    let library_path = if library_artifact.get("path").is_none() {
-        let args = library_name.split(":").collect::<Vec<&str>>();
-        let group_id = args[0].replace(".", "/");
-        let artifact = args[1];
-        let version = args[2];
-        let artifact_version = format!("{artifact}-{version}.jar");
-        format!("{group_id}/{artifact}/{version}/{artifact_version}")
-    } else {
-        library_artifact["path"].as_str().unwrap().to_string()
-    };
-
-    let library_url = library_artifact
-        .get("url")
-        .expect("Parsing library_url failed")
-        .as_str();
-    let library_size = library_artifact
-        .get("size")
-        .expect("Parsing library_size failed")
-        .as_u64()
-        .expect("Parsing library_size failed");
-    LibraryInfo {
-        name: library_name.to_string(),
-        size: library_size,
-        path: library_path.to_string(),
-        url: library_url.unwrap().to_string(),
+impl PartialEq for VersionType {
+    fn eq(&self, other: &Self) -> bool {
+        other == self
     }
 }
-pub enum OperatingSystem {
-    Windows,
-    Linux,
-    MacOS,
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "snake_case")]
+// #[derive(PartialEq)]
+pub enum VersionType {
+    Release,
+    Snapshot,
+    OldAlpha,
+    OldBeta,
 }
 
-pub fn parse_os(os: String) -> String {
-    os.to_lowercase().replace("darwin", "osx")
-}
-pub struct LibraryRules {
-    pub allowed_oses: Vec<String>,
-    pub disallowed_oses: Vec<String>,
-}
-#[derive(Debug, Deserialize, Serialize)]
-pub struct MinecraftManifestVersion {
-    pub libraries: Value,
-    #[serde(rename = "assetIndex")]
-    pub asset_index: Option<AssetIndex>,
-    pub downloads: Option<Value>
-}
-#[derive(Clone, Debug, PartialEq, Serialize)]
-pub struct MinecraftVersion {
-    pub id: String,
-    pub version_path: String,
-}
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub enum VersionBase {
-    VANILLA,
-    FORGE,
-    NEOFORGE,
-    FABRIC,
-    LITELOADER,
-}
-
-struct Library {
-    pub name: String,
-    pub path: String,
-    pub url: Option<String>,
-}
 impl MinecraftVersion {
     pub fn is_installed(&self) -> bool {
         PathBuf::from(self.get_json()).exists()
@@ -218,7 +144,7 @@ impl MinecraftVersion {
                 }
                 continue;
             }
-            let library_info = library_from_value(library);
+            let library_info = downloader::library_from_value(library);
             let os = get_current_os();
             let path = libraries_path
                 .join(&library_info.path.as_str().replace("/", "\\"))
@@ -274,51 +200,23 @@ impl MinecraftVersion {
     }
 }
 
-#[derive(Deserialize, Serialize)]
-pub struct ModInfo {
-    pub path: String,
-    pub mod_id: String,
-    pub name: String,
-    pub version: String,
-    pub description: String,
-    #[serde(default = "default_true")]
-    pub enabled: bool,
-}
-pub fn default_true() -> bool {
-    true
-}
-impl ModInfo {
-    pub fn new(
-        path: String,
-        mod_id: String,
-        display_name: String,
-        version: String,
-        description: String,
-    ) -> Self {
-        Self {
-            path,
-            mod_id,
-            name: display_name,
-            version,
-            description,
-            enabled: true,
-        }
-    }
-}
-#[derive(Serialize, Deserialize, Clone)]
-pub struct Profile {
-    pub name: String,
-    pub online: bool,
-    pub uuid: uuid::Uuid,
-}
-
 #[derive(Serialize)]
 pub struct VersionCategory {
     pub versions: Vec<VersionLoader>,
     pub name: String,
 }
 
-pub mod error;
-pub mod fabric;
-pub mod mod_identifiers;
-mod version_manifest;
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct MinecraftVersion {
+    pub id: String,
+    pub version_path: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub enum VersionBase {
+    VANILLA,
+    FORGE,
+    NEOFORGE,
+    FABRIC,
+    LITELOADER,
+}
