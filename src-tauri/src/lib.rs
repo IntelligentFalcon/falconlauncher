@@ -1,22 +1,27 @@
+pub mod commands;
 pub mod models;
 pub mod services;
-pub mod commands;
 
+use crate::models::config::Config;
+use crate::services::config::load;
+use models::error::{Returns, Void};
+use models::mirror::{mirror_from, mojang_mirror};
+use models::mods::ModInfo;
+use models::versions::MinecraftVersion;
+use models::versions::VersionBase::{FABRIC, FORGE};
+use models::versions::VersionCategory;
 use services::directory_manager::{
     create_necessary_dirs, get_falcon_launcher_directory, get_mods_folder,
 };
 use services::downloader::{download_fabric, download_forge_version, GLOBAL_CACHE};
 use services::game_launcher::{launch_game, update_download_status};
-use models::mirror::{mirror_from, mojang_mirror};
 use services::mod_manager;
 use services::mod_manager::{load_mods, set_mod_enabled};
-use models::error::{Returns, Void};
-use models::versions::VersionBase::{FABRIC, FORGE};
-use models::versions::MinecraftVersion;
 use services::utils::is_connected_to_internet;
 use services::version_manager::{
-    download_version_manifest, get_categorized_versions, reload_installed_versions,
+    download_version_manifest, reload_installed_versions,
 };
+use services::{directory_manager, downloader};
 use std::env;
 use std::fs::create_dir_all;
 use std::string::ToString;
@@ -29,15 +34,8 @@ use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_log::{Target, TargetKind};
 use tokio::fs::copy;
 use tokio::sync::RwLock;
-use models::downloader::VersionLoader;
-use models::mods::ModInfo;
-use models::profiles;
-use models::versions::VersionCategory;
-use services::{directory_manager, downloader};
-use crate::models::config::Config;
-use crate::services::config::load;
-
-
+use commands::downloader::get_categorized_versions;
+use crate::models::downloader::VersionLoader;
 
 pub struct AppState {
     pub config: Arc<RwLock<Config>>,
@@ -120,12 +118,12 @@ pub fn run() {
             save,
             get_mods,
             download_version,
-            get_profiles,
+            commands::profiles::get_profiles,
             get_installed_versions,
             get_non_installed_versions,
-            create_offline_profile,
+            commands::profiles::create_offline_profile,
             set_language,
-            load_categorized_versions,
+            commands::downloader::get_categorized_versions,
             get_language,
             install_mod_from_local,
             debug
@@ -140,15 +138,6 @@ async fn toggle_mod(mod_info: ModInfo, toggle: bool) -> Void {
 #[command]
 async fn play(app: AppHandle, state: State<'_, AppState>, selected_version: String) -> Void {
     launch_game(app, selected_version, &*GLOBAL_CACHE.lock().await).await
-}
-#[command]
-async fn load_categorized_versions(
-    fabric: bool,
-    forge: bool,
-    neo_forge: bool,
-    lite_loader: bool,
-) -> Returns<Vec<VersionCategory>> {
-    Ok(get_categorized_versions(fabric, forge, neo_forge, lite_loader).await)
 }
 
 
@@ -218,18 +207,6 @@ async fn set_username(state: State<'_, AppState>, username: String) -> Void {
     Ok(())
 }
 
-#[command]
-async fn get_profiles() -> Returns<Vec<String>> {
-    let profiles = profiles::get_profiles();
-    Ok(profiles.iter().map(|x| x.name.clone()).collect())
-}
-#[command]
-async fn create_offline_profile(state: State<'_, AppState>, username: String) -> Void {
-    let mut cfg = state.config.write().await;
-    let result = profiles::create_new_profile(username.clone(), false);
-    cfg.launch_options.username = username;
-    result
-}
 #[command]
 async fn get_installed_versions() -> Returns<Vec<String>> {
     let global = GLOBAL_CACHE.lock().await;

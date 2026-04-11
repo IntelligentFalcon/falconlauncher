@@ -17,7 +17,7 @@ type WithDefaultError<T> = T &
   >;
 
 type Invokes = WithDefaultError<{
-  load_categorized_versions: {
+  get_categorized_versions: {
     args: {
       fabric: boolean;
       forge: boolean;
