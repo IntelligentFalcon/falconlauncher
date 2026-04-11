@@ -43,8 +43,6 @@ pub struct AppState {
     pub config: Arc<RwLock<Config>>,
 }
 
-
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     dotenvy::dotenv().ok();
@@ -152,6 +150,9 @@ async fn load_categorized_versions(
 ) -> Returns<Vec<VersionCategory>> {
     Ok(get_categorized_versions(fabric, forge, neo_forge, lite_loader).await)
 }
+
+
+/// Gives the available versions to download
 #[command]
 async fn get_versions() -> Returns<Vec<String>> {
     let global = GLOBAL_CACHE.lock().await;

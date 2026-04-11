@@ -148,9 +148,21 @@ interface MinecraftVersion {
   date: string;
   // Add other relevant fields like type, release time, etc.
 }
+enum VersionBase {
+  VANILLA,
+  FORGE,
+  NEOFORGE,
+  FABRIC,
+  LITELOADER,
+}
+interface VersionLoader{
+  id: string,
+  base: VersionBase,
+  date: string
+}
 interface VersionCategory {
   name: string; // e.g., "Fabric", "Forge"
-  versions: MinecraftVersion[];
+  versions: VersionLoader[];
 }
 
 interface Config {

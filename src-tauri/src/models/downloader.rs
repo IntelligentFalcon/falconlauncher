@@ -76,10 +76,11 @@ pub struct MinecraftManifestVersion {
     pub downloads: Option<Value>
 }
 
-struct Library {
+#[derive(Debug, Deserialize)]
+pub struct Library {
     pub name: String,
     pub path: String,
-    pub url: Option<String>,
+    pub downloads: LibraryDownloads
 }
 
 
@@ -135,4 +136,22 @@ impl VersionLoader {
     pub fn get_fabric_version_id(&self) -> String {
         self.id.split("-").collect::<Vec<&str>>()[0].to_string()
     }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct LibraryDownloads {
+    pub artifact: Option<LibraryArtifact>,
+    pub classifiers: Option<LibraryClassifier>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct LibraryArtifact {
+    pub path: Option<String>,
+    pub url: String,
+    pub size: u64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct LibraryClassifier {
+
 }
