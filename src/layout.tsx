@@ -25,8 +25,11 @@ export default function Layout() {
       <QueryClientProvider client={queryClient}>
         <SidebarProvider>
           <AppSidebar />
-          <div className="min-h-screen w-full antaliased ">
-            <div className="pl-4 pr-1 tauri-drag-region bg-sidebar flex items-center justify-between">
+          <div className="h-screen w-full antaliased ">
+            <div
+              className="pl-4 pr-1 tauri-drag-region bg-sidebar flex items-center justify-between "
+              drag-region
+            >
               <Menubar className="border-0  rounded-none ">
                 {/* <MenubarMenu>
                   <MenubarTrigger>File</MenubarTrigger>
@@ -54,7 +57,9 @@ export default function Layout() {
                 </Button>
               </div>
             </div>
-            <Outlet />
+            <div className="h-screen overflow-y-auto">
+              <Outlet />
+            </div>
           </div>
         </SidebarProvider>
       </QueryClientProvider>

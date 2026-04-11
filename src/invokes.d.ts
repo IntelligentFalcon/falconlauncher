@@ -110,8 +110,8 @@ type Invokes = WithDefaultError<{
   };
   download_version: {
     args: {
-      app_handle: AppHandle;
-      version_loader: VersionLoader;
+      appHandle: AppHandle;
+      versionLoader: VersionLoader;
     };
     returns: void;
   };
@@ -187,4 +187,3 @@ interface ModInfo {
   description: String;
   enabled: bool;
 }
-
