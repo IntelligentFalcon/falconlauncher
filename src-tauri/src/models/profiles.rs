@@ -53,5 +53,5 @@ pub fn get_profile(username: &String) -> Option<Profile> {
 pub struct Profile {
     pub name: String,
     pub online: bool,
-    pub uuid: uuid::Uuid,
+    pub uuid: Uuid,
 }
