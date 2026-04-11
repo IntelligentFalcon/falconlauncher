@@ -2,11 +2,11 @@ use tauri::{command, State};
 use crate::AppState;
 use crate::models::error::{Returns, Void};
 use crate::models::profiles;
+use crate::models::profiles::Profile;
 
 #[command]
-pub async fn get_profiles() -> Returns<Vec<String>> {
-    let profiles = profiles::get_profiles();
-    Ok(profiles.iter().map(|x| x.name.clone()).collect())
+pub async fn get_profiles() -> Returns<Vec<Profile>> {
+    Ok(profiles::get_profiles())
 }
 
 #[command]
