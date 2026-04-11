@@ -9,11 +9,11 @@ export const router = createMemoryRouter([
     children: [
       {
         path: '/',
-        element: IndexPage(),
+        element: <IndexPage />,
       },
       {
         path: '/downloads',
-        element: Downloads(),
+        element: <Downloads />,
       },
     ],
   },
