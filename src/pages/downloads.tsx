@@ -1,4 +1,5 @@
 import { useBackend } from '@/hooks/use-backend';
+import { invoke } from '@tauri-apps/api/core';
 import { useState } from 'react';
 
 export default function Downloads() {
@@ -11,11 +12,12 @@ export default function Downloads() {
   });
   const [activeMajorVersion, setActiveMajorVersion] = useState('1.21');
 
-  const { data } = useBackend({
-    name: 'load_categorized_versions',
+  const { data, isLoading } = useBackend({
+    name: 'get_categorized_versions',
   });
 
-  console.log(data);
+  invoke('debug', { text: `${data} ${isLoading}` });
+  console.log(data, isLoading);
 
   return <div>downloads</div>;
 }
