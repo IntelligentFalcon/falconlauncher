@@ -19,10 +19,10 @@ type WithDefaultError<T> = T &
 type Invokes = WithDefaultError<{
   get_categorized_versions: {
     args: {
-      fabric: boolean;
       forge: boolean;
-      neo_forge: boolean;
-      lite_loader: boolean;
+      fabric: boolean;
+      liteLoader: boolean;
+      neoForge: boolean;
     };
     returns: VersionCategory[];
   };
@@ -187,8 +187,4 @@ interface ModInfo {
   description: String;
   enabled: bool;
 }
-interface VersionLoader {
-  id: String;
-  base: VersionBase;
-  date: String;
-}
+

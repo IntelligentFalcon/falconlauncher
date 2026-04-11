@@ -17,10 +17,7 @@ pub async fn get_categorized_versions(
     neo_forge: bool,
     lite_loader: bool,
 ) -> Returns<Vec<VersionCategory>> {
-    let state = app_handle.state::<AppState>();
-    let cfg = state.config.read().await;
-    let mirror = mirror_from(&cfg.download_settings.mirror);
-    let manifest = version_manager::load_version_manifest(&mirror).await.expect("Failed to parse version manifest");
+    let manifest = version_manager::load_version_manifest_local().expect("Failed to parse version manifest");
     let mut result: Vec<VersionCategory> = Vec::new();
     let versions: Vec<&VersionInfo> = manifest
         .versions

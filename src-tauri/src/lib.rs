@@ -34,7 +34,6 @@ use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_log::{Target, TargetKind};
 use tokio::fs::copy;
 use tokio::sync::RwLock;
-use commands::downloader::get_categorized_versions;
 use crate::models::downloader::VersionLoader;
 
 pub struct AppState {

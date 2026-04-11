@@ -14,6 +14,12 @@ export default function Downloads() {
 
   const { data, isLoading } = useBackend({
     name: 'get_categorized_versions',
+    args: {
+      forge: false,
+      fabric: false,
+      liteLoader: false,
+      neoForge: false
+    }
   });
 
   invoke('debug', { text: `${data} ${isLoading}` });

@@ -200,7 +200,7 @@ impl MinecraftVersion {
     }
 }
 
-#[derive(Serialize)]
+#[derive(Debug,Serialize, Deserialize)]
 pub struct  VersionCategory {
     pub versions: Vec<VersionLoader>,
     pub name: String,
