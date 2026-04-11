@@ -190,7 +190,7 @@ function PlayButton() {
   const profile = useConfig((state) => state.profile);
 
   const { mutateAsync } = useBackendMutation({
-    name: 'play',
+    name: 'play_button_handler',
     args: {
       app,
       selectedVersion: version ?? '',

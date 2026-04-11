@@ -26,7 +26,6 @@ type Invokes = WithDefaultError<{
     };
     returns: VersionCategory[];
   };
-
   get_versions: {
     args: undefined;
     returns: string[];
@@ -46,10 +45,10 @@ type Invokes = WithDefaultError<{
     returns: int;
   };
   set_username: {
-      args: {
-          username: string
-      };
-      returns: void;
+    args: {
+      username: string;
+    };
+    returns: void;
   };
   save: {
     args: undefined;
@@ -155,10 +154,10 @@ enum VersionBase {
   FABRIC,
   LITELOADER,
 }
-interface VersionLoader{
-  id: string,
-  base: VersionBase,
-  date: string
+interface VersionLoader {
+  id: string;
+  base: VersionBase;
+  date: string;
 }
 interface VersionCategory {
   name: string; // e.g., "Fabric", "Forge"
