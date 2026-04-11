@@ -1,7 +1,6 @@
 import { useTranslation } from 'react-i18next';
-import { useBackend, useBackendMutation } from './hooks/use-backend';
-import { QueryClientProvider, useQueryClient } from '@tanstack/react-query';
-import { queryClient } from './lib/query-client';
+import { useBackend, useBackendMutation } from '@/hooks/use-backend';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Combobox,
   ComboboxContent,
@@ -10,17 +9,10 @@ import {
   ComboboxItem,
   ComboboxList,
 } from '@/components/ui/combobox';
-import {
-  Item,
-  ItemContent,
-  ItemDescription,
-  ItemTitle,
-} from '@/components/ui/item';
-import { Card, CardContent } from './components/ui/card';
-import { ThemeProvider } from './components/theme-provider';
+
 import { app } from '@tauri-apps/api';
-import { useConfig } from './stores/config';
-import { ActionButton } from './components/ui/action-button';
+import { useConfig } from '@/stores/config';
+import { ActionButton } from '@/components/ui/action-button';
 import {
   Select,
   SelectContent,
@@ -28,7 +20,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from './components/ui/select';
+} from '@/components/ui/select';
 import { useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -45,27 +37,20 @@ import { Field, FieldGroup } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { UserPlus } from '@hugeicons/core-free-icons';
-import {debug} from "@tauri-apps/plugin-log";
-import {invoke} from "@tauri-apps/api/core";
+import { BookXIcon, UserPlus } from '@hugeicons/core-free-icons';
+import { invoke } from '@tauri-apps/api/core';
 
-export default function App() {
-  const { t } = useTranslation();
-
+export default function IndexPage() {
   return (
-    <ThemeProvider>
-      <QueryClientProvider client={queryClient}>
-        <div className="min-h-screen antaliased flex items-center justify-center">
-          <div className="max-w-sm space-y-4">
-            <h1 className="text-4xl text-center mb-0">Falcon</h1>
-            <h2 className="text-2xl text-center mb-8">Launcher</h2>
-            <ProfileSelect />
-            <VersionSelect />
-            <PlayButton />
-          </div>
-        </div>
-      </QueryClientProvider>
-    </ThemeProvider>
+    <div className="flex items-center justify-center">
+      <div className="max-w-sm space-y-4">
+        <h1 className="text-4xl text-center mb-0">Falcon</h1>
+        <h2 className="text-2xl text-center mb-8">Launcher</h2>
+        <ProfileSelect />
+        <VersionSelect />
+        <PlayButton />
+      </div>
+    </div>
   );
 }
 
@@ -88,8 +73,6 @@ function ProfileSelect() {
       queryClient.invalidateQueries({ queryKey: ['profiles', 'me'] });
     },
   });
-
-  console.log(profile);
 
   return (
     <div className="flex items-center gap-1">
@@ -218,7 +201,7 @@ function PlayButton() {
   return (
     <ActionButton
       action={async () => {
-        await mutateAsync().catch(e => invoke("debug", {text: e}))
+        await mutateAsync().catch((e) => invoke('debug', { text: e }));
       }}
       disabled={version === null || profile === null}
       className="w-full"
