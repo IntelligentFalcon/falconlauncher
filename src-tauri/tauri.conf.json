@@ -19,7 +19,18 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": null,
+      "capabilities": [
+        {
+          "windows": ["main"],
+          "identifier": "titlebar",
+          "permissions": [
+            "core:window:allow-start-dragging",
+            "core:window:allow-destroy",
+            "core:window:allow-minimize"
+          ]
+        }
+      ]
     }
   },
   "plugins": {

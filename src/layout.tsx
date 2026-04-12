@@ -18,19 +18,22 @@ import { Button } from './components/ui/button';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { BookXIcon, XslFreeIcons } from '@hugeicons/core-free-icons';
 import { Outlet } from 'react-router';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 
 export default function Layout() {
+  const window = getCurrentWindow();
+
   return (
     <ThemeProvider>
       <QueryClientProvider client={queryClient}>
-        <SidebarProvider>
+        <SidebarProvider className="bg-sidebar">
           <AppSidebar />
-          <div className="h-screen w-full antaliased ">
-            <div
-              className="pl-4 pr-1 tauri-drag-region bg-sidebar flex items-center justify-between "
-              drag-region
-            >
-              <Menubar className="border-0  rounded-none ">
+          <div className="h-screen w-full antaliased">
+            <div className="pl-4 pr-1 flex items-center justify-between">
+              <Menubar
+                className="border-0 rounded-none flex-1"
+                onMouseDown={() => window.startDragging()}
+              >
                 {/* <MenubarMenu>
                   <MenubarTrigger>File</MenubarTrigger>
                   <MenubarContent>
@@ -49,15 +52,23 @@ export default function Layout() {
                 </MenubarMenu> */}
               </Menubar>
               <div className="space-x-1">
-                <Button variant="outline" size="icon-xs">
+                <Button
+                  variant="outline"
+                  size="icon-xs"
+                  onClick={() => window.minimize()}
+                >
                   <HugeiconsIcon icon={XslFreeIcons} />
                 </Button>
-                <Button variant="destructive" size="icon-xs">
+                <Button
+                  variant="destructive"
+                  size="icon-xs"
+                  onClick={() => window.destroy()}
+                >
                   <HugeiconsIcon icon={BookXIcon} />
                 </Button>
               </div>
             </div>
-            <div className="h-screen overflow-y-auto">
+            <div className="h-[calc(100%-2rem)] overflow-y-auto bg-background rounded-tl-2xl p-4">
               <Outlet />
             </div>
           </div>

@@ -22,9 +22,9 @@ const data = {
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
-    <Sidebar collapsible="icon" {...props}>
+    <Sidebar collapsible="icon" className="border-0!" {...props}>
       <SidebarHeader>
-        <div className="flex gap-2 items-center justify-center group-data-[state=collapsed]:gap-0 mt-2">
+        <div className="flex gap-2 items-center justify-center group-data-[state=collapsed]:gap-0">
           <img
             src="/icon.png"
             className="size-8 dark:brightness-100 dark:-hue-rotate-60"
