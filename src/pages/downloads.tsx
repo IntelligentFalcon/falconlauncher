@@ -32,7 +32,7 @@ export default function Downloads() {
     name: 'get_categorized_versions',
     args: {
       forge: false,
-      fabric: true,
+      fabric: false,
       liteLoader: false,
       neoForge: false,
     },
