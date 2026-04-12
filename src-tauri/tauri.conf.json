@@ -12,6 +12,7 @@
   "app": {
     "windows": [
       {
+        "decorations": false,
         "title": "Falcon Launcher",
         "minWidth": 500,
         "minHeight": 800
