@@ -37,7 +37,7 @@ import { Field, FieldGroup } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { BookXIcon, UserPlus } from '@hugeicons/core-free-icons';
+import { BookXIcon, ConsoleIcon, UserPlus } from '@hugeicons/core-free-icons';
 
 export default function IndexPage() {
   return (
@@ -45,112 +45,11 @@ export default function IndexPage() {
       <div className="max-w-sm space-y-4">
         <h1 className="text-4xl text-center mb-0">Falcon</h1>
         <h2 className="text-2xl text-center mb-8">Launcher</h2>
-        <ProfileSelect />
+
         <VersionSelect />
         <PlayButton />
       </div>
     </div>
-  );
-}
-
-function ProfileSelect() {
-  const queryClient = useQueryClient();
-
-  const { data: profiles } = useBackend({
-    name: 'get_profiles',
-    queryKey: ['profiles'],
-  });
-
-  const { data: profile } = useBackend({
-    name: 'get_username',
-    queryKey: ['profiles', 'me'],
-  });
-
-  const { mutate } = useBackendMutation({
-    name: 'set_username',
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['profiles', 'me'] });
-    },
-  });
-
-  return (
-    <div className="flex items-center gap-1">
-      <Select
-        value={profile}
-        onValueChange={(profile) => {
-          if (profile) {
-            mutate({
-              username: profile,
-            });
-          }
-        }}
-      >
-        <SelectTrigger className="w-full">
-          <SelectValue placeholder="Select Profile" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectGroup>
-            {profiles?.map((profile) => (
-              <SelectItem key={profile} value={profile}>
-                {profile}
-              </SelectItem>
-            ))}
-          </SelectGroup>
-        </SelectContent>
-      </Select>
-      <CreateOfflineProfile />
-    </div>
-  );
-}
-
-export function CreateOfflineProfile() {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const queryClient = useQueryClient();
-  const { mutate: createOfflineProfile } = useBackendMutation({
-    name: 'create_offline_profile',
-    args: {
-      username: inputRef.current?.value ?? '',
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['profiles'] });
-    },
-  });
-
-  return (
-    <Dialog>
-      <DialogTrigger
-        render={
-          <Button variant="outline" size="icon">
-            <HugeiconsIcon strokeWidth={2} icon={UserPlus} />
-          </Button>
-        }
-      />
-      <DialogContent className="sm:max-w-sm">
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            console.log('Dda');
-            createOfflineProfile();
-          }}
-          className="space-y-4"
-        >
-          <DialogHeader>
-            <DialogTitle>Create profile</DialogTitle>
-            <DialogDescription>Make Offline Profile</DialogDescription>
-          </DialogHeader>
-          <FieldGroup>
-            <Field>
-              <Label htmlFor="username">Username</Label>
-              <Input id="username" name="username" ref={inputRef} />
-            </Field>
-          </FieldGroup>
-          <DialogFooter>
-            <DialogClose render={<Button variant="outline">Cancel</Button>} />
-            <Button type="submit">Create Profile</Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
   );
 }
 

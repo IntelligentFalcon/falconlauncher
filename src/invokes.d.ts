@@ -76,7 +76,7 @@ type Invokes = WithDefaultError<{
   };
   get_profiles: {
     args: undefined;
-    returns: string[];
+    returns: Profile[];
   };
   create_offline_profile: {
     args: {
@@ -153,6 +153,12 @@ enum VersionBase {
   NEOFORGE,
   FABRIC,
   LITELOADER,
+}
+
+interface Profile {
+  name: string;
+  uuid: string;
+  online: boolean;
 }
 interface VersionLoader {
   id: string;

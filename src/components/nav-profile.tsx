@@ -1,5 +1,3 @@
-import * as React from 'react';
-
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,6 +23,8 @@ import {
   User02Icon,
   MicrosoftIcon,
   PresentationOnlineIcon,
+  PrescriptionIcon,
+  UserIcon,
 } from '@hugeicons/core-free-icons';
 import {
   Dialog,
@@ -41,54 +41,35 @@ import { Field, FieldGroup } from './ui/field';
 import { Label } from './ui/label';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
-
-interface Profile {
-  id: string;
-  name: string;
-  type: 'offline' | 'mojang' | 'microsoft';
-}
-
-const TYPE_ICONS = {
-  microsoft: MicrosoftIcon,
-  mojang: PresentationOnlineIcon,
-  offline: User02Icon,
-} satisfies Record<Profile['type'], IconSvgElement>;
-
-const PROFILES: Profile[] = [
-  {
-    name: 'Gnkalk',
-    id: 'gnkalk',
-    type: 'offline',
-  },
-  {
-    id: 'gnkalk@outlook.com',
-    name: 'Gnkalk',
-    type: 'microsoft',
-  },
-];
+import { Profile } from '@/invokes';
+import { useEffect, useState } from 'react';
 
 export function NavProfile() {
   const { isMobile } = useSidebar();
 
-  const [profile, setProfile] = React.useState(PROFILES[0]);
-  const [openCreateDialog, setOpenCreateDialog] = React.useState(false);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [openCreateDialog, setOpenCreateDialog] = useState(false);
 
-  // const { data: profiles } = useBackend({
-  //   name: 'get_profiles',
-  //   queryKey: ['profiles'],
-  // });
+  const { data: profiles } = useBackend({
+    name: 'get_profiles',
+    queryKey: ['profiles'],
+  });
 
-  // const { data: profile, refetch: updatePorfile } = useBackend({
-  //   name: 'get_username',
-  //   queryKey: ['profiles', 'me'],
-  // });
+  useEffect(() => {
+    if (profiles) {
+      setProfile(profiles[0]);
+    }
+  }, [profiles]);
 
-  // const { mutate: setProfile } = useBackendMutation({
-  //   name: 'set_username',
-  //   onSuccess: () => {
-  //     updatePorfile();
-  //   },
-  // });
+  const { mutate: setProfileMutation } = useBackendMutation({
+    name: 'set_username',
+  });
+
+  useEffect(() => {
+    if (profile) {
+      setProfileMutation({ username: profile.name });
+    }
+  }, [profile]);
 
   return (
     <>
@@ -105,11 +86,13 @@ export function NavProfile() {
               }
             >
               <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                <HugeiconsIcon icon={TYPE_ICONS[profile.type]} />
+                <HugeiconsIcon
+                  icon={profile?.online ? MicrosoftIcon : UserIcon}
+                />
               </div>
               <div className="grid flex-1 text-start text-sm leading-tight">
-                <span className="truncate font-medium">{profile.name}</span>
-                <span className="truncate text-xs">{profile.id}</span>
+                <span className="truncate font-medium">{profile?.name}</span>
+                <span className="truncate text-xs">{profile?.uuid}</span>
               </div>
               <HugeiconsIcon
                 icon={UnfoldMoreIcon}
@@ -127,17 +110,18 @@ export function NavProfile() {
                 <DropdownMenuLabel className="text-xs text-muted-foreground">
                   Profiles
                 </DropdownMenuLabel>
-                {PROFILES.map((profile, index) => (
+                {profiles?.map((profile) => (
                   <DropdownMenuItem
-                    key={profile.id}
+                    key={profile.uuid}
                     onClick={() => setProfile(profile)}
                     className="gap-2 p-2"
                   >
                     <div className="flex size-6 items-center justify-center rounded-md border">
-                      <HugeiconsIcon icon={TYPE_ICONS[profile.type]} />
+                      <HugeiconsIcon
+                        icon={profile?.online ? MicrosoftIcon : UserIcon}
+                      />
                     </div>
                     {profile.name}
-                    <DropdownMenuShortcut>⌘{index + 1}</DropdownMenuShortcut>
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuGroup>

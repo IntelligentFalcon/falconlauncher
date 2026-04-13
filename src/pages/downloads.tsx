@@ -12,11 +12,9 @@ import {
 import { useBackend, useBackendMutation } from '@/hooks/use-backend';
 import { VersionLoader } from '@/invokes';
 import { app } from '@tauri-apps/api';
-import { invoke } from '@tauri-apps/api/core';
 import { useEffect, useState } from 'react';
 
 export default function Downloads() {
-  // const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   // const [filters, setFilters] = useState({
   //   forge: false,
   //   fabric: false,
