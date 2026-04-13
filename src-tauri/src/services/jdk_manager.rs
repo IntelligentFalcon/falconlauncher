@@ -1,4 +1,4 @@
-use crate::services::directory_manager::get_launcher_java_directory;
+use crate::services::directory_manager::{auto_detect_javas, get_launcher_java_directory};
 use std::fs;
 use std::fs::{remove_file, File};
 use std::io::Write;
@@ -54,6 +54,14 @@ pub async fn download_java(id: &String, mirror: &Mirror) {
 }
 
 pub async fn get_java(id: String, mirror: &Mirror) -> PathBuf {
+    let jdk = auto_detect_javas();
+    if jdk.is_ok() {
+        let jdk_unwrapped = jdk.unwrap();
+        let mut filtered = jdk_unwrapped.iter().filter(|java| java.get_version_id() == id);
+        if filtered.clone().count() > 0{
+            return filtered.next().unwrap().path.clone();
+        }
+    }
     download_java(&id,mirror).await;
     let os = platform::get_current_os();
     if os == "windows" {

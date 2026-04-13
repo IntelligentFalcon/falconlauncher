@@ -1,7 +1,10 @@
 use crate::models::platform::get_current_os;
 use std::env::{home_dir, var_os};
 use std::path::PathBuf;
+use tokio::fs;
 use tokio::fs::create_dir_all;
+use crate::models::error::Returns;
+use crate::models::java::Java;
 
 pub fn get_minecraft_directory() -> PathBuf {
     let os = get_current_os();
@@ -67,4 +70,44 @@ pub fn version_manifest_directory() -> PathBuf {
 }
 pub fn get_config_directory() -> PathBuf {
     get_falcon_launcher_directory().join("launcher-settings.ini")
+}
+fn validate_java(path: PathBuf) -> bool{
+
+    let java_file = if get_current_os() == "windows" {
+        "java.exe"
+    } else {
+        "java"
+    };
+    path.join("bin").join(java_file).exists()
+
+}
+pub fn auto_detect_javas() -> Returns<Vec<Java>> {
+    let mut paths = Vec::new();
+    let dirs = if get_current_os() == "windows" {
+       vec![
+            r"C:\Program Files\Java",
+            r"C:\Program Files (x86)\Java",
+        ]
+    }else if get_current_os() == "linux" {
+        vec![
+            "/usr/lib/jvm",
+            "/usr/java",
+            "/usr/local/java",
+        ]
+    } else {
+        vec!["/Library/Java/JavaVirtualMachines"]
+    };
+    for path in dirs.iter().map(PathBuf::from) {
+        if path.read_dir().is_err() {
+            continue;
+        }
+        for path in path.read_dir().unwrap() {
+            if path.is_err() {continue;}
+            let path = path.unwrap().path();
+            if validate_java(path.clone()) {
+                paths.push(Java::new(path));
+            }
+        }
+    }
+    Ok(paths)
 }
