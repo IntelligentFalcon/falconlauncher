@@ -66,7 +66,6 @@ pub async fn launch_game(
         .to_str()
         .unwrap()
         .to_string();
-    let libraries_str = vec_to_string(libraries, ";".to_string());
     let natives = get_natives_folder(&inherited_version.id)
         .to_str()
         .unwrap()
@@ -88,6 +87,8 @@ pub async fn launch_game(
         return Err(launcher_launch_args_not_found());
     }
     let run_args_iter_sum = extend_once(run_args_iter.unwrap(), run_args_iter_inherited.unwrap());
+    println!("{}", asset_directory);
+    println!("{}", resources_directory);
     let run_args = run_args_iter_sum
         .iter()
         .map(|v| {
@@ -111,6 +112,11 @@ pub async fn launch_game(
     } else {
         ":"
     };
+    let mut libraries_str = vec_to_string(libraries, separator.to_string());
+    while libraries_str.contains("\\") {
+        libraries_str = libraries_str.replace("\\","/");
+    }
+    println!("{}", libraries_str.to_string());
     let mut child = Command::new(&java)
         .arg(format!("-Djava.library.path={}", natives))
         .arg(format!("-Xmx{}", ram_usage))

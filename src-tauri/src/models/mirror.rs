@@ -15,9 +15,9 @@ impl Mirror {
             .next()
             .unwrap();
         let https_domain = format!("https://{domain}/");
-        println!("{}", url);
-        println!("{}", https_domain);
-        println!("{}", self.maps[https_domain.as_str()].as_str());
+        if  !self.maps.contains_key(https_domain.as_str()) {
+            return url.clone();
+        }
         if self.maps.contains_key(https_domain.as_str()) {
             println!(
                 "{}",
