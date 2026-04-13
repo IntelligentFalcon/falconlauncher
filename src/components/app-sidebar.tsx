@@ -2,7 +2,7 @@ import * as React from 'react';
 
 import { NavMenu } from '@/components/nav-menu';
 import { NavUser } from '@/components/nav-user';
-import { ProfileSwitcher } from '@/components/profile-switcher';
+import { NavProfile } from '@/components/nav-profile';
 import {
   Sidebar,
   SidebarContent,
@@ -38,7 +38,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavMenu />
       </SidebarContent>
       <SidebarFooter>
-        <ProfileSwitcher />
+        <NavProfile />
         <NavUser user={data.user} />
       </SidebarFooter>
       <SidebarRail />

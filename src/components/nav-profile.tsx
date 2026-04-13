@@ -67,7 +67,7 @@ const PROFILES: Profile[] = [
   },
 ];
 
-export function ProfileSwitcher() {
+export function NavProfile() {
   const { isMobile } = useSidebar();
 
   const [profile, setProfile] = React.useState(PROFILES[0]);

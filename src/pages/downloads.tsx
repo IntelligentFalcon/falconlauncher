@@ -44,7 +44,8 @@ export default function Downloads() {
       setActiveMajorVersion(data[0].name);
     }
     const versions = data.find((v) => activeMajorVersion === v.name)?.versions;
-    if (versions && !activeVersion) {
+    const versionMatch = versions?.find((v) => v === activeVersion);
+    if (versions && !versionMatch) {
       setActiveVersion(versions[0]);
     }
   }, [data, activeMajorVersion]);
@@ -55,12 +56,13 @@ export default function Downloads() {
 
   return (
     <div className="flex h-full">
-      <div className="bg-secondary p-1 space-y-1 w-min overflow-y-auto">
+      <div className="bg-secondary p-1 space-y-1 w-min overflow-y-auto rounded-2xl">
         {data?.map((v) => (
           <Button
             onClick={() => setActiveMajorVersion(v.name)}
             variant={activeMajorVersion === v.name ? 'default' : 'outline'}
             className="w-full"
+            key={v.name}
           >
             {v.name}
           </Button>
@@ -68,38 +70,39 @@ export default function Downloads() {
       </div>
       <div className="flex-1">
         <LoadingSwap isLoading={isLoading} className="max-w-sm m-auto mt-8">
-          <>
-            <Combobox
-              items={data?.find((v) => activeMajorVersion === v.name)?.versions}
-              autoHighlight
-              value={activeVersion}
-              onValueChange={(val) => setActiveVersion(val)}
-            >
-              <ComboboxInput placeholder="Select a Version" />
-              <ComboboxContent>
-                <ComboboxEmpty>No items found.</ComboboxEmpty>
-                <ComboboxList>
-                  {(version) => (
-                    <ComboboxItem key={version.id} value={version}>
-                      {version.id}
-                    </ComboboxItem>
-                  )}
-                </ComboboxList>
-              </ComboboxContent>
-            </Combobox>
-            <ActionButton
-              action={async () => {
-                if (activeVersion)
-                  await downloadVersion({
-                    appHandle: app,
-                    versionLoader: activeVersion,
-                  });
-              }}
-              className="w-full mt-2"
-            >
-              Install
-            </ActionButton>
-          </>
+          <Combobox
+            items={data?.find((v) => activeMajorVersion === v.name)?.versions}
+            autoHighlight
+            value={activeVersion}
+            onValueChange={(val) => setActiveVersion(val)}
+          >
+            <ComboboxInput
+              placeholder="Select a Version"
+              value={activeVersion?.id ?? ''}
+            />
+            <ComboboxContent>
+              <ComboboxEmpty>No items found.</ComboboxEmpty>
+              <ComboboxList>
+                {(version) => (
+                  <ComboboxItem key={version.id} value={version}>
+                    {version.id}
+                  </ComboboxItem>
+                )}
+              </ComboboxList>
+            </ComboboxContent>
+          </Combobox>
+          <ActionButton
+            action={async () => {
+              if (activeVersion)
+                await downloadVersion({
+                  appHandle: app,
+                  versionLoader: activeVersion,
+                });
+            }}
+            className="w-full mt-2"
+          >
+            Install
+          </ActionButton>
         </LoadingSwap>
       </div>
     </div>
