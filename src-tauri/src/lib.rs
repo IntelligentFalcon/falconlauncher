@@ -36,8 +36,13 @@ use tokio::fs::copy;
 use tokio::sync::RwLock;
 use crate::models::downloader::VersionLoader;
 
+pub struct FalconLauncher {
+    pub name: String,
+    pub version: String
+}
 pub struct AppState {
     pub config: Arc<RwLock<Config>>,
+    pub launcher_details: FalconLauncher,
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -83,6 +88,10 @@ pub fn run() {
             });
             app.manage(AppState {
                 config: Arc::new(RwLock::new(load())),
+                launcher_details: FalconLauncher {
+                    name: "FalconLauncher".to_string(),
+                    version: "BETA".to_string()
+                }
             });
 
             block_on(async {

@@ -37,5 +37,6 @@ tauri-plugin-log = "2"
 tauri-plugin-dialog = "2"
 dotenvy = "0.15.7"
 tauri-plugin-deep-link = { version = "2.4.3" }
+log = "0.4.27"
 [target."cfg(any(target_os = \"macos\", windows, target_os = \"linux\"))".dependencies]
 tauri-plugin-single-instance = { version = "2.0.0", features = ["deep-link"] }

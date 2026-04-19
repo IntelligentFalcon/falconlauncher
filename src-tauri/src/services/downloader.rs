@@ -27,6 +27,7 @@ use tauri::AppHandle;
 use tokio::sync::Mutex;
 use zip::ZipArchive;
 use zip_extract::extract;
+use log::log;
 use crate::models::config::Config;
 use crate::models::downloader::{library_from_value, AssetIndex, LibraryRules, Manifest, MinecraftManifestVersion, VersionLoader};
 use crate::models::mirror::{mirror_from, Mirror};
@@ -72,13 +73,19 @@ pub async fn download_version(version: &MinecraftVersion, app_handle: &AppHandle
     let json: MinecraftManifestVersion = serde_json::from_str(&content).unwrap();
 
     download_libraries(&json.libraries, &id, app_handle, &mirror).await;
-    if json.downloads.is_some() {
+    if let Some(downloads) = &json.downloads {
+        println!("downloading client");
         update_download_status("Downloading version...", &app_handle);
-        download_client(&json.downloads.unwrap()["client"], &id, &mirror).await;
+        download_client(&downloads["client"], &id, &mirror).await;
     }
-    if json.asset_index.is_some() {
+    if let Some( asset_index) = &json.asset_index {
+        println!("downloading assets");
         update_download_status("Downloading assets...", &app_handle);
-        download_assets(&json.asset_index.unwrap(), &mirror).await;
+        download_assets(asset_index, &mirror).await;
+    }
+    if let Some(logging) = &json.logging {
+        println!("downloading logging files");
+        download_file_if_not_exists(&get_version_directory(id),logging.client.file.url.clone(), logging.client.file.size).await;
     }
     Ok(())
 }

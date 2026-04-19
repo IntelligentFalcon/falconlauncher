@@ -54,16 +54,19 @@ pub async fn download_java(id: &String, mirror: &Mirror) {
 }
 
 pub async fn get_java(id: String, mirror: &Mirror) -> PathBuf {
-    let jdk = auto_detect_javas();
-    if jdk.is_ok() {
-        let jdk_unwrapped = jdk.unwrap();
-        let mut filtered = jdk_unwrapped.iter().filter(|java| java.get_version_id() == id);
-        if filtered.clone().count() > 0{
-            return filtered.next().unwrap().path.clone();
-        }
-    }
+
     download_java(&id,mirror).await;
     let os = platform::get_current_os();
+    if !get_launcher_java_directory().join(&id).exists() {
+        let jdk = auto_detect_javas();
+        if jdk.is_ok() {
+            let jdk_unwrapped = jdk.unwrap();
+            let mut filtered = jdk_unwrapped.iter().filter(|java| java.get_version_id() == id);
+            if filtered.clone().count() > 0{
+                return filtered.next().unwrap().path.clone();
+            }
+        }
+    }
     if os == "windows" {
         get_launcher_java_directory()
             .join(&id)
@@ -75,4 +78,5 @@ pub async fn get_java(id: String, mirror: &Mirror) -> PathBuf {
             .join("bin")
             .join("java")
     }
+
 }

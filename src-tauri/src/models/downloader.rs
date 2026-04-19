@@ -68,12 +68,33 @@ pub struct LibraryRules {
     pub disallowed_oses: Vec<String>,
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+pub struct LoggingClient {
+    pub argument: String,
+    pub file: LoggingFile,
+    #[serde(rename = "type")]
+    pub _type: String
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct LoggingFile {
+    pub id: String,
+    pub sha1: String,
+    pub size: u64,
+    pub url: String,
+}
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Logging {
+    pub client: LoggingClient,
+
+}
 #[derive(Debug, Deserialize, Serialize)]
 pub struct MinecraftManifestVersion {
     pub libraries: Value,
     #[serde(rename = "assetIndex")]
     pub asset_index: Option<AssetIndex>,
-    pub downloads: Option<Value>
+    pub downloads: Option<Value>,
+    pub logging: Option<Logging>,
 }
 
 #[derive(Debug, Deserialize)]

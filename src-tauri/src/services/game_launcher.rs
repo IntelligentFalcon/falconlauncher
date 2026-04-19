@@ -1,26 +1,22 @@
+use crate::models::error::{launcher_launch_args_not_found, launcher_version_not_found, Void};
+use crate::models::mirror::mirror_from;
+use crate::models::platform::get_current_os;
+use crate::models::profiles::get_profile;
+use crate::models::versions::MinecraftVersion;
 use crate::services::directory_manager::*;
 use crate::services::downloader::{generate_stdout, Global};
 use crate::services::jdk_manager::get_java;
-use crate::models::profiles::get_profile;
-use crate::models::versions::MinecraftVersion;
 use crate::services::utils::{extend_once, vec_to_string};
-use serde_json::Value;
+pub use crate::AppState;
+use serde_json::{Map, Value};
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use tauri::{AppHandle, Emitter, Manager};
-pub use crate::AppState;
-use crate::models::mirror::mirror_from;
-use crate::models::error::{launcher_launch_args_not_found, launcher_version_not_found, Void};
-use crate::models::platform::get_current_os;
 
 const CREATE_NO_WINDOW: u32 = 0x08000000;
 
-pub async fn launch_game(
-    app_handle: AppHandle,
-    version: String,
-    global_cache: &Global
-) -> Void {
+pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &Global) -> Void {
     println!("DEBUG: Starting game with {version} ");
     let mut versions = global_cache.versions.iter().filter(|x| x.id == version);
     let ver_res = versions.next();
@@ -44,7 +40,7 @@ pub async fn launch_game(
     let uid = profile.uuid;
     let version_directory = PathBuf::from(&inherited_version.version_path);
     let json: Value = version.load_json();
-    
+
     let java_version = inherited_json["javaVersion"]["majorVersion"]
         .as_i64()
         .unwrap_or(8)
@@ -79,6 +75,7 @@ pub async fn launch_game(
         .to_string();
     let typ = json["type"].as_str().unwrap();
     let run_args_iter = get_launch_args(&json);
+    let jvm_args = get_jvm_args(&json);
     if run_args_iter.is_err() {
         return Err(launcher_launch_args_not_found());
     }
@@ -114,23 +111,41 @@ pub async fn launch_game(
     };
     let mut libraries_str = vec_to_string(libraries, separator.to_string());
     while libraries_str.contains("\\") {
-        libraries_str = libraries_str.replace("\\","/");
+        libraries_str = libraries_str.replace("\\", "/");
     }
-    println!("{}", libraries_str.to_string());
-    let mut child = Command::new(&java)
-        .arg(format!("-Djava.library.path={}", natives))
-        .arg(format!("-Xmx{}", ram_usage))
-        .arg("-Xms2048M")
-        .current_dir(&game_directory)
-        .arg("-cp")
-        .arg(format!("{}{}{}", class_path, separator, libraries_str))
-        .arg(main_class)
-        .args(&run_args)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .expect("Failed to spawn java process");
-    let stderr = child.stderr.take().unwrap();
+    // println!("{}", libraries_str.to_string());
+    let mut child =
+    if !jvm_args.is_empty() {
+        let mut child_cmd = &mut Command::new(&java);
+        for arg in jvm_args.clone() {
+            child_cmd  = child_cmd.arg(arg.replace("${natives_directory}", get_natives_folder(&version_id.to_string()).to_str().unwrap())
+                .replace("${launcher_name}", &state.launcher_details.name).replace("${launcher_version}", &state.launcher_details.version)
+                .replace("${classpath}", format!("{}{}{}", class_path, separator, libraries_str).as_str()))
+
+        }
+        println!("{:?}", child_cmd.get_args());
+            child_cmd.arg(main_class)
+            .args(&run_args)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .expect("Failed to spawn java process")
+    }else {
+        Command::new(&java)
+            .arg(format!("-Djava.library.path={}", natives))
+            .arg(format!("-Xmx{}", ram_usage))
+            .arg("-Xms2048M")
+            .current_dir(&game_directory)
+            .arg("-cp")
+            .arg(format!("{}{}{}", class_path, separator, libraries_str))
+            .arg(main_class)
+            .args(&run_args)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .expect("Failed to spawn java process")
+    };
+        let stderr = child.stderr.take().unwrap();
     std::thread::spawn(move || {
         let reader = BufReader::new(stderr);
         for line in reader.lines().flatten() {
@@ -140,42 +155,110 @@ pub async fn launch_game(
 
     generate_stdout(&mut child);
 
-
     update_download_status("", &app_handle);
     Ok(())
 }
-
-pub fn get_launch_args(json: &Value) -> Result<Vec<String>, String> {
-    if json.get("minecraftArguments").is_none() {
-        Ok(json["arguments"]["game"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .filter(|v| v.is_string())
-            .map(|v| v.as_str().unwrap().to_string())
-            .collect::<Vec<String>>())
-    } else if !json.get("minecraftArguments").is_none() {
-        Ok(json["minecraftArguments"]
-            .as_str()
-            .unwrap()
-            .split(" ")
-            .map(|v| v.to_string())
-            .collect::<Vec<String>>())
-    } else {
-        Err("No launch arguments was found. report this to the launcher developers! ".to_string())
+pub fn get_jvm_args(json: &Value) -> Vec<String> {
+    let mut vec = Vec::new();
+    if let Some(arguments) = json.get("arguments") {
+        if let Some(jvm_rules) = arguments.get("jvm").and_then(|v| v.as_array()) {
+            for rule in jvm_rules {
+                if let Some(arg_str) = rule.as_str() {
+                    vec.push(arg_str.to_string());
+                }
+                else if let Some(obj) = rule.as_object() {
+                    if let Some(value) = obj.get("value") {
+                        if should_apply_rule(obj) {
+                            match value {
+                                Value::String(s) => vec.push(s.clone()),
+                                Value::Array(arr) => {
+                                    for item in arr {
+                                        if let Some(s) = item.as_str() {
+                                            vec.push(s.to_string());
+                                        }
+                                    }
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
-}
-pub fn update_download_bar(progress: i64, app_handle: &AppHandle) {
-    app_handle.emit("progressBar", progress).unwrap();
-}
-pub fn update_download_status(text: &str, app_handle: &AppHandle) {
-    app_handle.emit("progress", text).unwrap();
-}
-pub fn update_download(progress: i64, text: &str, app_handle: &AppHandle) {
-    app_handle.emit("progress", text).unwrap();
-    app_handle.emit("progressBar", progress).unwrap();
-}
 
-fn verify_game_files(id: &MinecraftVersion) -> bool {
-    true
+    vec
 }
+fn should_apply_rule(rule_obj: &serde_json::Map<String, Value>) -> bool {
+    let rules = match rule_obj.get("rules").and_then(|r| r.as_array()) {
+        Some(r) => r,
+        None => return true,
+    };
+
+    let mut allowed = false;
+
+    for rule in rules {
+        if let Some(rule_map) = rule.as_object() {
+            let action = rule_map.get("action").and_then(|a| a.as_str()).unwrap_or("allow");
+            let applies = check_os(rule_map);
+            if applies {
+                match action {
+                    "allow" => allowed = true,
+                    "disallow" => return false,
+                    _ => {}
+                }
+            }
+        }
+    }
+
+    allowed
+}
+pub fn check_os(rule_map: &Map<String, Value>) -> bool {
+    let os_condition = match rule_map.get("os") {
+        Some(os) => os.as_object(),
+        None => return true,
+    };
+
+    let Some(os) = os_condition else { return true };
+
+    if let Some(name) = os.get("name").and_then(|n| n.as_str()) {
+        let current_os = get_current_os();
+        return current_os.to_string() == name.to_string();
+    }
+    true
+
+}
+pub fn get_launch_args(json: &Value) -> Result<Vec<String>, String> {
+        if json.get("minecraftArguments").is_none() {
+            Ok(json["arguments"]["game"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .filter(|v| v.is_string())
+                .map(|v| v.as_str().unwrap().to_string())
+                .collect::<Vec<String>>())
+        } else if !json.get("minecraftArguments").is_none() {
+            Ok(json["minecraftArguments"]
+                .as_str()
+                .unwrap()
+                .split(" ")
+                .map(|v| v.to_string())
+                .collect::<Vec<String>>())
+        } else {
+            Err("No launch arguments was found. report this to the launcher developers! ".to_string())
+        }
+    }
+    pub fn update_download_bar(progress: i64, app_handle: &AppHandle) {
+        app_handle.emit("progressBar", progress).unwrap();
+    }
+    pub fn update_download_status(text: &str, app_handle: &AppHandle) {
+        app_handle.emit("progress", text).unwrap();
+    }
+    pub fn update_download(progress: i64, text: &str, app_handle: &AppHandle) {
+        app_handle.emit("progress", text).unwrap();
+        app_handle.emit("progressBar", progress).unwrap();
+    }
+
+    fn verify_game_files(id: &MinecraftVersion) -> bool {
+        true
+    }
