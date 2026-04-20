@@ -2,13 +2,14 @@ use crate::services::directory_manager::{get_libraries_directory, get_versions_d
 use crate::models::versions::MinecraftVersion;
 use crate::services::version_manager::load_version_manifest_local;
 use reqwest::Client;
-use serde_json::Value;
+use serde_json::{Map, Value};
 use std::fs::File;
 use std::path::Path;
 use std::thread::spawn;
 use std::time::Duration;
 use tokio::fs::create_dir_all;
 use crate::models::downloader::Manifest;
+use crate::models::platform::get_current_os;
 use crate::models::versions::VersionType;
 
 fn load_downloaded_versions() {
@@ -211,4 +212,45 @@ pub fn convert_to_full_path(base_path: String, library_name: &String) -> String 
 pub fn get_core_version(version_id: &String) -> String {
     let args = version_id.split(".").collect::<Vec<_>>();
     format!("{}.{}", args[0], args[1])
+}
+
+pub fn can_apply_rule(rule_obj: &Map<String, Value>) -> bool {
+    let rules = match rule_obj.get("rules").and_then(|r| r.as_array()) {
+        Some(r) => r,
+        None => return true,
+    };
+
+    let mut allowed = false;
+
+    for rule in rules {
+        if let Some(rule_map) = rule.as_object() {
+            let action = rule_map.get("action").and_then(|a| a.as_str()).unwrap_or("allow");
+            let applies = check_os_rule(rule_map);
+            if applies {
+                match action {
+                    "allow" => allowed = true,
+                    "disallow" => return false,
+                    _ => {}
+                }
+            }
+        }
+    }
+
+    allowed
+}
+
+pub fn check_os_rule(rule_map: &Map<String, Value>) -> bool {
+    let os_condition = match rule_map.get("os") {
+        Some(os) => os.as_object(),
+        None => return true,
+    };
+
+    let Some(os) = os_condition else { return true };
+
+    if let Some(name) = os.get("name").and_then(|n| n.as_str()) {
+        let current_os = get_current_os();
+        return current_os.to_string() == name.to_string();
+    }
+    true
+
 }

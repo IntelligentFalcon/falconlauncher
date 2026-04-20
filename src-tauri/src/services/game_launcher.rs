@@ -8,11 +8,12 @@ use crate::services::downloader::{generate_stdout, Global};
 use crate::services::jdk_manager::get_java;
 use crate::services::utils::{extend_once, vec_to_string};
 pub use crate::AppState;
-use serde_json::{Map, Value};
+use serde_json::Value;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use tauri::{AppHandle, Emitter, Manager};
+use crate::services::utils;
 
 const CREATE_NO_WINDOW: u32 = 0x08000000;
 
@@ -168,7 +169,7 @@ pub fn get_jvm_args(json: &Value) -> Vec<String> {
                 }
                 else if let Some(obj) = rule.as_object() {
                     if let Some(value) = obj.get("value") {
-                        if should_apply_rule(obj) {
+                        if utils::can_apply_rule(obj) {
                             match value {
                                 Value::String(s) => vec.push(s.clone()),
                                 Value::Array(arr) => {
@@ -188,45 +189,6 @@ pub fn get_jvm_args(json: &Value) -> Vec<String> {
     }
 
     vec
-}
-fn should_apply_rule(rule_obj: &serde_json::Map<String, Value>) -> bool {
-    let rules = match rule_obj.get("rules").and_then(|r| r.as_array()) {
-        Some(r) => r,
-        None => return true,
-    };
-
-    let mut allowed = false;
-
-    for rule in rules {
-        if let Some(rule_map) = rule.as_object() {
-            let action = rule_map.get("action").and_then(|a| a.as_str()).unwrap_or("allow");
-            let applies = check_os(rule_map);
-            if applies {
-                match action {
-                    "allow" => allowed = true,
-                    "disallow" => return false,
-                    _ => {}
-                }
-            }
-        }
-    }
-
-    allowed
-}
-pub fn check_os(rule_map: &Map<String, Value>) -> bool {
-    let os_condition = match rule_map.get("os") {
-        Some(os) => os.as_object(),
-        None => return true,
-    };
-
-    let Some(os) = os_condition else { return true };
-
-    if let Some(name) = os.get("name").and_then(|n| n.as_str()) {
-        let current_os = get_current_os();
-        return current_os.to_string() == name.to_string();
-    }
-    true
-
 }
 pub fn get_launch_args(json: &Value) -> Result<Vec<String>, String> {
         if json.get("minecraftArguments").is_none() {

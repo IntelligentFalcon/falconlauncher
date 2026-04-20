@@ -15,7 +15,8 @@
         "decorations": false,
         "title": "Falcon Launcher",
         "minWidth": 500,
-        "minHeight": 800
+        "minHeight": 800,
+        "transparent": true
       }
     ],
     "security": {
