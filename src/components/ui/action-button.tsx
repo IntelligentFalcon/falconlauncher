@@ -51,9 +51,7 @@ export function ActionButton({
   if (requireAreYouSure) {
     return (
       <AlertDialog open={isLoading ? true : undefined}>
-        <AlertDialogTrigger asChild>
-          <Button {...props} />
-        </AlertDialogTrigger>
+        <AlertDialogTrigger render={<Button {...props} />} />
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>از این کار اطمینان دارید؟</AlertDialogTitle>
