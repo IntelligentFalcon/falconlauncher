@@ -111,3 +111,6 @@ pub fn auto_detect_javas() -> Returns<Vec<Java>> {
     }
     Ok(paths)
 }
+pub fn get_java_dir() -> PathBuf {
+    get_minecraft_directory().join("runtime")
+}
