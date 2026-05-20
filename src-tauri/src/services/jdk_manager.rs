@@ -1,10 +1,12 @@
-use crate::models::error::{download_error, json_read_err, request_error, Void};
+use crate::models::error::{download_error, json_read_err, request_error, Returns, Void};
+use crate::models::java::Java;
 use crate::models::mirror::Mirror;
 use crate::models::platform;
 use crate::models::platform::{get_current_os, get_current_os_with_architecture};
 use crate::services::directory_manager::{
     auto_detect_javas, get_java_dir, get_launcher_java_directory,
 };
+use crate::services::downloader::download_file_if_not_exists;
 use crate::services::utils::{is_connected_to_internet, load_json_url};
 use serde_json::Value;
 use std::fs;
@@ -13,7 +15,6 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use zip::ZipArchive;
 use zip_extract::extract;
-use crate::services::downloader::download_file_if_not_exists;
 
 pub async fn download_java(id: &String, mirror: &Mirror) {
     let os = platform::get_current_os();
@@ -67,7 +68,7 @@ pub async fn download_java(id: &String, mirror: &Mirror) {
     }
 }
 
-pub async fn get_java(id: String, mirror: &Mirror) -> PathBuf {
+pub async fn get_java(java: String, id: String, mirror: &Mirror) -> PathBuf {
     let os = platform::get_current_os();
     if !get_launcher_java_directory().join(&id).exists() {
         let jdk = auto_detect_javas();
@@ -82,8 +83,8 @@ pub async fn get_java(id: String, mirror: &Mirror) -> PathBuf {
             }
         }
     }
-    download_java(&id, mirror).await;
-
+    let java = find_or_download_java(&java,&id, mirror).await;
+        
     if os == "windows" {
         get_launcher_java_directory()
             .join(&id)
@@ -97,10 +98,10 @@ pub async fn get_java(id: String, mirror: &Mirror) -> PathBuf {
     }
 }
 
-async fn find_or_download_java(java: String, version: String) -> Void {
+pub async fn find_or_download_java(java: &String, version: &String, mirror: &Mirror) -> Returns<Java> {
     let runtime_dir = get_java_dir().join(&java);
     if is_connected_to_internet().await {
-        let url = "https://launchermeta.mojang.com/v1/products/java-runtime/2ec0cc96c44e5a76b9c8b7c39df7210883d12871/all.json";
+        let url = mirror.parse_url(&"https://launchermeta.mojang.com/v1/products/java-runtime/2ec0cc96c44e5a76b9c8b7c39df7210883d12871/all.json".to_string());
         let current_os = get_current_os_with_architecture();
 
         let json = load_json_url(&url.to_string()).await;
@@ -115,9 +116,15 @@ async fn find_or_download_java(java: String, version: String) -> Void {
             .as_array()
             .unwrap()
             .iter()
-            .find(|x| x["version"]["name"] == version)
-            .unwrap();
-        let runtime_manifest_url = runtime_v["manifest"]["url"].as_str().unwrap();
+            .find(|x| {
+                x["version"]["name"]
+                    .as_str()
+                    .unwrap()
+                    .to_lowercase()
+                    .starts_with(version.as_str())
+            })
+            .unwrap_or(&runtime_arr[0]);
+        let runtime_manifest_url = mirror.parse_url(&runtime_v["manifest"]["url"].as_str().unwrap().to_string());
         let runtime_manifest = reqwest::get(runtime_manifest_url).await;
         if runtime_manifest.is_err() {
             return Err(download_error("Couldn't get runtime manifest.".to_string()));
@@ -130,22 +137,20 @@ async fn find_or_download_java(java: String, version: String) -> Void {
         }
         let runtime_manifest: Value = runtime_manifest.unwrap();
         let files = &runtime_manifest["files"];
-        for (k,v) in files.as_object().unwrap(){
+        for (k, v) in files.as_object().unwrap() {
             let file_type = v["type"].as_str().unwrap();
-            if file_type == "file"{
+            if file_type == "file" {
                 let download_raw = &v["downloads"]["raw"];
                 let url = download_raw["url"].as_str().unwrap();
                 let size = download_raw["size"].as_u64().unwrap();
 
                 create_dir_all(&runtime_dir.join(k));
-                download_file_if_not_exists(&runtime_dir.join(k),url.to_string(), size);
-            }else {
+                download_file_if_not_exists(&runtime_dir.join(k), url.to_string(), size);
+            } else {
                 create_dir(runtime_dir.join(k)).unwrap();
             }
-
         }
     }
-    Ok(())
 
+    Ok(Java::new(runtime_dir))
 }
-

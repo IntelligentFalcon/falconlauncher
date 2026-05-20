@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use crate::models::platform;
+use crate::services::directory_manager::get_launcher_java_directory;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Java {
@@ -20,6 +22,19 @@ impl Java {
             .replace("\"", "");
 
         Java { path, version }
+    }
+    pub fn get_bin_file(&self) -> PathBuf {
+        let os = platform::get_current_os();
+
+        if os == "windows" {
+            self.path
+                .join("bin")
+                .join("javaw.exe")
+        } else {
+                self.path
+                .join("bin")
+                .join("java")
+        }
     }
     pub fn get_version_id(&self) -> String {
         self.version.split(".").next().unwrap().to_string()

@@ -5,7 +5,8 @@ use crate::models::profiles::get_profile;
 use crate::models::versions::MinecraftVersion;
 use crate::services::directory_manager::*;
 use crate::services::downloader::{generate_stdout, Global};
-use crate::services::jdk_manager::get_java;
+use crate::services::jdk_manager::find_or_download_java;
+use crate::services::utils;
 use crate::services::utils::{extend_once, vec_to_string};
 pub use crate::AppState;
 use serde_json::Value;
@@ -13,7 +14,6 @@ use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use tauri::{AppHandle, Emitter, Manager};
-use crate::services::utils;
 
 const CREATE_NO_WINDOW: u32 = 0x08000000;
 
@@ -46,7 +46,7 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
         .as_i64()
         .unwrap_or(8)
         .to_string();
-
+    let java_component = inherited_json["javaVersion"]["component"].as_str().unwrap();
     let game_directory = get_minecraft_directory().display().to_string();
     let asset_directory = get_assets_directory().display().to_string();
     // This is a very old argument that is even removed in the newer versions but still required for launching past versions like 1.0
@@ -70,10 +70,7 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
     update_download(100, "Launching game...", &app_handle);
 
     let ram_usage = config.launch_options.ram_usage.to_string() + "M";
-    let java = get_java(java_version.to_string(), &mirror)
-        .await
-        .display()
-        .to_string();
+    let java = find_or_download_java(&java_component.to_string(),&java_version.to_string(), &mirror).await.unwrap();
     let typ = json["type"].as_str().unwrap();
     let run_args_iter = get_launch_args(&json);
     let jvm_args = get_jvm_args(&json);
@@ -117,7 +114,7 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
     // println!("{}", libraries_str.to_string());
     let mut child =
     if !jvm_args.is_empty() {
-        let mut child_cmd = &mut Command::new(&java);
+        let mut child_cmd = &mut Command::new(java.get_bin_file());
         for arg in jvm_args.clone() {
             child_cmd  = child_cmd.arg(arg.replace("${natives_directory}", get_natives_folder(&version_id.to_string()).to_str().unwrap())
                 .replace("${launcher_name}", &state.launcher_details.name).replace("${launcher_version}", &state.launcher_details.version)
@@ -132,7 +129,7 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
             .spawn()
             .expect("Failed to spawn java process")
     }else {
-        Command::new(&java)
+        Command::new(&java.get_bin_file())
             .arg(format!("-Djava.library.path={}", natives))
             .arg(format!("-Xmx{}", ram_usage))
             .arg("-Xms2048M")

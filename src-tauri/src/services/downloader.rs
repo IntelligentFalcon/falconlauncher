@@ -12,7 +12,6 @@ use crate::services::utils::{
 };
 use crate::services::version_manager::load_version_manifest;
 
-use crate::services::jdk_manager::get_java;
 use crate::models::fabric::{FabricInstaller, FabricLoader, FabricMinecraftVersion};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -33,6 +32,7 @@ use crate::models::downloader::{library_from_value, AssetIndex, LibraryRules, Ma
 use crate::models::mirror::{mirror_from, Mirror};
 use crate::models::error::{download_error, io_err_read_file, launcher_file_not_found, launcher_manifest_not_found, Void};
 use crate::models::platform::get_current_os;
+use crate::services::jdk_manager::find_or_download_java;
 
 pub static GLOBAL_CACHE: LazyLock<Mutex<Global>> = LazyLock::new(|| {
     Mutex::new(Global {
@@ -369,8 +369,8 @@ pub async fn download_forge_version(version: &String, app_handle: &AppHandle, mi
     let version_mid = mc_args[1].parse::<i32>().unwrap();
     if version_mid > 12 {
         println!("DEBUG: Non legacy version detected!");
-        let jdk_8 = get_java("8".to_string(),mirror);
-        let mut child = Command::new(jdk_8.await.display().to_string())
+        let jdk_8 = find_or_download_java(&"jre-legacy".to_string(),&"8".to_string(),mirror).await.unwrap();
+        let mut child = Command::new(jdk_8.get_bin_file().display().to_string())
             .arg("-jar")
             .arg(PathBuf::from(path_str).display().to_string())
             .arg("--installClient")
@@ -545,7 +545,8 @@ pub async fn download_fabric(version_loader: &VersionLoader, mirror: &Mirror) {
         installer_path_download.clone(),
     )
     .await;
-    let mut child = Command::new(get_java("8".to_string(), mirror).await)
+    let jdk_8 = find_or_download_java(&"jre-legacy".to_string(),&"8".to_string(),mirror).await.unwrap();
+    let mut child = Command::new(jdk_8.get_bin_file())
         .arg("-jar")
         .arg(installer_path_download.clone())
         .arg("client")
