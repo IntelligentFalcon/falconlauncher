@@ -14,7 +14,7 @@ use crate::services::version_manager::load_version_manifest;
 
 use crate::models::config::Config;
 use crate::models::downloader::{library_from_value, AssetIndex, LibraryRules, Manifest, MinecraftManifestVersion, VersionLoader};
-use crate::models::error::{download_error, io_err_read_file, json_read_err, launcher_file_not_found, launcher_manifest_not_found, request_unknown_err, Returns, Void};
+use crate::models::error::{download_error, io_err_permission, io_err_read_file, json_read_err, launcher_file_not_found, launcher_manifest_not_found, request_unknown_err, Returns, Void};
 use crate::models::fabric::{FabricInstaller, FabricLoader, FabricMinecraftVersion};
 use crate::models::mirror::{mirror_from, Mirror};
 use crate::models::platform::get_current_os;
@@ -23,7 +23,7 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::fs;
 use std::fs::{create_dir_all, exists, set_permissions, File};
-use std::io::{BufRead, BufReader, Write};
+use std::io::{BufRead, BufReader, Error, Write};
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
 use std::sync::LazyLock;
@@ -333,11 +333,14 @@ pub async fn download_file(url: String, dest: String) -> Void {
         if let Ok(metadata) = std::fs::metadata(&dest) {
             let mut permissions = metadata.permissions();
             permissions.set_mode(0o755); // rwxr-xr-x
-            std::fs::set_permissions(&dest, permissions)?;
+            set_permissions(&dest, permissions).map_err(|x| io_err_permission(x))?;
         }
     }
     Ok(())
 }
+
+
+
 pub async fn get_available_forge_versions(version_id: &String) -> Returns<Vec<String>> {
     let mut global_cache = GLOBAL_CACHE.lock().await;
     if global_cache.forge.is_none() {

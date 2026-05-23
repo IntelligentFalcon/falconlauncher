@@ -30,6 +30,9 @@ pub fn io_error_data<T>(message: String, code: u32, data: Option<T>) -> InvokeEr
 pub fn io_error(message: String, code: u32) -> EmptyError {
     io_error_data(message, code, None)
 }
+pub fn io_err_permission(err: Error) -> EmptyError {
+    io_error(err.to_string(), 104)
+}
 
 pub fn io_err_create_file(file_name: String, err: Error) -> EmptyError {
     io_error(

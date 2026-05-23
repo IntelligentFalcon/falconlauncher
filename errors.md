@@ -11,6 +11,9 @@
 *     io_err_rename_file: occurs when launcher fails to rename a file for any reason. code: 101
 *     io_err_read_file: occurs when launcher fails to read a file (Encoding issue probably). code: 102
 *     io_err_buffer_read: occurs when launcher fails to read a buffer.
+*     io_err_permission: occurs when launcher fails to modify file permission
+* 
+
 ---
 ## Other Errors
 *     json_read_err: occurs when launcher fails to read json data. code: 103
