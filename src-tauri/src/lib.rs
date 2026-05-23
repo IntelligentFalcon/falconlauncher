@@ -2,14 +2,16 @@ pub mod commands;
 pub mod models;
 pub mod services;
 
+use crate::commands::downloader::get_categorized_versions;
+use crate::commands::profiles::{create_offline_profile, get_profiles};
 use crate::models::config::Config;
+use crate::models::downloader::VersionLoader;
 use crate::services::config::load;
 use models::error::{Returns, Void};
 use models::mirror::{mirror_from, mojang_mirror};
 use models::mods::ModInfo;
 use models::versions::MinecraftVersion;
 use models::versions::VersionBase::{FABRIC, FORGE};
-use models::versions::VersionCategory;
 use services::directory_manager::{
     create_necessary_dirs, get_falcon_launcher_directory, get_mods_folder,
 };
@@ -27,14 +29,12 @@ use std::fs::create_dir_all;
 use std::string::ToString;
 use std::sync::Arc;
 use tauri::async_runtime::{block_on, spawn};
-use tauri::ipc::private::ResultFutureKind;
 use tauri::{command, AppHandle, Manager, State};
 use tauri_plugin_deep_link::DeepLinkExt;
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_log::{Target, TargetKind};
 use tokio::fs::copy;
 use tokio::sync::RwLock;
-use crate::models::downloader::VersionLoader;
 
 pub struct FalconLauncher {
     pub name: String,
@@ -82,8 +82,8 @@ pub fn run() {
             spawn(async {
                 create_necessary_dirs().await;
 
-                if is_connected_to_internet().await {
-                    download_version_manifest(&mojang_mirror()).await;
+                if mojang_mirror().is_connected().await {
+                    download_version_manifest(&mojang_mirror()).await.unwrap();
                 }
             });
             app.manage(AppState {
@@ -126,12 +126,12 @@ pub fn run() {
             save,
             get_mods,
             download_version,
-            commands::profiles::get_profiles,
+            get_profiles,
             get_installed_versions,
             get_non_installed_versions,
-            commands::profiles::create_offline_profile,
+            create_offline_profile,
             set_language,
-            commands::downloader::get_categorized_versions,
+            get_categorized_versions,
             get_language,
             install_mod_from_local,
             debug
@@ -164,7 +164,7 @@ async fn get_versions() -> Returns<Vec<String>> {
 async fn get_mods() -> Returns<Vec<ModInfo>> {
     Ok(load_mods())
 }
-/// LINUX Debugger for the js side. use the developer console if you are on windows build to check logs
+/// LINUX Debugger for the js side. use the developer console if you are on Windows build to check logs
 #[command]
 async fn debug(text: String) -> Void {
     println!("{}", text);
@@ -244,7 +244,7 @@ async fn set_language(state: State<'_, AppState>, lang: String) -> Void {
 }
 #[command]
 async fn get_language(state: State<'_, AppState>) -> Returns<String> {
-    let mut cfg = state.config.read().await;
+    let cfg = state.config.read().await;
     Ok(cfg.launcher_settings.language.clone())
 }
 
@@ -287,23 +287,23 @@ async fn download_version(
             "DEBUG: Forge version detected! {} installing it rn!",
             version_loader.id
         );
-        download_forge_version(&version_loader.id, &app_handle, &mir).await;
+        download_forge_version(&version_loader.id, &app_handle, &mir).await?;
     };
     if version_loader.base == FABRIC {
         println!(
             "DEBUG: Fabric version detected! {} installing it rn!",
             version_loader.id
         );
-        download_fabric(&version_loader, &mir).await;
+        download_fabric(&version_loader, &mir).await?;
     }
 
     let version = MinecraftVersion::from_id(version_id);
     let inherited_version = version.get_inherited();
     update_download_status("Downloading version...", &app_handle);
     let cfg = &state.config.read().await;
-    downloader::download_version(&version, &app_handle, &*cfg).await;
+    downloader::download_version(&version, &app_handle, &*cfg).await?;
     if inherited_version.id != version.id {
-        downloader::download_version(&inherited_version, &app_handle, &*cfg).await;
+        downloader::download_version(&inherited_version, &app_handle, &*cfg).await?;
     }
     update_download_status("", &app_handle);
     app_handle

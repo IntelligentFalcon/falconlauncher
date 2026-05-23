@@ -10,10 +10,11 @@
 *     io_err_create_file: occurs when launcher fails to create a file for any reason. code: 100
 *     io_err_rename_file: occurs when launcher fails to rename a file for any reason. code: 101
 *     io_err_read_file: occurs when launcher fails to read a file (Encoding issue probably). code: 102
-
+*     io_err_buffer_read: occurs when launcher fails to read a buffer.
 ---
 ## Other Errors
 *     json_read_err: occurs when launcher fails to read json data. code: 103
-
+*     request_unknown_err: occurs when request to a url fails for some reason. the original error is dropped for more information.
+*     download_err: when launcher fails to download a file.
 
 ---

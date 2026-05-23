@@ -44,9 +44,16 @@ pub fn io_err_rename_file(file_name: String, error: Error) -> EmptyError {
         101,
     )
 }
-pub fn io_err_read_file(err: Error) -> EmptyError{
-    io_error(format!("Unable to read file: {err}"),102)
+
+
+pub fn io_err_read_file(err: Error) -> EmptyError {
+    io_error(format!("Unable to read file: {err}"), 102)
 }
+
+pub fn io_err_buffer_read(err: Error) -> EmptyError {
+    io_error(format!("Unable to read buffer: {err}"), 103)
+}
+
 pub fn json_read_err(err: serde_json::Error) -> EmptyError {
     InvokeError {
         code: 103,
@@ -85,8 +92,7 @@ pub fn launcher_version_not_found() -> EmptyError {
     3)
 }
 pub fn launcher_launch_args_not_found() -> EmptyError {
-    launcher_error("Couldn't find launch arguments".to_string(),
-    4)
+    launcher_error("Couldn't find launch arguments".to_string(), 4)
 }
 pub fn request_error(message: String, code: u32) -> EmptyError {
     InvokeError {
@@ -95,7 +101,10 @@ pub fn request_error(message: String, code: u32) -> EmptyError {
         data: None,
     }
 }
+pub fn request_unknown_err(p0: reqwest::Error) -> EmptyError {
+    request_error(format!("Request error: {p0:?}"), 300)
+}
 
 pub fn download_error(message: String) -> EmptyError {
-    request_error(message, 300)
+    request_error(message, 301)
 }

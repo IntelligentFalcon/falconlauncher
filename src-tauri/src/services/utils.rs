@@ -4,11 +4,15 @@ use crate::services::version_manager::load_version_manifest_local;
 use reqwest::Client;
 use serde_json::{Map, Value};
 use std::fs::File;
+use std::io::{BufReader, Read};
 use std::path::Path;
 use std::thread::spawn;
 use std::time::Duration;
+use sha2::{Digest, Sha256};
 use tokio::fs::create_dir_all;
+use uuid::Version::Sha1;
 use crate::models::downloader::Manifest;
+use crate::models::error::{io_err_buffer_read, io_err_read_file, Returns};
 use crate::models::platform::get_current_os;
 use crate::models::versions::VersionType;
 
@@ -123,6 +127,23 @@ fn load_versions_through_json(v: Manifest, types: Vec<VersionType>) -> Vec<Minec
         .collect()
 }
 
+fn calculate_file_sha1<P: AsRef<Path>>(path: P) -> Returns<String> {
+    let file = File::open(path).map_err(|e| io_err_read_file(e))?;
+    let mut reader = BufReader::new(file);
+    let mut hasher = Sha256::new();
+    let mut buffer = [0; 8192]; // Read in 8KB chunks
+
+    loop {
+        let bytes_read = reader.read(&mut buffer).map_err(|x| io_err_buffer_read(x))?;
+        if bytes_read == 0 {
+            break;
+        }
+        hasher.update(&buffer[..bytes_read]);
+    }
+
+    let result = hasher.finalize();
+    Ok(format!("{:x}", result))
+}
 /// Verifies if file exists and is not broken by the expected file size if expected_size is zero it will ignore checking file size
 pub fn verify_file_existence(path_str: &String, expected_size: u64) -> bool {
     let path = Path::new(&path_str);
@@ -142,7 +163,7 @@ pub async fn is_connected_to_internet() -> bool {
         .build()
         .unwrap();
 
-    let req = client.get("https://google.com").send().await;
+    let req = client.get("https://launchermeta.mojang.com/mc/game/version_manifest.json").send().await;
 
     match req {
         Ok(_) => true,

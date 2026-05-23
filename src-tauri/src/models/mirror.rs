@@ -1,11 +1,15 @@
 use std::collections::HashMap;
 use std::iter::Map;
+use std::time::Duration;
+use reqwest::Client;
+use tracing::info;
 
 pub struct Mirror {
     pub maps: HashMap<String, String>,
 }
 impl Mirror {
     pub fn parse_url(&self, url: &String) -> String {
+
         let mut url = url.to_lowercase();
         url = url.replace("http://", "https://");
         let domain = url
@@ -18,15 +22,31 @@ impl Mirror {
         if  !self.maps.contains_key(https_domain.as_str()) {
             return url.clone();
         }
+        println!("{}",url);
         if self.maps.contains_key(https_domain.as_str()) {
-            println!(
-                "{}",
-                url.replace(https_domain.as_str(), &*self.maps[&https_domain])
-            );
             url.replace(https_domain.as_str(), &*self.maps[&https_domain])
         } else {
             url.clone()
         }
+    }
+    /// FIXME: CHANGE THE TEST METHOD TO PING
+    pub async fn is_connected(&self) -> bool {
+        let mut t = true;
+        for url in self.maps.values() {
+            let client = Client::builder()
+                .timeout(Duration::from_secs(3))
+                .build()
+                .unwrap();
+
+            println!("REQUESTING {url}");
+            let req = client.head(url).send().await;
+            if req.is_err() {
+                println!("ERR");
+                t = false;
+            }
+            break;
+        }
+        t
     }
 }
 pub fn mirror(
@@ -41,6 +61,7 @@ pub fn mirror(
         "https://launchermeta.mojang.com/".to_string(),
         launcher_meta,
     );
+
     maps.insert("https://piston-meta.mojang.com/".to_string(), piston_meta);
     maps.insert("https://piston-data.mojang.com/".to_string(), piston_data);
     maps.insert(

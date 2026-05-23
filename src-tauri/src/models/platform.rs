@@ -18,9 +18,10 @@ pub fn get_current_os_with_architecture() -> String{
     let mut os = parse_os(sys_info::os_release().expect("Unsupported Operating System"));
      if os == "windows" {
          "windows-x64".to_string() //FOR NOW "
-    }else if os == "linux" {
-         "linux".to_string()  // FOR NOW
-    }else {
+    }else if os == "osx" {
          "mac-os".to_string() // FOR NOW
+    }else {
+         "linux".to_string()  // FOR NOW
+
     }
 }

@@ -1,5 +1,5 @@
 use std::fs;
-use std::path::PathBuf;
+use std::path::{PathBuf, MAIN_SEPARATOR, MAIN_SEPARATOR_STR};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use crate::models::downloader;
@@ -110,7 +110,7 @@ impl MinecraftVersion {
             if library.get("downloads").is_none() {
                 let library_name = library["name"].as_str().unwrap();
                 let library_path_str =
-                    parse_library_name_to_path(library_name.to_string()).replace("/", "\\");
+                    parse_library_name_to_path(library_name.to_string()).replace("/", MAIN_SEPARATOR_STR);
                 let library_path = PathBuf::from(&library_path_str);
                 if library_path.exists() && !libraries.contains(&library_path_str) {
                     libraries.push(library_path_str);
@@ -137,7 +137,7 @@ impl MinecraftVersion {
                                     natives.get("path").unwrap().as_str().unwrap().to_string()
                                 };
                                 let path = libraries_path.join(p).to_str().unwrap().to_string();
-                                libraries.push(path.replace("/", "\\"));
+                                libraries.push(path.replace("/", MAIN_SEPARATOR.to_string().as_str()));
                             }
                         }
                     }
@@ -146,13 +146,12 @@ impl MinecraftVersion {
             }
             let library_info = downloader::library_from_value(library);
             let os = get_current_os();
+
             let path = libraries_path
-                .join(&library_info.path.as_str().replace("/", "\\"))
+                .join(&library_info.path.as_str().replace("\\", MAIN_SEPARATOR_STR))
                 .to_str()
                 .unwrap()
-                .to_string()
-                .to_string();
-
+                .replace("\\",MAIN_SEPARATOR_STR);
             if !libraries.contains(&path) {
                 libraries.push(path);
             }
@@ -167,6 +166,7 @@ impl MinecraftVersion {
             .into_iter()
             .filter(|x| {
                 let path = PathBuf::from(x);
+
                 let parent = path.parent().unwrap();
                 let artifact = parent
                     .parent()

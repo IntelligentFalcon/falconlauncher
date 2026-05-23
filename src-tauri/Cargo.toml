@@ -33,7 +33,7 @@ zip = "*"
 toml = "0.9.4"
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.22", features = ["env-filter", "fmt", "json", "time"] }
-tracing-appender = "0.2.4"
+tracing-appender = "*"
 which = "7.0.2"
 sha2 = "0.10.8"
 time = { version = "0.3", features = ["formatting", "local-offset", "macros"] }

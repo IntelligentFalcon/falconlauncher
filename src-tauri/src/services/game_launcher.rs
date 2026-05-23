@@ -1,24 +1,24 @@
-use crate::models::error::{launcher_launch_args_not_found, launcher_version_not_found, Void};
+use crate::models::error::{launcher_launch_args_not_found, launcher_version_not_found, Returns, Void};
 use crate::models::mirror::mirror_from;
 use crate::models::platform::get_current_os;
 use crate::models::profiles::get_profile;
 use crate::models::versions::MinecraftVersion;
 use crate::services::directory_manager::*;
 use crate::services::downloader::{generate_stdout, Global};
-use crate::services::jdk_manager::find_or_download_java;
+use crate::services::jdk_manager::get_java;
 use crate::services::utils;
 use crate::services::utils::{extend_once, vec_to_string};
 pub use crate::AppState;
 use serde_json::Value;
 use std::io::{BufRead, BufReader};
-use std::path::PathBuf;
+use std::path::{PathBuf, MAIN_SEPARATOR_STR};
 use std::process::{Command, Stdio};
 use tauri::{AppHandle, Emitter, Manager};
 
 const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &Global) -> Void {
-    println!("DEBUG: Starting game with {version} ");
+    println!("DEBUG: Starting game in {version} ");
     let mut versions = global_cache.versions.iter().filter(|x| x.id == version);
     let ver_res = versions.next();
     let state = &app_handle.state::<AppState>();
@@ -33,6 +33,7 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
     let version = ver_res.unwrap();
     let inherited_version = version.get_inherited();
     let inherited_json = inherited_version.load_json();
+
     let version_id = &version.id;
     let inherited_id = &inherited_version.id;
     update_download_status("Reading version metadata...", &app_handle);
@@ -70,20 +71,12 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
     update_download(100, "Launching game...", &app_handle);
 
     let ram_usage = config.launch_options.ram_usage.to_string() + "M";
-    let java = find_or_download_java(&java_component.to_string(),&java_version.to_string(), &mirror).await.unwrap();
+    let java = get_java(java_component.to_string()).await?;
     let typ = json["type"].as_str().unwrap();
-    let run_args_iter = get_launch_args(&json);
+    let run_args_iter = get_launch_args(&json)?;
     let jvm_args = get_jvm_args(&json);
-    if run_args_iter.is_err() {
-        return Err(launcher_launch_args_not_found());
-    }
-    let run_args_iter_inherited = get_launch_args(&inherited_json);
-    if run_args_iter_inherited.is_err() {
-        return Err(launcher_launch_args_not_found());
-    }
-    let run_args_iter_sum = extend_once(run_args_iter.unwrap(), run_args_iter_inherited.unwrap());
-    println!("{}", asset_directory);
-    println!("{}", resources_directory);
+    let run_args_iter_inherited = get_launch_args(&inherited_json)?;
+    let run_args_iter_sum = extend_once(run_args_iter, run_args_iter_inherited);
     let run_args = run_args_iter_sum
         .iter()
         .map(|v| {
@@ -109,11 +102,12 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
     };
     let mut libraries_str = vec_to_string(libraries, separator.to_string());
     while libraries_str.contains("\\") {
-        libraries_str = libraries_str.replace("\\", "/");
+        libraries_str = libraries_str.replace("\\", MAIN_SEPARATOR_STR);
     }
     // println!("{}", libraries_str.to_string());
     let mut child =
     if !jvm_args.is_empty() {
+
         let mut child_cmd = &mut Command::new(java.get_bin_file());
         for arg in jvm_args.clone() {
             child_cmd  = child_cmd.arg(arg.replace("${natives_directory}", get_natives_folder(&version_id.to_string()).to_str().unwrap())
@@ -121,7 +115,7 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
                 .replace("${classpath}", format!("{}{}{}", class_path, separator, libraries_str).as_str()))
 
         }
-        println!("{:?}", child_cmd.get_args());
+        // println!("{:?}", child_cmd.get_args());
             child_cmd.arg(main_class)
             .args(&run_args)
             .stdout(Stdio::piped())
@@ -187,7 +181,7 @@ pub fn get_jvm_args(json: &Value) -> Vec<String> {
 
     vec
 }
-pub fn get_launch_args(json: &Value) -> Result<Vec<String>, String> {
+pub fn get_launch_args(json: &Value) -> Returns<Vec<String>> {
         if json.get("minecraftArguments").is_none() {
             Ok(json["arguments"]["game"]
                 .as_array()
@@ -204,7 +198,7 @@ pub fn get_launch_args(json: &Value) -> Result<Vec<String>, String> {
                 .map(|v| v.to_string())
                 .collect::<Vec<String>>())
         } else {
-            Err("No launch arguments was found. report this to the launcher developers! ".to_string())
+            Err(launcher_launch_args_not_found())
         }
     }
     pub fn update_download_bar(progress: i64, app_handle: &AppHandle) {

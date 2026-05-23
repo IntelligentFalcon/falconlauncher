@@ -95,8 +95,15 @@ pub struct MinecraftManifestVersion {
     pub asset_index: Option<AssetIndex>,
     pub downloads: Option<Value>,
     pub logging: Option<Logging>,
+    #[serde(rename = "javaVersion")]
+    pub java_version: Option<JavaVersion>
 }
-
+#[derive(Debug, Deserialize, Serialize)]
+pub struct JavaVersion{
+    pub component: String,
+    #[serde(rename = "majorVersion")]
+    pub major_version: String,
+}
 #[derive(Debug, Deserialize)]
 pub struct Library {
     pub name: String,

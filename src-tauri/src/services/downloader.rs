@@ -1,23 +1,30 @@
 #![allow(deprecated)]
 
+use crate::models::versions::MinecraftVersion;
 use crate::services::directory_manager::{
     get_assets_directory, get_falcon_launcher_directory, get_libraries_directory,
     get_minecraft_directory, get_natives_folder, get_temp_directory, get_version_directory,
     get_versions_directory,
 };
 use crate::services::game_launcher::{update_download, update_download_status};
-use crate::models::versions::MinecraftVersion;
 use crate::services::utils::{
     convert_to_full_path, convert_to_full_url, verify_file_existence,
 };
 use crate::services::version_manager::load_version_manifest;
 
+use crate::models::config::Config;
+use crate::models::downloader::{library_from_value, AssetIndex, LibraryRules, Manifest, MinecraftManifestVersion, VersionLoader};
+use crate::models::error::{download_error, io_err_read_file, json_read_err, launcher_file_not_found, launcher_manifest_not_found, request_unknown_err, Returns, Void};
 use crate::models::fabric::{FabricInstaller, FabricLoader, FabricMinecraftVersion};
+use crate::models::mirror::{mirror_from, Mirror};
+use crate::models::platform::get_current_os;
+use crate::services::jdk_manager::find_or_download_java;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::fs;
-use std::fs::{create_dir_all, exists, File};
+use std::fs::{create_dir_all, exists, set_permissions, File};
 use std::io::{BufRead, BufReader, Write};
+use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
 use std::sync::LazyLock;
@@ -26,13 +33,6 @@ use tauri::AppHandle;
 use tokio::sync::Mutex;
 use zip::ZipArchive;
 use zip_extract::extract;
-use log::log;
-use crate::models::config::Config;
-use crate::models::downloader::{library_from_value, AssetIndex, LibraryRules, Manifest, MinecraftManifestVersion, VersionLoader};
-use crate::models::mirror::{mirror_from, Mirror};
-use crate::models::error::{download_error, io_err_read_file, launcher_file_not_found, launcher_manifest_not_found, Void};
-use crate::models::platform::get_current_os;
-use crate::services::jdk_manager::find_or_download_java;
 
 pub static GLOBAL_CACHE: LazyLock<Mutex<Global>> = LazyLock::new(|| {
     Mutex::new(Global {
@@ -65,37 +65,34 @@ pub async fn download_version(version: &MinecraftVersion, app_handle: &AppHandle
             }
         }
     }
-    let content_res = fs::read_to_string(PathBuf::from(version.get_json()));
-    if content_res.is_err() {
-        return Err(io_err_read_file(content_res.unwrap_err()));
-    }
-    let content = content_res.unwrap();
-    let json: MinecraftManifestVersion = serde_json::from_str(&content).unwrap();
+    let content = fs::read_to_string(PathBuf::from(version.get_json())).map_err(|x| io_err_read_file(x))?;
+    let json: MinecraftManifestVersion = serde_json::from_str(&content).map_err(|x| json_read_err(x))?;
+    let java_version = json.java_version.unwrap();
+    let java = find_or_download_java(&java_version.component.to_string(),&java_version.major_version.to_string(), &mirror).await?;
 
-    download_libraries(&json.libraries, &id, app_handle, &mirror).await;
+    download_libraries(&json.libraries, &id, app_handle, &mirror).await?;
     if let Some(downloads) = &json.downloads {
         println!("downloading client");
         update_download_status("Downloading version...", &app_handle);
-        download_client(&downloads["client"], &id, &mirror).await;
+        download_client(&downloads["client"], &id, &mirror).await?;
     }
     if let Some( asset_index) = &json.asset_index {
         println!("downloading assets");
         update_download_status("Downloading assets...", &app_handle);
-        download_assets(asset_index, &mirror).await;
+        download_assets(asset_index, &mirror).await?;
     }
     if let Some(logging) = &json.logging {
         println!("downloading logging files");
-        download_file_if_not_exists(&get_version_directory(id),logging.client.file.url.clone(), logging.client.file.size).await;
+        download_file_if_not_exists(&get_version_directory(id).join(&logging.client.file.url.split("/").last().unwrap()),logging.client.file.url.clone(), logging.client.file.size).await?;
     }
     Ok(())
 }
 
-async fn download_assets(value: &AssetIndex, mirror: &Mirror) {
+async fn download_assets(value: &AssetIndex, mirror: &Mirror) -> Void {
     let id = &value.id;
     let url = mirror.parse_url(&value.url);
     let total_size = value.total_size;
     let _size = value.size;
-    let mut json: Option<Value> = None;
     let asset_index_path = get_assets_directory()
         .join("indexes")
         .join(format!("{id}.json"))
@@ -107,10 +104,10 @@ async fn download_assets(value: &AssetIndex, mirror: &Mirror) {
         url.to_string(),
         total_size,
     )
-    .await;
+    .await?;
     let content =
         fs::read_to_string(PathBuf::from(&asset_index_path)).expect("Failed to read file.");
-    json = Some(serde_json::from_str(content.as_str()).expect("JSON File isn't well formatted."));
+    let json: Option<Value> = Some(serde_json::from_str(content.as_str()).expect("JSON File isn't well formatted."));
     let url_template = "https://resources.download.minecraft.net/{id}/{hash}";
     match json {
         Some(val) => {
@@ -126,17 +123,19 @@ async fn download_assets(value: &AssetIndex, mirror: &Mirror) {
                     .join("objects")
                     .join(id.as_str())
                     .join(hash);
-                download_file_if_not_exists(&path, url, size).await;
+                download_file_if_not_exists(&path, url, size).await?;
             }
         }
         None => {}
     }
+    Ok(())
 }
 
-pub async fn download_file_if_not_exists(path: &PathBuf, url: String, size: u64) {
+pub async fn download_file_if_not_exists(path: &PathBuf, url: String, size: u64) -> Void {
     if !verify_file_existence(&path.to_str().unwrap().to_string(), size) {
-        download_file(url, path.to_str().unwrap().to_string()).await;
+        download_file(url, path.to_str().unwrap().to_string()).await?;
     }
+    Ok(())
 }
 
 async fn download_from_manifest(id: &String, manifest: &Manifest, mir: &Mirror) -> Void{
@@ -156,16 +155,16 @@ async fn download_from_manifest(id: &String, manifest: &Manifest, mir: &Mirror) 
     .await
 }
 
-async fn download_client(value: &Value, version: &String, mirror: &Mirror) {
+async fn download_client(value: &Value, version: &String, mirror: &Mirror) -> Void {
     let size = value["size"].as_u64().unwrap();
     let url = mirror.parse_url(&value["url"].as_str().unwrap().to_string());
     let path = get_versions_directory()
         .join(&version)
         .join(format!("{}.jar", version));
-    download_file_if_not_exists(&path, url.to_string(), size).await;
+    download_file_if_not_exists(&path, url.to_string(), size).await
 }
 
-async fn download_libraries(libraries: &Value, version: &String, app_handle: &AppHandle, mirror: &Mirror) {
+async fn download_libraries(libraries: &Value, version: &String, app_handle: &AppHandle, mirror: &Mirror) -> Void {
     let libraries_path = get_libraries_directory();
     let array = libraries.as_array().unwrap();
     for library_index in 0..array.len() {
@@ -180,7 +179,7 @@ async fn download_libraries(libraries: &Value, version: &String, app_handle: &Ap
             if group.to_lowercase() == "net/minecraft" {
                 let url = mirror.parse_url(&format!("https://libraries.minecraft.net/{path}"));
                 let full_path = get_libraries_directory().join(path);
-                download_file_if_not_exists(&full_path, url, 0).await;
+                download_file_if_not_exists(&full_path, url, 0).await?;
             } else {
                 let urls = vec![
                     format!("https://maven.minecraftforge.net/{path}"),
@@ -190,18 +189,18 @@ async fn download_libraries(libraries: &Value, version: &String, app_handle: &Ap
                     let full_path = get_libraries_directory().join(&path);
                     if reqwest::get(url.clone())
                         .await
-                        .unwrap()
+                        .map_err(|x| request_unknown_err(x))?
                         .status()
                         .is_success()
                     {
-                        download_file_if_not_exists(&full_path, url, 0).await;
+                        download_file_if_not_exists(&full_path, url, 0).await?;
                     }
                 }
             }
             continue;
         }
         if library["downloads"].get("artifact").is_none() {
-            download_classifiers(library["downloads"].get("classifiers"), version, mirror).await;
+            download_classifiers(library["downloads"].get("classifiers"), version, mirror).await?;
             continue;
         }
         let library_info = library_from_value(library);
@@ -212,16 +211,19 @@ async fn download_libraries(libraries: &Value, version: &String, app_handle: &Ap
         );
         let os = get_current_os();
         let rules = fetch_rules(library.get("rules"));
-        download_classifiers(library["downloads"].get("classifiers"), version, mirror).await;
+        download_classifiers(library["downloads"].get("classifiers"), version, mirror).await?;
         if rules.allowed_oses.contains(&os) && !rules.disallowed_oses.contains(&os) {
             let path = libraries_path.join(&library_info.path.as_str());
-            download_file_if_not_exists(&path, mirror.parse_url(&library_info.url), library_info.size).await;
+            download_file_if_not_exists(&path, mirror.parse_url(&library_info.url), library_info.size).await?;
         }
     }
+    Ok(())
 }
-async fn download_classifiers(classifiers: Option<&Value>, version: &String, mirror: &Mirror) {
+
+
+async fn download_classifiers(classifiers: Option<&Value>, version: &String, mirror: &Mirror) -> Void {
     if classifiers.is_none() {
-        return;
+        return Ok(());
     }
     let os = get_current_os();
     let mut natives = classifiers.unwrap().get(format!("natives-{os}"));
@@ -242,7 +244,7 @@ async fn download_classifiers(classifiers: Option<&Value>, version: &String, mir
             };
             let full_path = get_libraries_directory().join(path);
             let size = val["size"].as_u64().unwrap();
-            download_file_if_not_exists(&full_path, url.to_string(), size).await;
+            download_file_if_not_exists(&full_path, url.to_string(), size).await?;
             let file = File::open(full_path.to_str().unwrap().to_string());
             let natives_path = get_natives_folder(version);
             if !exists(&natives_path).unwrap() {
@@ -251,6 +253,7 @@ async fn download_classifiers(classifiers: Option<&Value>, version: &String, mir
             extract(file.unwrap(), &natives_path, false).unwrap();
         }
     }
+    Ok(())
 }
 /// Fetches the rules of library which is optional
 fn fetch_rules(value: Option<&Value>) -> LibraryRules {
@@ -297,24 +300,20 @@ fn fetch_rules(value: Option<&Value>) -> LibraryRules {
 /// Basically download_file function without needing await.
 /// uses the block_on function that causes the program to stop until the download is finished.
 /// Use download_file_async_thread if you want program continue while downloading.
-fn download_file_async(url: String, dest: String) {
+fn download_file_async(url: String, dest: String) -> Void {
     block_on(async {
-        download_file(url, dest).await;
+        download_file(url, dest).await
     })
 }
-fn download_file_async_thread(url: String, dest: String) {
+fn download_file_async_thread(url: String, dest: String) -> Void {
     block_on(async {
-        download_file(url, dest).await;
-    });
+        download_file(url, dest).await
+    })
 }
 
 pub async fn download_file(url: String, dest: String) -> Void {
-    let resp_res = reqwest::get(&url)
-        .await;
-    if resp_res.is_err() {
-        return Err(download_error(format!("Failed to downnload file from {url}, {}",resp_res.err().unwrap())));
-    }
-    let resp = resp_res.unwrap();
+    let resp = reqwest::get(&url)
+        .await.map_err(|x| download_error(format!("Failed to download file from {url}, {}", x)))?;
     let dest_folder = PathBuf::from(&dest)
         .parent()
         .unwrap()
@@ -328,26 +327,33 @@ pub async fn download_file(url: String, dest: String) -> Void {
         File::create(&dest).expect(format!("Unable to create file. at {}", dest.as_str()).as_str());
     out.write_all(&resp.bytes().await.unwrap())
         .expect("Writing file failed.");
+    #[cfg(unix)]
+    {
+        let metadata = fs::metadata(&dest).unwrap();
+        let mut permissions = metadata.permissions();
+        permissions.set_mode(0o755); // rwxr-xr-x
+        set_permissions(&dest, permissions).unwrap();
+    }
     Ok(())
 }
-pub async fn get_available_forge_versions(version_id: &String) -> Vec<String> {
+pub async fn get_available_forge_versions(version_id: &String) -> Returns<Vec<String>> {
     let mut global_cache = GLOBAL_CACHE.lock().await;
     if global_cache.forge.is_none() {
         let url = "https://files.minecraftforge.net/net/minecraftforge/forge/maven-metadata.json";
         let map: HashMap<String, Vec<String>> =
-            reqwest::get(url).await.unwrap().json().await.unwrap();
+            reqwest::get(url).await.map_err(|x| request_unknown_err(x))?.json().await.map_err(|x| request_unknown_err(x))?;
         global_cache.forge = Some(map);
     }
     let map = &global_cache.forge;
-    map.clone()
-        .unwrap()
+    Ok(map.clone()
+        .unwrap_or(HashMap::new())
         .iter()
         .find(|(key, _)| key.as_str() == version_id.as_str())
         .map(|(_key, val)| val.clone())
-        .unwrap_or(Vec::new())
+        .unwrap_or(Vec::new()))
 }
 
-pub async fn download_forge_version(version: &String, app_handle: &AppHandle, mirror: &Mirror) {
+pub async fn download_forge_version(version: &String, app_handle: &AppHandle, mirror: &Mirror) -> Void{
     let url = format!("https://maven.minecraftforge.net/net/minecraftforge/forge/{version}/forge-{version}-installer.jar");
     let launcher_dir = get_falcon_launcher_directory();
 
@@ -360,7 +366,7 @@ pub async fn download_forge_version(version: &String, app_handle: &AppHandle, mi
 
     path = path.join(format!("forge-{version}-installer.jar"));
     path_str = path.to_str().unwrap();
-    download_file(url, path_str.to_string()).await;
+    download_file(url, path_str.to_string()).await?;
     let installer_file = File::open(path_str).unwrap();
 
     let version_args = version.split("-").collect::<Vec<&str>>();
@@ -369,7 +375,7 @@ pub async fn download_forge_version(version: &String, app_handle: &AppHandle, mi
     let version_mid = mc_args[1].parse::<i32>().unwrap();
     if version_mid > 12 {
         println!("DEBUG: Non legacy version detected!");
-        let jdk_8 = find_or_download_java(&"jre-legacy".to_string(),&"8".to_string(),mirror).await.unwrap();
+        let jdk_8 = find_or_download_java(&"jre-legacy".to_string(),&"8".to_string(),mirror).await?;
         let mut child = Command::new(jdk_8.get_bin_file().display().to_string())
             .arg("-jar")
             .arg(PathBuf::from(path_str).display().to_string())
@@ -392,7 +398,7 @@ pub async fn download_forge_version(version: &String, app_handle: &AppHandle, mi
 
         fs::remove_dir_all(launcher_dir.join("temp")).unwrap();
 
-        return;
+        return Ok(());
     }
     println!("DEBUG: Legacy version detected!");
 
@@ -485,7 +491,7 @@ pub async fn download_forge_version(version: &String, app_handle: &AppHandle, mi
                 library_downloads["path"].as_str().unwrap().to_string()
             };
 
-            download_file_if_not_exists(&PathBuf::from(full_path), full_url, 0).await;
+            download_file_if_not_exists(&PathBuf::from(full_path), full_url, 0).await?;
         }
     }
     for library in version_json["libraries"].as_array().unwrap() {
@@ -505,14 +511,15 @@ pub async fn download_forge_version(version: &String, app_handle: &AppHandle, mi
                 &library["name"].as_str().unwrap().to_string(),
             );
 
-            download_file_if_not_exists(&PathBuf::from(full_path), full_url, 0).await;
+            download_file_if_not_exists(&PathBuf::from(full_path), full_url, 0).await?;
         }
     }
 
     fs::remove_dir_all(launcher_dir.join("temp")).unwrap();
+    Ok(())
 }
 
-pub async fn download_fabric(version_loader: &VersionLoader, mirror: &Mirror) {
+pub async fn download_fabric(version_loader: &VersionLoader, mirror: &Mirror) -> Void {
     let loaders_url = "https://meta.fabricmc.net/v2/versions/loader";
     let installers_url = "https://meta.fabricmc.net/v2/versions/installer";
     type FabricLoaders = Vec<FabricLoader>;
@@ -544,8 +551,8 @@ pub async fn download_fabric(version_loader: &VersionLoader, mirror: &Mirror) {
         stable_installer.url.to_string(),
         installer_path_download.clone(),
     )
-    .await;
-    let jdk_8 = find_or_download_java(&"jre-legacy".to_string(),&"8".to_string(),mirror).await.unwrap();
+    .await?;
+    let jdk_8 = find_or_download_java(&"jre-legacy".to_string(),&"8".to_string(),mirror).await?;
     let mut child = Command::new(jdk_8.get_bin_file())
         .arg("-jar")
         .arg(installer_path_download.clone())
@@ -575,7 +582,8 @@ pub async fn download_fabric(version_loader: &VersionLoader, mirror: &Mirror) {
         }
     });
 
-    generate_stdout(&mut child)
+    generate_stdout(&mut child);
+    Ok(())
 }
 
 pub fn generate_stdout(child: &mut Child){
@@ -589,22 +597,22 @@ pub fn generate_stdout(child: &mut Child){
         }
     });
 }
-pub async fn get_available_fabric_versions(version_id: &String) -> Vec<String> {
+pub async fn get_available_fabric_versions(version_id: &String) -> Returns<Vec<String>> {
     let mut global_cache = GLOBAL_CACHE.lock().await;
     if global_cache.fabric_mc_versions.is_none() {
         let url = "https://meta.fabricmc.net/v2/versions/game";
         let map: Vec<FabricMinecraftVersion> =
-            reqwest::get(url).await.unwrap().json().await.unwrap();
+            reqwest::get(url).await.map_err(|x| request_unknown_err(x))?.json().await.map_err(|x| request_unknown_err(x))?;
         global_cache.fabric_mc_versions = Some(map);
     }
     if global_cache.fabric_installers.is_none() {
         let url = "https://meta.fabricmc.net/v2/versions/installer";
-        let map: Vec<FabricInstaller> = reqwest::get(url).await.unwrap().json().await.unwrap();
+        let map: Vec<FabricInstaller> = reqwest::get(url).await.map_err(|x| request_unknown_err(x))?.json().await.map_err(|x| request_unknown_err(x))?;
         global_cache.fabric_installers = Some(map);
     }
     if global_cache.fabric_loaders.is_none() {
         let url = "https://meta.fabricmc.net/v2/versions/loader";
-        let map: Vec<FabricLoader> = reqwest::get(url).await.unwrap().json().await.unwrap();
+        let map: Vec<FabricLoader> = reqwest::get(url).await.map_err(|x| request_unknown_err(x))?.json().await.map_err(|x| request_unknown_err(x))?;
         global_cache.fabric_loaders = Some(map);
     }
 
@@ -612,12 +620,13 @@ pub async fn get_available_fabric_versions(version_id: &String) -> Vec<String> {
     let unwrapped_map = map.clone().unwrap_or(Vec::new());
     let v = unwrapped_map.iter().find(|x| &x.version == version_id);
     if v.is_none() {
-        return Vec::new();
+        return Ok(Vec::new());
     }
+
     let mut result = Vec::new();
     let loaders = &global_cache.fabric_loaders;
     for loader in loaders.clone().unwrap() {
         result.push(format!("{}-{}", version_id.to_string(), loader.version));
     }
-    result
+    Ok(result)
 }

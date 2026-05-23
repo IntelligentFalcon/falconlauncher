@@ -1,13 +1,10 @@
-use tauri::{command, AppHandle, Manager};
-use tokio::io::AsyncReadExt;
-use crate::AppState;
 use crate::models::downloader::{VersionInfo, VersionLoader};
 use crate::models::error::Returns;
-use crate::models::mirror::{mirror, mirror_from, Mirror};
-use crate::models::versions::{VersionBase, VersionCategory, VersionType};
 use crate::models::versions::VersionBase::{FABRIC, FORGE};
+use crate::models::versions::{VersionBase, VersionCategory, VersionType};
 use crate::services::downloader::{get_available_fabric_versions, get_available_forge_versions};
 use crate::services::version_manager;
+use tauri::{command, AppHandle};
 
 #[command]
 pub async fn get_categorized_versions(
@@ -77,7 +74,7 @@ pub async fn get_categorized_versions(
         if forge {
             cat.versions.extend(
                 get_available_forge_versions(&id)
-                    .await
+                    .await?
                     .iter()
                     .map(|x| VersionLoader {
                         id: x.clone(),
@@ -91,7 +88,7 @@ pub async fn get_categorized_versions(
         if fabric {
             cat.versions.extend(
                 get_available_fabric_versions(&id)
-                    .await
+                    .await?
                     .iter()
                     .map(|x| VersionLoader {
                         id: x.clone(),

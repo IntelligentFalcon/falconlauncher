@@ -1,10 +1,9 @@
+use crate::models::error::Returns;
+use crate::models::java::Java;
 use crate::models::platform::get_current_os;
 use std::env::{home_dir, var_os};
 use std::path::PathBuf;
-use tokio::fs;
 use tokio::fs::create_dir_all;
-use crate::models::error::Returns;
-use crate::models::java::Java;
 
 pub fn get_minecraft_directory() -> PathBuf {
     let os = get_current_os();
