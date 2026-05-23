@@ -24,7 +24,6 @@ use std::collections::HashMap;
 use std::fs;
 use std::fs::{create_dir_all, exists, set_permissions, File};
 use std::io::{BufRead, BufReader, Write};
-use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
 use std::sync::LazyLock;
@@ -329,10 +328,13 @@ pub async fn download_file(url: String, dest: String) -> Void {
         .expect("Writing file failed.");
     #[cfg(unix)]
     {
-        let metadata = fs::metadata(&dest).unwrap();
-        let mut permissions = metadata.permissions();
-        permissions.set_mode(0o755); // rwxr-xr-x
-        set_permissions(&dest, permissions).unwrap();
+        use std::os::unix::fs::PermissionsExt;
+
+        if let Ok(metadata) = std::fs::metadata(&dest) {
+            let mut permissions = metadata.permissions();
+            permissions.set_mode(0o755); // rwxr-xr-x
+            std::fs::set_permissions(&dest, permissions)?;
+        }
     }
     Ok(())
 }

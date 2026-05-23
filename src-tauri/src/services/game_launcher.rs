@@ -123,6 +123,24 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
             .spawn()
             .expect("Failed to spawn java process")
     }else {
+        #[cfg(unix)] /// Fixes permission issue
+        {
+            use std::os::unix::fs::PermissionsExt;
+            if let Ok(metadata) = std::fs::metadata(&java.get_bin_file()) {
+                let mut permissions = metadata.permissions();
+                let current_mode = permissions.mode();
+
+                if current_mode & 0o111 == 0 {
+                    println!("Adding execute permission to Java binary: {:?}", &java.get_bin_file());
+                    permissions.set_mode(current_mode | 0o111);
+                    std::fs::set_permissions(&java.get_bin_file(), permissions)
+                        .expect("Failed to set execute permissions on Java binary");
+                }
+            } else {
+                panic!("Java binary not found at: {:?}", &java.get_bin_file());
+            }
+        }
+
         Command::new(&java.get_bin_file())
             .arg(format!("-Djava.library.path={}", natives))
             .arg(format!("-Xmx{}", ram_usage))
