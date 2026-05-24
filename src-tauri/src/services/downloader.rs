@@ -18,12 +18,12 @@ use crate::models::error::{download_error, io_err_permission, io_err_read_file, 
 use crate::models::fabric::{FabricInstaller, FabricLoader, FabricMinecraftVersion};
 use crate::models::mirror::{mirror_from, Mirror};
 use crate::models::platform::get_current_os;
-use crate::services::jdk_manager::find_or_download_java;
+use crate::services::jdk_manager::{download_java, get_java};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::fs;
 use std::fs::{create_dir_all, exists, set_permissions, File};
-use std::io::{BufRead, BufReader, Error, Write};
+use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
 use std::sync::LazyLock;
@@ -67,7 +67,7 @@ pub async fn download_version(version: &MinecraftVersion, app_handle: &AppHandle
     let content = fs::read_to_string(PathBuf::from(version.get_json())).map_err(|x| io_err_read_file(x))?;
     let json: MinecraftManifestVersion = serde_json::from_str(&content).map_err(|x| json_read_err(x))?;
     let java_version = json.java_version.unwrap();
-    let java = find_or_download_java(&java_version.component.to_string(),&java_version.major_version.to_string(), &mirror).await?;
+    download_java(&java_version.component.to_string(),&java_version.major_version.to_string(), &mirror).await?;
 
     download_libraries(&json.libraries, &id, app_handle, &mirror).await?;
     if let Some(downloads) = &json.downloads {
@@ -380,7 +380,8 @@ pub async fn download_forge_version(version: &String, app_handle: &AppHandle, mi
     let version_mid = mc_args[1].parse::<i32>().unwrap();
     if version_mid > 12 {
         println!("DEBUG: Non legacy version detected!");
-        let jdk_8 = find_or_download_java(&"jre-legacy".to_string(),&"8".to_string(),mirror).await?;
+        download_java(&"jre-legacy".to_string(),&"8".to_string(),mirror).await?;
+        let jdk_8 = get_java("jre-legacy".to_string())?;
         let mut child = Command::new(jdk_8.get_bin_file().display().to_string())
             .arg("-jar")
             .arg(PathBuf::from(path_str).display().to_string())
@@ -557,7 +558,8 @@ pub async fn download_fabric(version_loader: &VersionLoader, mirror: &Mirror) ->
         installer_path_download.clone(),
     )
     .await?;
-    let jdk_8 = find_or_download_java(&"jre-legacy".to_string(),&"8".to_string(),mirror).await?;
+    download_java(&"jre-legacy".to_string(),&"8".to_string(),mirror).await?;
+    let jdk_8 = get_java("jre-legacy".to_string())?;
     let mut child = Command::new(jdk_8.get_bin_file())
         .arg("-jar")
         .arg(installer_path_download.clone())

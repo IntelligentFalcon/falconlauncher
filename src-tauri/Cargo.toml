@@ -40,7 +40,7 @@ time = { version = "0.3", features = ["formatting", "local-offset", "macros"] }
 base64 = "0.22.1"
 encoding_rs = "0.8.35"
 tokio = "1.44.2"
-tauri-plugin-log = "2"
+tauri-plugin-log = { version = "2", features = ["tracing"] }
 tauri-plugin-dialog = "2"
 dotenvy = "0.15.7"
 tauri-plugin-deep-link = { version = "2.4.3" }

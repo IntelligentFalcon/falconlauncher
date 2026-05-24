@@ -1,4 +1,4 @@
-use crate::models::error::{download_error, io_err_create_file, Returns};
+use crate::models::error::{download_error, io_err_create_file, Returns, Void};
 use crate::models::java::Java;
 use crate::models::mirror::Mirror;
 use crate::models::platform::{get_current_os, get_current_os_with_architecture};
@@ -15,70 +15,18 @@ use std::path::{PathBuf};
 use tracing::info;
 use zip_extract::extract;
 
-pub async fn download_java(id: &String, mirror: &Mirror) {
-    let os = get_current_os();
-    let url = if os == "windows" {
-        mirror.parse_url(&format!(
-            "https://corretto.aws/downloads/latest/amazon-corretto-{id}-x64-windows-jdk.zip"
-        ))
-    } else if os == "linux" {
-        mirror.parse_url(&format!(
-            "https://corretto.aws/downloads/latest/amazon-corretto-{id}-x64-linux-jdk.tar.gz"
-        ))
-    } else {
-        mirror.parse_url(&format!(
-            "https://corretto.aws/downloads/latest/amazon-corretto-{id}-x64-macos-jdk.tar.gz"
-        ))
-    };
-
-    let file_name = url.split("/").last().unwrap_or("");
-    let zip_file_path = get_launcher_java_directory().join(file_name);
-    let mut output_folder = get_launcher_java_directory().join(id);
-    if output_folder.join("bin").exists() {
-        return;
-    }
-    let resp = reqwest::get(&url).await.unwrap();
-    let mut file = File::create(&zip_file_path).unwrap();
-    file.write(resp.bytes().await.unwrap().as_ref()).unwrap();
-    let zip_file = File::open(&zip_file_path).unwrap();
-    extract(&zip_file, &mut output_folder, false).expect("Extraction of java zip file failed!");
-    remove_file(&zip_file_path).expect("TODO: deletion of zip file failed");
-    let dirs = output_folder.read_dir().unwrap();
-    for dir in dirs {
-        let unwrapped_dir = dir.unwrap();
-        if unwrapped_dir.file_type().unwrap().is_dir() {
-            for entry in unwrapped_dir.path().read_dir().unwrap() {
-                let path = entry.unwrap().path();
-                let new_path = path
-                    .parent()
-                    .unwrap()
-                    .parent()
-                    .unwrap()
-                    .join(path.file_name().unwrap());
-                println!(
-                    "Extracting java file: from {} to {}",
-                    path.display(),
-                    new_path.display()
-                );
-                fs::rename(path.as_path(), new_path.as_path()).unwrap();
-            }
-            fs::remove_dir_all(unwrapped_dir.path()).unwrap();
-        }
-    }
-}
-
-pub async fn get_java(java: String) -> Returns<Java> {
+pub fn get_java(java: String) -> Returns<Java> {
     let runtime_dir = get_java_dir().join(&java);
     Ok(Java::new(runtime_dir))
 }
-pub async fn find_or_download_java(java: &String, version: &String, mirror: &Mirror) -> Returns<Java> {
+pub async fn download_java(java: &String, version: &String, mirror: &Mirror) -> Void {
     let runtime_dir = get_java_dir().join(&java);
     // if mirror.is_connected().await {
         let url = mirror.parse_url(&"https://launchermeta.mojang.com/v1/products/java-runtime/2ec0cc96c44e5a76b9c8b7c39df7210883d12871/all.json".to_string());
         let current_os = get_current_os_with_architecture();
         let json: Value = load_json_url(&url.to_string()).await.ok_or(0)
             .map_err(|_x| download_error("Couldn't get or read the runtime json manifest file.".to_string()))?;
-
+        println!("Test");
         let runtime_arr = &json[current_os][java];
         let runtime_v = runtime_arr
             .as_array()
@@ -117,5 +65,5 @@ pub async fn find_or_download_java(java: &String, version: &String, mirror: &Mir
     if !runtime_dir.join("release").exists() {
         fs::write(runtime_dir.join("release"),format!("JAVA_VERSION=\"{}\"", version)).map_err(|x| io_err_create_file("release".to_string(),x))?;
     }
-    Ok(Java::new(runtime_dir))
+    Ok(())
 }

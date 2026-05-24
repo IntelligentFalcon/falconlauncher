@@ -32,9 +32,10 @@ use tauri::async_runtime::{block_on, spawn};
 use tauri::{command, AppHandle, Manager, State};
 use tauri_plugin_deep_link::DeepLinkExt;
 use tauri_plugin_dialog::DialogExt;
-use tauri_plugin_log::{Target, TargetKind};
+use tauri_plugin_log::{Target, TargetKind, TimezoneStrategy};
 use tokio::fs::copy;
 use tokio::sync::RwLock;
+use tracing::info;
 
 pub struct FalconLauncher {
     pub name: String,
@@ -57,7 +58,7 @@ pub fn run() {
         }))
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_log::Builder::new().build())
+        .plugin(tauri_plugin_log::Builder::new().timezone_strategy(TimezoneStrategy::UseLocal).build())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(
@@ -72,8 +73,10 @@ pub fn run() {
             #[cfg(debug_assertions)]
             {
                 let window = app.get_webview_window("main").unwrap();
-                window.open_devtools();
+                // window.open_devtools();
             }
+            info!("Linux user detected!!!");
+
             let fl_path = get_falcon_launcher_directory();
             let jdk_path = directory_manager::get_launcher_java_directory();
             let _ = create_dir_all(fl_path);

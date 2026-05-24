@@ -2,9 +2,13 @@ use std::collections::HashMap;
 use std::iter::Map;
 use std::time::Duration;
 use reqwest::Client;
+use serde::de::IntoDeserializer;
+use serde_json::Value;
 use tracing::info;
 
 pub struct Mirror {
+    pub name: String,
+    pub description: String,
     pub maps: HashMap<String, String>,
 }
 impl Mirror {
@@ -50,6 +54,8 @@ impl Mirror {
     }
 }
 pub fn mirror(
+    name: String,
+    description: String,
     launcher_meta: String,
     piston_meta: String,
     piston_data: String,
@@ -69,10 +75,12 @@ pub fn mirror(
         resources,
     );
     maps.insert("https://libraries.minecraft.net/".to_string(), libraries);
-    Mirror { maps }
+    Mirror { name, description, maps }
 }
 pub fn ninecraft_mirror() -> Mirror {
     mirror(
+        "9Craft".to_string(),
+        "Official 9Craft Mirror ".to_string(),
         "https://launchermeta.9craft.ir/".to_string(),
         "https://piston-meta.9craft.ir/".to_string(),
         "https://piston-data.9craft.ir/".to_string(),
@@ -83,6 +91,8 @@ pub fn ninecraft_mirror() -> Mirror {
 
 pub fn mojang_mirror() -> Mirror {
     mirror(
+        "Official".to_string(),
+        "Official Mirror to download games from".to_string(),
         "https://launchermeta.mojang.com/".to_string(),
         "https://piston-meta.mojang.com/".to_string(),
         "https://piston-meta.mojang.com/".to_string(),
@@ -90,6 +100,16 @@ pub fn mojang_mirror() -> Mirror {
         "https://libraries.minecraft.net/".to_string(),
     )
 }
+
+
+// pub fn mirror_from_json(json: Value) -> Mirror {
+//     let mut maps = json.as_object().unwrap().clone();
+//     Mirror {
+//         name: "".to_string(),
+//         description: "".to_string(),
+//         maps,
+//     }
+// }
 
 pub fn mirror_from(name: &String) -> Mirror {
     if name == "9craft" {

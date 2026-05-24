@@ -71,7 +71,7 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
     update_download(100, "Launching game...", &app_handle);
 
     let ram_usage = config.launch_options.ram_usage.to_string() + "M";
-    let java = get_java(java_component.to_string()).await?;
+    let java = get_java(java_component.to_string())?;
     let typ = json["type"].as_str().unwrap();
     let run_args_iter = get_launch_args(&json)?;
     let jvm_args = get_jvm_args(&json);
