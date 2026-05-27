@@ -10,6 +10,7 @@ pub struct Java {
 }
 impl Java {
     pub fn new(path: PathBuf) -> Java {
+
         let release = path.join("release");
         let reader = std::fs::read_to_string(release).unwrap();
         let line = reader

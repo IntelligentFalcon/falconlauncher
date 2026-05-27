@@ -19,7 +19,6 @@ use services::downloader::{download_fabric, download_forge_version, GLOBAL_CACHE
 use services::game_launcher::{launch_game, update_download_status};
 use services::mod_manager;
 use services::mod_manager::{load_mods, set_mod_enabled};
-use services::utils::is_connected_to_internet;
 use services::version_manager::{
     download_version_manifest, reload_installed_versions,
 };
@@ -36,6 +35,7 @@ use tauri_plugin_log::{Target, TargetKind, TimezoneStrategy};
 use tokio::fs::copy;
 use tokio::sync::RwLock;
 use tracing::info;
+use crate::commands::mirrors::{get_available_mirrors, get_mirror, set_mirror};
 
 pub struct FalconLauncher {
     pub name: String,
@@ -137,6 +137,9 @@ pub fn run() {
             get_categorized_versions,
             get_language,
             install_mod_from_local,
+            get_available_mirrors,
+            set_mirror,
+            get_mirror,
             debug
         ])
         .run(tauri::generate_context!())

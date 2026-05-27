@@ -3,9 +3,11 @@ use std::iter::Map;
 use std::time::Duration;
 use reqwest::Client;
 use serde::de::IntoDeserializer;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tracing::info;
 
+#[derive(Debug,Deserialize,Serialize)]
 pub struct Mirror {
     pub name: String,
     pub description: String,
