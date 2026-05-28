@@ -48,9 +48,14 @@ jobs:
             libayatana-appindicator3-dev \
             librsvg2-dev
 
-      - name: Install frontend dependencies
-        run: npm install
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
 
+      - name: Install frontend dependencies
+        run: pnpm install
+  
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
         env:
