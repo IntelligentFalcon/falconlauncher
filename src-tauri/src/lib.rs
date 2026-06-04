@@ -3,10 +3,13 @@ pub mod models;
 pub mod services;
 
 use crate::commands::downloader::get_categorized_versions;
+use crate::commands::mirrors::{get_available_mirrors, get_mirror, set_mirror};
 use crate::commands::profiles::{create_offline_profile, get_profiles};
 use crate::models::config::Config;
 use crate::models::downloader::VersionLoader;
+use crate::models::logger::{info, info_launcher, init_log_bridge, LogLine};
 use crate::services::config::load;
+use log::info;
 use models::error::{Returns, Void};
 use models::mirror::{mirror_from, mojang_mirror};
 use models::mods::ModInfo;
@@ -19,33 +22,31 @@ use services::downloader::{download_fabric, download_forge_version, GLOBAL_CACHE
 use services::game_launcher::{launch_game, update_download_status};
 use services::mod_manager;
 use services::mod_manager::{load_mods, set_mod_enabled};
-use services::version_manager::{
-    download_version_manifest, reload_installed_versions,
-};
+use services::version_manager::{download_version_manifest, reload_installed_versions};
 use services::{directory_manager, downloader};
+use std::collections::VecDeque;
 use std::env;
 use std::fs::create_dir_all;
 use std::string::ToString;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use tauri::async_runtime::{block_on, spawn};
 use tauri::{command, AppHandle, Manager, State};
 use tauri_plugin_deep_link::DeepLinkExt;
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_log::{Target, TargetKind, TimezoneStrategy};
 use tokio::fs::copy;
-use tokio::sync::RwLock;
-use tracing::info;
-use crate::commands::mirrors::{get_available_mirrors, get_mirror, set_mirror};
+use tokio::sync::{mpsc, RwLock};
 
 pub struct FalconLauncher {
     pub name: String,
-    pub version: String
+    pub version: String,
 }
 pub struct AppState {
     pub config: Arc<RwLock<Config>>,
     pub launcher_details: FalconLauncher,
+    pub log_tx: mpsc::UnboundedSender<LogLine>,
+    pub log_history: Arc<Mutex<VecDeque<LogLine>>>,
 }
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     dotenvy::dotenv().ok();
@@ -58,22 +59,26 @@ pub fn run() {
         }))
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_log::Builder::new().timezone_strategy(TimezoneStrategy::UseLocal).build())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(
             tauri_plugin_log::Builder::new()
-                .target(Target::new(TargetKind::Folder {
-                    path: get_falcon_launcher_directory(),
-                    file_name: Some("logs".to_string()),
-                }))
+                .targets([
+                    Target::new(TargetKind::Folder {
+                        path: get_falcon_launcher_directory(),
+                        file_name: Some("logs".to_string()),
+                    }),
+                    Target::new(TargetKind::Stdout),
+                    Target::new(TargetKind::Webview),
+                ])
+                .timezone_strategy(TimezoneStrategy::UseLocal)
                 .build(),
         )
         .setup(move |app| {
             #[cfg(debug_assertions)]
             {
                 let window = app.get_webview_window("main").unwrap();
-                // window.open_devtools();
+                window.open_devtools();
             }
             info!("Linux user detected!!!");
 
@@ -89,14 +94,21 @@ pub fn run() {
                     download_version_manifest(&mojang_mirror()).await.unwrap();
                 }
             });
+            let app_handle = app.handle().clone();
+            let shared_history = Arc::new(Mutex::new(VecDeque::with_capacity(1000)));
+
+            // 2. Clone the Arc pointer for the bridge initialization
+            let bridge_history = shared_history.clone();
+            let log_tx = init_log_bridge(app_handle, bridge_history);
             app.manage(AppState {
                 config: Arc::new(RwLock::new(load())),
                 launcher_details: FalconLauncher {
                     name: "FalconLauncher".to_string(),
-                    version: "BETA".to_string()
-                }
+                    version: "BETA".to_string(),
+                },
+                log_tx,
+                log_history: shared_history,
             });
-
             block_on(async {
                 reload_installed_versions().await;
             });
@@ -118,28 +130,36 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             play,
             get_versions,
-            get_total_ram,
-            set_ram_usage,
+            commands::settings::get_maximum_ram_usage,
+            commands::settings::get_minimum_ram_usage,
+            commands::settings::set_maximum_ram_usage,
+            commands::settings::set_minimum_ram_usage,
+            commands::settings::set_language,
+            commands::settings::get_language,
+            commands::settings::set_exit_on_launch,
+            commands::settings::should_exit_on_launch,
+            commands::settings::save,
             set_config,
             get_username,
             set_username,
-            get_ram_usage,
+            get_total_ram,
             toggle_mod,
             delete_mod,
-            save,
             get_mods,
             download_version,
             get_profiles,
             get_installed_versions,
             get_non_installed_versions,
             create_offline_profile,
-            set_language,
             get_categorized_versions,
-            get_language,
+            commands::logger::get_log_history,
+            commands::logger::clear_log_history_channel,
+            commands::logger::clear_log_history,
             install_mod_from_local,
             get_available_mirrors,
             set_mirror,
             get_mirror,
+            commands::mirrors::import_mirror,
             debug
         ])
         .run(tauri::generate_context!())
@@ -153,7 +173,6 @@ async fn toggle_mod(mod_info: ModInfo, toggle: bool) -> Void {
 async fn play(app: AppHandle, state: State<'_, AppState>, selected_version: String) -> Void {
     launch_game(app, selected_version, &*GLOBAL_CACHE.lock().await).await
 }
-
 
 /// Gives the available versions to download
 #[command]
@@ -181,12 +200,7 @@ async fn get_total_ram() -> Returns<u64> {
     let ram = sys_info::mem_info().unwrap();
     Ok(ram.total)
 }
-#[command]
-async fn save(state: State<'_, AppState>) -> Void {
-    let cfg = state.config.write().await;
-    cfg.write_to_file();
-    Ok(())
-}
+
 #[command]
 async fn set_config(state: State<'_, AppState>, config: Config) -> Void {
     let mut cfg = state.config.write().await;
@@ -194,17 +208,6 @@ async fn set_config(state: State<'_, AppState>, config: Config) -> Void {
     cfg.launcher_settings = config.launcher_settings;
     cfg.write_to_file();
     Ok(())
-}
-
-#[command]
-async fn set_ram_usage(state: State<'_, AppState>, ram_usage: u64) -> Void {
-    let mut config = state.config.write().await;
-    config.launch_options.ram_usage = ram_usage;
-    Ok(())
-}
-#[command]
-async fn get_ram_usage(state: State<'_, AppState>) -> Returns<u64> {
-    Ok(state.config.read().await.launch_options.ram_usage)
 }
 
 #[command]
@@ -243,18 +246,6 @@ async fn get_non_installed_versions() -> Returns<Vec<String>> {
 }
 
 #[command]
-async fn set_language(state: State<'_, AppState>, lang: String) -> Void {
-    let mut config = state.config.write().await;
-    config.launcher_settings.language = lang;
-    Ok(())
-}
-#[command]
-async fn get_language(state: State<'_, AppState>) -> Returns<String> {
-    let cfg = state.config.read().await;
-    Ok(cfg.launcher_settings.language.clone())
-}
-
-#[command]
 async fn install_mod_from_local(app: AppHandle) -> Void {
     let paths = app
         .dialog()
@@ -284,32 +275,33 @@ async fn download_version(
     let version_id = version_loader.get_installed_id();
     let cfg = &state.config.read().await;
     let mir = mirror_from(&cfg.download_settings.mirror);
-    println!(
+    let logger = &state.log_tx;
+    logger.send(info_launcher(format!(
         "DEBUG: Downloading version {} from 9craft mirror",
         version_loader.id
-    );
+    )));
     if version_loader.base == FORGE {
-        println!(
+        logger.send(info_launcher(format!(
             "DEBUG: Forge version detected! {} installing it rn!",
             version_loader.id
-        );
-        download_forge_version(&version_loader.id, &app_handle, &mir).await?;
+        )));
+        download_forge_version(&version_loader.id, &app_handle, logger, &mir).await?;
     };
     if version_loader.base == FABRIC {
-        println!(
+        logger.send(info_launcher(format!(
             "DEBUG: Fabric version detected! {} installing it rn!",
             version_loader.id
-        );
-        download_fabric(&version_loader, &mir).await?;
+        )));
+        download_fabric(&version_loader, logger, &mir).await?;
     }
 
     let version = MinecraftVersion::from_id(version_id);
     let inherited_version = version.get_inherited();
     update_download_status("Downloading version...", &app_handle);
     let cfg = &state.config.read().await;
-    downloader::download_version(&version, &app_handle, &*cfg).await?;
+    downloader::download_version(&version, &app_handle, logger, &*cfg).await?;
     if inherited_version.id != version.id {
-        downloader::download_version(&inherited_version, &app_handle, &*cfg).await?;
+        downloader::download_version(&inherited_version, &app_handle, logger, &*cfg).await?;
     }
     update_download_status("", &app_handle);
     app_handle

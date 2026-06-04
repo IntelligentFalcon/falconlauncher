@@ -5,11 +5,13 @@ use crate::services::directory_manager::get_config_directory;
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LaunchOptions {
     pub username: String,
-    pub ram_usage: u64,
+    pub ram_usage_min: u64,
+    pub ram_usage_max: u64,
 }
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LauncherSettings {
     pub language: String,
+    pub exit_on_launch: Bool,
 }
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DownloadSettings {
@@ -25,9 +27,31 @@ pub struct Config {
     pub download_settings: DownloadSettings
 }
 
+
+#[derive(Debug, Deserialize, Serialize)]
+pub enum  Bool {
+    TRUE,
+    FALSE
+}
+impl Bool{
+    pub fn new(toggle: bool) -> Bool{
+        if toggle {
+            Bool::TRUE
+        }else {
+            Bool::FALSE
+        }
+    }
+
+    pub fn boolean(&self) -> bool {
+        match self{
+            Bool::TRUE => {true}
+            Bool::FALSE => {false}
+        }
+    }
+}
 impl Config {
     pub fn write_to_file(&self) {
-        let text = serde_ini::to_string(self).unwrap();
+        let text = serde_ini::to_string(self).expect("Test what the fuck");
         fs::write(get_config_directory(), text).unwrap();
     }
 }

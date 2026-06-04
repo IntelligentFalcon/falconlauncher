@@ -28,7 +28,10 @@
           "permissions": [
             "core:window:allow-start-dragging",
             "core:window:allow-destroy",
-            "core:window:allow-minimize"
+            "core:window:allow-minimize",
+            "core:event:allow-listen",
+            "core:event:default"
+
           ]
         }
       ]

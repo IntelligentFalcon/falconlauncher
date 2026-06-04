@@ -4,6 +4,7 @@ use crate::models::platform::get_current_os;
 use std::env::{home_dir, var_os};
 use std::path::PathBuf;
 use tokio::fs::create_dir_all;
+use crate::models::mirror::{mojang_mirror, ninecraft_mirror};
 
 pub fn get_minecraft_directory() -> PathBuf {
     let os = get_current_os();
@@ -61,6 +62,8 @@ pub async fn create_necessary_dirs() {
         .unwrap();
     create_dir_all(get_assets_directory()).await.unwrap();
     create_dir_all(get_launcher_java_directory()).await.unwrap();
+    create_dir_all(get_mirrors_dir()).await.unwrap();
+    mojang_mirror().write();
 }
 
 pub fn version_manifest_directory() -> PathBuf {
@@ -112,4 +115,8 @@ pub fn auto_detect_javas() -> Returns<Vec<Java>> {
 }
 pub fn get_java_dir() -> PathBuf {
     get_minecraft_directory().join("runtime")
+}
+
+pub fn get_mirrors_dir() -> PathBuf {
+    get_falcon_launcher_directory().join("mirrors")
 }

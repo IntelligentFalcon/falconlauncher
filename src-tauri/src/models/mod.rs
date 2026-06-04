@@ -8,3 +8,4 @@ pub mod profiles;
 pub mod downloader;
 pub mod platform;
 pub mod java;
+pub mod logger;

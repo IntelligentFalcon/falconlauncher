@@ -4,7 +4,7 @@ use crate::models::platform::get_current_os;
 use crate::models::profiles::get_profile;
 use crate::models::versions::MinecraftVersion;
 use crate::services::directory_manager::*;
-use crate::services::downloader::{generate_stdout, Global};
+use crate::services::downloader::{Global};
 use crate::services::jdk_manager::get_java;
 use crate::services::utils;
 use crate::services::utils::{extend_once, vec_to_string};
@@ -14,15 +14,18 @@ use std::io::{BufRead, BufReader};
 use std::path::{PathBuf, MAIN_SEPARATOR_STR};
 use std::process::{Command, Stdio};
 use tauri::{AppHandle, Emitter, Manager};
+use log::info;
+use crate::models::logger::{error, info};
 
-const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &Global) -> Void {
-    println!("DEBUG: Starting game in {version} ");
+    info!("DEBUG: Starting game in {version} ");
     let mut versions = global_cache.versions.iter().filter(|x| x.id == version);
     let ver_res = versions.next();
     let state = &app_handle.state::<AppState>();
     let config = state.config.read().await;
+    let tx_err = state.log_tx.clone();
+    let tx_out = state.log_tx.clone();
     let mirror = mirror_from(&config.download_settings.mirror);
     match ver_res {
         None => {
@@ -35,6 +38,11 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
     let inherited_json = inherited_version.load_json();
 
     let version_id = &version.id;
+
+    let version_id_err_clone = version_id.clone();
+    let version_id_out_clone = version_id.clone();
+
+
     let inherited_id = &inherited_version.id;
     update_download_status("Reading version metadata...", &app_handle);
     let username = &config.launch_options.username;
@@ -50,6 +58,7 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
     let java_component = inherited_json["javaVersion"]["component"].as_str().unwrap();
     let game_directory = get_minecraft_directory().display().to_string();
     let asset_directory = get_assets_directory().display().to_string();
+
     // This is a very old argument that is even removed in the newer versions but still required for launching past versions like 1.0
     let resources_directory = get_minecraft_directory()
         .join("resources")
@@ -70,7 +79,8 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
         .to_string();
     update_download(100, "Launching game...", &app_handle);
 
-    let ram_usage = config.launch_options.ram_usage.to_string() + "M";
+    let xms = config.launch_options.ram_usage_min.to_string() + "M";
+    let xmx = config.launch_options.ram_usage_max.to_string() + "M";
     let java = get_java(java_component.to_string())?;
     let typ = json["type"].as_str().unwrap();
     let run_args_iter = get_launch_args(&json)?;
@@ -143,7 +153,8 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
 
         Command::new(&java.get_bin_file())
             .arg(format!("-Djava.library.path={}", natives))
-            .arg(format!("-Xmx{}", ram_usage))
+            .arg(format!("-Xms{xms}"))
+            .arg(format!("-Xmx{xmx}"))
             .arg("-Xms2048M")
             .current_dir(&game_directory)
             .arg("-cp")
@@ -155,15 +166,25 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
             .spawn()
             .expect("Failed to spawn java process")
     };
-        let stderr = child.stderr.take().unwrap();
+
+    let stdout = child.stdout.take().expect("Failed to open stdout");
+    let stderr = child.stderr.take().unwrap();
     std::thread::spawn(move || {
         let reader = BufReader::new(stderr);
         for line in reader.lines().flatten() {
-            println!("[stderr] {}", line);
+            tx_err.send(error(line, version_id_err_clone.clone())).unwrap();
         }
     });
 
-    generate_stdout(&mut child);
+    // generate_stdout(&mut child);
+    std::thread::spawn(move || {
+        let reader = BufReader::new(stdout);
+        for line in reader.lines() {
+            if let Ok(line) = line {
+                tx_out.send(info(line, version_id_out_clone.clone())).unwrap();
+            }
+        }
+    });
 
     update_download_status("", &app_handle);
     Ok(())

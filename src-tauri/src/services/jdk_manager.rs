@@ -12,14 +12,16 @@ use std::fs;
 use std::fs::{create_dir_all, remove_file, File};
 use std::io::Write;
 use std::path::{PathBuf};
+use tokio::sync::mpsc::UnboundedSender;
 use tracing::info;
 use zip_extract::extract;
+use crate::models::logger::LogLine;
 
 pub fn get_java(java: String) -> Returns<Java> {
     let runtime_dir = get_java_dir().join(&java);
     Ok(Java::new(runtime_dir))
 }
-pub async fn download_java(java: &String, version: &String, mirror: &Mirror) -> Void {
+pub async fn download_java(java: &String, version: &String,logger: &UnboundedSender<LogLine>, mirror: &Mirror) -> Void {
     let runtime_dir = get_java_dir().join(&java);
     // if mirror.is_connected().await {
         let url = mirror.parse_url(&"https://launchermeta.mojang.com/v1/products/java-runtime/2ec0cc96c44e5a76b9c8b7c39df7210883d12871/all.json".to_string());

@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fs;
 use std::iter::Map;
 use std::time::Duration;
 use reqwest::Client;
@@ -6,6 +7,8 @@ use serde::de::IntoDeserializer;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tracing::info;
+use crate::models::error::Returns;
+use crate::services::directory_manager::get_mirrors_dir;
 
 #[derive(Debug,Deserialize,Serialize)]
 pub struct Mirror {
@@ -53,6 +56,10 @@ impl Mirror {
             break;
         }
         t
+    }
+    pub fn write(&self) {
+        let content = serde_json::to_string(&self).unwrap();
+        fs::write(get_mirrors_dir().join(format!("{}.json", self.name.to_lowercase())),content).expect("failed to write");
     }
 }
 pub fn mirror(
@@ -104,13 +111,8 @@ pub fn mojang_mirror() -> Mirror {
 }
 
 
-// pub fn mirror_from_json(json: Value) -> Mirror {
-//     let mut maps = json.as_object().unwrap().clone();
-//     Mirror {
-//         name: "".to_string(),
-//         description: "".to_string(),
-//         maps,
-//     }
+// pub fn mirror_from_json(json: Value) -> Returns<Mirror>{
+//     let mirror: Mirror = serde_json::from_value;
 // }
 
 pub fn mirror_from(name: &String) -> Mirror {

@@ -21,10 +21,12 @@ pub fn default_config() -> Config {
     Config {
         launch_options: LaunchOptions {
             username: "".to_string(),
-            ram_usage: 2048,
+            ram_usage_max: 2048,
+            ram_usage_min: 1024,
         },
         launcher_settings: LauncherSettings {
             language: "en".to_string(),
+            exit_on_launch: Bool::FALSE,
         },
         download_settings: DownloadSettings { mirror: "9craft".to_string() },
     }
