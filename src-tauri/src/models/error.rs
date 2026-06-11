@@ -97,6 +97,10 @@ pub fn launcher_version_not_found() -> EmptyError {
 pub fn launcher_launch_args_not_found() -> EmptyError {
     launcher_error("Couldn't find launch arguments".to_string(), 4)
 }
+
+pub fn launcher_log_history_not_found() -> EmptyError {
+    launcher_error("Failed to read log history buffer".to_string(),140)
+}
 pub fn request_error(message: String, code: u32) -> EmptyError {
     InvokeError {
         code,
