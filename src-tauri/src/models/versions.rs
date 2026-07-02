@@ -220,3 +220,14 @@ pub enum VersionBase {
     FABRIC,
     LITELOADER,
 }
+
+pub struct LibraryJson {
+    pub path: String,
+    pub url: String,
+    pub sha1: Option<String>,
+    pub size: u64
+}
+/// Reimplementing the version json read system.
+pub struct VersionJson {
+
+}

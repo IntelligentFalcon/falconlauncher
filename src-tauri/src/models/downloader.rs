@@ -102,7 +102,7 @@ pub struct MinecraftManifestVersion {
 pub struct JavaVersion{
     pub component: String,
     #[serde(rename = "majorVersion")]
-    pub major_version: String,
+    pub major_version: u32,
 }
 #[derive(Debug, Deserialize)]
 pub struct Library {

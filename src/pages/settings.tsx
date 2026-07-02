@@ -13,7 +13,7 @@ import {
     FileAddIcon,
     Tick01Icon
 } from '@hugeicons/core-free-icons';
-import { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 
 interface Mirror {

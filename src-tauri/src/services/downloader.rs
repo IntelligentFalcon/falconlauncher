@@ -6,7 +6,9 @@ use crate::services::directory_manager::{
     get_minecraft_directory, get_natives_folder, get_temp_directory, get_version_directory,
     get_versions_directory,
 };
-use crate::services::game_launcher::{update_download, update_download_status};
+use crate::services::game_launcher::{
+    update_download, update_download_bar, update_download_status,
+};
 use crate::services::utils::{convert_to_full_path, convert_to_full_url, verify_file_existence};
 use crate::services::version_manager::load_version_manifest;
 
@@ -85,7 +87,7 @@ pub async fn download_version(
         logger,
         &mirror,
     )
-        .await?;
+    .await?;
 
     download_libraries(&json.libraries, &id, app_handle, logger, &mirror).await?;
     if let Some(downloads) = &json.downloads {
@@ -96,7 +98,7 @@ pub async fn download_version(
     if let Some(asset_index) = &json.asset_index {
         logger.send(info_launcher("downloading assets".to_string()));
         update_download_status("Downloading assets...", &app_handle);
-        download_assets(asset_index, logger, &mirror).await?;
+        download_assets(asset_index, logger, &mirror, app_handle).await?;
     }
     if let Some(logging) = &json.logging {
         logger.send(info_launcher("downloading logging files".to_string()));
@@ -105,8 +107,9 @@ pub async fn download_version(
             logging.client.file.url.clone(),
             logging.client.file.size,
         )
-            .await?;
+        .await?;
     }
+    update_download(100, "Done", app_handle);
     Ok(())
 }
 
@@ -114,6 +117,7 @@ async fn download_assets(
     value: &AssetIndex,
     logger: &UnboundedSender<LogLine>,
     mirror: &Mirror,
+    app_handle: &AppHandle,
 ) -> Void {
     let id = &value.id;
     let url = mirror.parse_url(&value.url);
@@ -130,7 +134,7 @@ async fn download_assets(
         url.to_string(),
         total_size,
     )
-        .await?;
+    .await?;
     let content =
         fs::read_to_string(PathBuf::from(&asset_index_path)).expect("Failed to read file.");
     let json: Option<Value> =
@@ -138,7 +142,12 @@ async fn download_assets(
     let url_template = "https://resources.download.minecraft.net/{id}/{hash}";
     match json {
         Some(val) => {
-            for (_, asset_object) in val["objects"].as_object().unwrap() {
+            let objects = &val["objects"].as_object().unwrap();
+            let assets_vec = &objects.values().collect::<Vec<&Value>>();
+            for i in 0..objects.len().clone() {
+                let asset_object = assets_vec[i];
+                // }
+                // for (_, asset_object) in val["objects"].as_object().unwrap() {
                 let hash = asset_object["hash"].as_str().unwrap();
                 let id = hash[0..2].to_string().clone();
                 let size = asset_object["size"].as_u64().unwrap();
@@ -152,6 +161,7 @@ async fn download_assets(
                     .join("objects")
                     .join(id.as_str())
                     .join(hash);
+                update_download_bar((i * 100 / objects.len().clone()) as i64, app_handle);
                 download_file_if_not_exists(&path, url, size).await?;
             }
         }
@@ -160,11 +170,7 @@ async fn download_assets(
     Ok(())
 }
 
-pub async fn download_file_if_not_exists(
-    path: &PathBuf,
-    url: String,
-    size: u64,
-) -> Void {
+pub async fn download_file_if_not_exists(path: &PathBuf, url: String, size: u64) -> Void {
     if !verify_file_existence(&path.to_str().unwrap().to_string(), size) {
         download_file(url, path.to_str().unwrap().to_string()).await?;
     }
@@ -186,7 +192,7 @@ async fn download_from_manifest(id: &String, manifest: &Manifest, mir: &Mirror) 
             .unwrap()
             .to_string(),
     )
-        .await
+    .await
 }
 
 async fn download_client(
@@ -212,6 +218,7 @@ async fn download_libraries(
 ) -> Void {
     let libraries_path = get_libraries_directory();
     let array = libraries.as_array().unwrap();
+
     for library_index in 0..array.len() {
         let library = &array[library_index];
         if library.get("downloads").is_none() {
@@ -250,7 +257,7 @@ async fn download_libraries(
         }
         let library_info = library_from_value(library);
         update_download(
-            (library_index / array.len() * 100) as i64,
+            (library_index * 100 / array.len()) as i64,
             format!("Downloading {}", library_info.name).as_str(),
             app_handle,
         );
@@ -264,7 +271,7 @@ async fn download_libraries(
                 mirror.parse_url(&library_info.url),
                 library_info.size,
             )
-                .await?;
+            .await?;
         }
     }
     Ok(())
@@ -364,15 +371,21 @@ pub async fn download_file(url: String, dest: String) -> Void {
     let resp = reqwest::get(&url)
         .await
         .map_err(|x| download_error(format!("Failed to download file from {url}, {}", x)))?;
+    println!(
+        "Downloading {url} to {dest} with response of {}",
+        resp.content_length().unwrap()
+    );
     let dest_folder = PathBuf::from(&dest)
         .parent()
         .unwrap()
         .to_str()
         .unwrap()
         .to_string();
+
     if !exists(&dest_folder).unwrap() {
         create_dir_all(&dest_folder).expect("Creating directory failed.");
     }
+
     let mut out =
         File::create(&dest).expect(format!("Unable to create file. at {}", dest.as_str()).as_str());
     out.write_all(&resp.bytes().await.unwrap())
@@ -439,7 +452,8 @@ pub async fn download_forge_version(
     let version_mid = mc_args[1].parse::<i32>().unwrap();
     if version_mid > 12 {
         logger.send(info_launcher(
-            "DEBUG: Non legacy version detected!".to_string()));
+            "DEBUG: Non legacy version detected!".to_string(),
+        ));
         download_java(&"jre-legacy".to_string(), &"8".to_string(), logger, mirror).await?;
         let jdk_8 = get_java("jre-legacy".to_string())?;
         let mut child = Command::new(jdk_8.get_bin_file().display().to_string())
@@ -467,8 +481,7 @@ pub async fn download_forge_version(
 
         return Ok(());
     }
-    logger.send(info_launcher(
-        "DEBUG: Legacy version detected!".to_string()));
+    logger.send(info_launcher("DEBUG: Legacy version detected!".to_string()));
 
     let mut zip = ZipArchive::new(installer_file).unwrap();
     let install_profile_file = zip
@@ -517,7 +530,7 @@ pub async fn download_forge_version(
         version_json_path,
         serde_json::to_string(&version_json).unwrap(),
     )
-        .expect("Failed to write to the forge json file.");
+    .expect("Failed to write to the forge json file.");
     if !install_profile_json.get("libraries").is_none() {
         for library in install_profile_json["libraries"].as_array().unwrap() {
             let library_downloads = if library.get("downloads").is_none() {
@@ -535,7 +548,7 @@ pub async fn download_forge_version(
                         .parent()
                         .unwrap(),
                 )
-                    .expect("Failed to create the directory");
+                .expect("Failed to create the directory");
                 let mut file = File::create(get_libraries_directory().join(&path)).unwrap();
                 std::io::copy(&mut f, &mut file).expect("Failed to copy files");
 
@@ -623,8 +636,8 @@ pub async fn download_fabric(
         stable_installer.url.to_string(),
         installer_path_download.clone(),
     )
-        .await?;
-    download_java(&"jre-legacy".to_string(), &"8".to_string(),logger, mirror).await?;
+    .await?;
+    download_java(&"jre-legacy".to_string(), &"8".to_string(), logger, mirror).await?;
     let jdk_8 = get_java("jre-legacy".to_string())?;
     let mut child = Command::new(jdk_8.get_bin_file())
         .arg("-jar")

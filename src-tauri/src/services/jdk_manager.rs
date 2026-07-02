@@ -28,7 +28,6 @@ pub async fn download_java(java: &String, version: &String,logger: &UnboundedSen
         let current_os = get_current_os_with_architecture();
         let json: Value = load_json_url(&url.to_string()).await.ok_or(0)
             .map_err(|_x| download_error("Couldn't get or read the runtime json manifest file.".to_string()))?;
-        println!("Test");
         let runtime_arr = &json[current_os][java];
         let runtime_v = runtime_arr
             .as_array()

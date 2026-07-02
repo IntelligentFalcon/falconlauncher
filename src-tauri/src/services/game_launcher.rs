@@ -234,7 +234,6 @@ pub fn get_jvm_args(json: &Value) -> Vec<String> {
             }
         }
     }
-
     vec
 }
 pub fn get_launch_args(json: &Value) -> Returns<Vec<String>> {

@@ -18,20 +18,25 @@ pub struct Mirror {
 }
 impl Mirror {
     pub fn parse_url(&self, url: &String) -> String {
+        let mut url = url.clone();
 
-        let mut url = url.to_lowercase();
-        url = url.replace("http://", "https://");
-        let domain = url
-            .strip_prefix("https://")
-            .unwrap()
-            .split("/")
+        if url.to_lowercase().starts_with("http://") {
+            url.insert("http".len(), 's');
+        }
+        let https_less_url =if url.to_lowercase().starts_with("https://"){
+            &url["https://".len()..].trim().to_string()
+        } else {
+            &url
+        };
+        let domain = https_less_url.split("/")
             .next()
-            .unwrap();
+            .unwrap().to_lowercase();
+
         let https_domain = format!("https://{domain}/");
+
         if  !self.maps.contains_key(https_domain.as_str()) {
             return url.clone();
         }
-        println!("{}",url);
         if self.maps.contains_key(https_domain.as_str()) {
             url.replace(https_domain.as_str(), &*self.maps[&https_domain])
         } else {
@@ -46,8 +51,6 @@ impl Mirror {
                 .timeout(Duration::from_secs(3))
                 .build()
                 .unwrap();
-
-            println!("REQUESTING {url}");
             let req = client.head(url).send().await;
             if req.is_err() {
                 println!("ERR");
@@ -104,7 +107,7 @@ pub fn mojang_mirror() -> Mirror {
         "Official Mirror to download games from".to_string(),
         "https://launchermeta.mojang.com/".to_string(),
         "https://piston-meta.mojang.com/".to_string(),
-        "https://piston-meta.mojang.com/".to_string(),
+        "https://piston-data.mojang.com/".to_string(),
         "https://resources.download.minecraft.net/".to_string(),
         "https://libraries.minecraft.net/".to_string(),
     )

@@ -156,7 +156,7 @@ pub fn run() {
             commands::logger::clear_log_history_channel,
             commands::logger::clear_log_history,
             install_mod_from_local,
-            get_available_mirrors,
+            commands::mirrors::get_available_mirrors,
             set_mirror,
             get_mirror,
             commands::mirrors::import_mirror,
