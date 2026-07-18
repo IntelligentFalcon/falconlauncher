@@ -47,6 +47,10 @@ pub struct AppState {
     pub log_tx: mpsc::UnboundedSender<LogLine>,
     pub log_history: Arc<Mutex<VecDeque<LogLine>>>,
 }
+
+pub const DEV_MODE: bool = true;
+pub const LAUNCHER_NAME: &str = "FalconLauncher";
+pub const LAUNCHER_VERSION: &str = "BETA";
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     dotenvy::dotenv().ok();
@@ -78,14 +82,13 @@ pub fn run() {
             #[cfg(debug_assertions)]
             {
                 let window = app.get_webview_window("main").unwrap();
-                window.open_devtools();
+                if DEV_MODE {
+                    window.open_devtools();
+                }
             }
-            info!("Linux user detected!!!");
 
             let fl_path = get_falcon_launcher_directory();
             let jdk_path = directory_manager::get_launcher_java_directory();
-            let _ = create_dir_all(fl_path);
-            let _ = create_dir_all(jdk_path);
 
             spawn(async {
                 create_necessary_dirs().await;
@@ -97,14 +100,13 @@ pub fn run() {
             let app_handle = app.handle().clone();
             let shared_history = Arc::new(Mutex::new(VecDeque::with_capacity(1000)));
 
-            // 2. Clone the Arc pointer for the bridge initialization
             let bridge_history = shared_history.clone();
             let log_tx = init_log_bridge(app_handle, bridge_history);
             app.manage(AppState {
                 config: Arc::new(RwLock::new(load())),
                 launcher_details: FalconLauncher {
-                    name: "FalconLauncher".to_string(),
-                    version: "BETA".to_string(),
+                    name: LAUNCHER_NAME.to_string(),
+                    version: LAUNCHER_VERSION.to_string(),
                 },
                 log_tx,
                 log_history: shared_history,

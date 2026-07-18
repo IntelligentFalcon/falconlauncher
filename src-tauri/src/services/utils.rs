@@ -27,6 +27,7 @@ fn calculate_file_sha1<P: AsRef<Path>>(path: P) -> Returns<String> {
     let result = hasher.finalize();
     Ok(format!("{:x}", result))
 }
+
 /// Verifies if file exists and is not broken by the expected file size if expected_size is zero it will ignore checking file size
 pub fn verify_file_existence(path_str: &String, expected_size: u64) -> bool {
     let path = Path::new(&path_str);
@@ -38,19 +39,6 @@ pub fn verify_file_existence(path_str: &String, expected_size: u64) -> bool {
         metadata.len() == expected_size
     } else {
         true
-    }
-}
-pub async fn is_connected_to_internet() -> bool {
-    let client = Client::builder()
-        .timeout(Duration::from_secs(3))
-        .build()
-        .unwrap();
-
-    let req = client.get("https://launchermeta.mojang.com/mc/game/version_manifest.json").send().await;
-
-    match req {
-        Ok(_) => true,
-        Err(_) => false,
     }
 }
 

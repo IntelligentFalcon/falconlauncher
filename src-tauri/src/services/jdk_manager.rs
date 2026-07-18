@@ -6,7 +6,7 @@ use crate::services::directory_manager::{
     auto_detect_javas, get_java_dir, get_launcher_java_directory,
 };
 use crate::services::downloader::download_file_if_not_exists;
-use crate::services::utils::{is_connected_to_internet, load_json_url};
+use crate::services::utils::{load_json_url};
 use serde_json::Value;
 use std::fs;
 use std::fs::{create_dir_all, remove_file, File};
