@@ -1,131 +1,14 @@
-use crate::services::directory_manager::{get_libraries_directory, get_versions_directory, version_manifest_directory};
-use crate::models::versions::MinecraftVersion;
-use crate::services::version_manager::load_version_manifest_local;
+use crate::models::error::{io_err_buffer_read, io_err_read_file, Returns};
+use crate::models::platform::get_current_os;
+use crate::services::directory_manager::get_libraries_directory;
 use reqwest::Client;
 use serde_json::{Map, Value};
+use sha2::{Digest, Sha256};
 use std::fs::File;
 use std::io::{BufReader, Read};
 use std::path::Path;
-use std::thread::spawn;
 use std::time::Duration;
-use sha2::{Digest, Sha256};
-use tokio::fs::create_dir_all;
-use uuid::Version::Sha1;
-use crate::models::downloader::Manifest;
-use crate::models::error::{io_err_buffer_read, io_err_read_file, Returns};
-use crate::models::platform::get_current_os;
-use crate::models::versions::VersionType;
 
-fn load_downloaded_versions() {
-    let dir = get_versions_directory();
-    let folders = dir.read_dir();
-    match folders {
-        Ok(folders) => {
-            for folder in folders.filter(|x| x.is_ok()).map(|x| x.unwrap()) {
-                folder
-                    .path()
-                    .read_dir()
-                    .unwrap()
-                    .map(|x| x.unwrap())
-                    .filter(|x| x.path().extension().unwrap() == "json")
-                    .for_each(|x| {})
-            }
-        }
-
-        _ => {
-            /// TODO: Handle error on no version folder found in .minecraft
-            spawn(|| async move {
-                let _ = create_dir_all(dir).await;
-            });
-            return;
-        }
-    }
-}
-pub fn get_downloaded_versions() -> Vec<MinecraftVersion> {
-    /// TEMP 
-    
-    if !get_versions_directory().exists() {
-        return Vec::new();
-    }
-    get_versions_directory()
-        .read_dir()
-        .unwrap()
-        .map(|x| x.unwrap())
-        .filter(|x| {
-            if x.path().is_file() {
-                return false;
-            }
-            let children_files = x.path().read_dir().unwrap();
-            ///TEMPORARY === 1 MUST BE CHANGED FOR MODPACK COMPATIBILITY
-            return children_files
-                .map(|f| f.unwrap())
-                .filter(|f| f.path().is_file() && f.path().extension().unwrap() == "json")
-                .count()
-                == 1;
-        })
-        .map(|v| {
-            MinecraftVersion::from_folder(
-                get_versions_directory().join(v.file_name().to_str().unwrap().to_string()),
-            )
-        })
-        .collect()
-}
-/// Loads downloaded versions and non-downloaded versions (if it is connected to the internet)
-pub async fn load_versions(snapshots: bool, old_versions: bool) -> Vec<MinecraftVersion> {
-    if !get_versions_directory().exists() {
-        std::fs::create_dir(get_versions_directory()).unwrap();
-    }
-    let mut filtered_types = vec![VersionType::Release];
-    if snapshots {
-        filtered_types.push(VersionType::Snapshot);
-    }
-    if old_versions {
-        filtered_types.push(VersionType::OldAlpha);
-        filtered_types.push(VersionType::OldBeta);
-    }
-
-    let mut versions = get_versions_directory()
-        .read_dir()
-        .unwrap()
-        .map(|x| x.unwrap())
-        .filter(|x| {
-            if x.path().is_file() {
-                return false;
-            }
-            let children_files = x.path().read_dir().unwrap();
-            return children_files
-                .map(|f| f.unwrap())
-                .filter(|f| f.path().is_file() && f.path().extension().unwrap() == "json")
-                .count()
-                > 0;
-        })
-        .map(|v| {
-            MinecraftVersion::from_folder(
-                get_versions_directory().join(v.file_name().to_str().unwrap().to_string()),
-            )
-        })
-        .collect();
-    if version_manifest_directory()
-        .exists()
-    {
-        let json = load_version_manifest_local();
-        let founded_versions = match json {
-            None => Vec::new(),
-            Some(v) => load_versions_through_json(v, filtered_types),
-        };
-        versions = extend_once(versions, founded_versions);
-    }
-    versions
-}
-
-fn load_versions_through_json(v: Manifest, types: Vec<VersionType>) -> Vec<MinecraftVersion> {
-    let versions = v.versions;
-    versions
-        .iter()
-        .filter(|ver| types.contains(&ver.version_type))
-        .map(|x| MinecraftVersion::from_id(x.id.clone()))
-        .collect()
-}
 
 fn calculate_file_sha1<P: AsRef<Path>>(path: P) -> Returns<String> {
     let file = File::open(path).map_err(|e| io_err_read_file(e))?;

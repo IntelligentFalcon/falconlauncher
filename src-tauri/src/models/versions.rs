@@ -144,7 +144,7 @@ impl MinecraftVersion {
                 }
                 continue;
             }
-            let library_info = downloader::library_from_value(library);
+            let library_info = downloader::library_from_value_legacy(library);
             let os = get_current_os();
 
             let path = libraries_path

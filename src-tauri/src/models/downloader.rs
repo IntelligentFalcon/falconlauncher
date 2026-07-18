@@ -1,14 +1,17 @@
-use serde_json::Value;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use serde_json::Value;
 use crate::models::versions::VersionType;
 use crate::models::versions::VersionBase;
 use crate::models::versions::VersionBase::{FABRIC, FORGE};
+
 #[derive(Deserialize, Debug)]
 pub struct Manifest {
     pub latest: LatestVersionDetail,
     pub versions: Vec<VersionInfo>,
 }
-#[derive(Serialize, Deserialize, Debug)]
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AssetIndex {
     pub id: String,
     pub sha1: String,
@@ -18,49 +21,24 @@ pub struct AssetIndex {
     pub url: String,
 }
 
+// Model for reading individual asset entries inside the assets index file
+#[derive(Deserialize, Debug)]
+pub struct AssetObjects {
+    pub objects: HashMap<String, AssetEntry>,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct AssetEntry {
+    pub hash: String,
+    pub size: u64,
+}
+
+#[derive(Debug, Clone)]
 pub struct LibraryInfo {
     pub name: String,
     pub size: u64,
     pub path: String,
     pub url: String,
-}
-
-pub fn library_from_value(value: &Value) -> LibraryInfo {
-    let library_name = value
-        .get("name")
-        .expect("Parsing library_name failed")
-        .as_str()
-        .expect("Parsing library_name failed");
-    let library_downloads = value.get("downloads").unwrap();
-    let library_artifact = library_downloads
-        .get("artifact")
-        .expect("Parsing library_downloads failed");
-    let library_path = if library_artifact.get("path").is_none() {
-        let args = library_name.split(":").collect::<Vec<&str>>();
-        let group_id = args[0].replace(".", "/");
-        let artifact = args[1];
-        let version = args[2];
-        let artifact_version = format!("{artifact}-{version}.jar");
-        format!("{group_id}/{artifact}/{version}/{artifact_version}")
-    } else {
-        library_artifact["path"].as_str().unwrap().to_string()
-    };
-
-    let library_url = library_artifact
-        .get("url")
-        .expect("Parsing library_url failed")
-        .as_str();
-    let library_size = library_artifact
-        .get("size")
-        .expect("Parsing library_size failed")
-        .as_u64()
-        .expect("Parsing library_size failed");
-    LibraryInfo {
-        name: library_name.to_string(),
-        size: library_size,
-        path: library_path.to_string(),
-        url: library_url.unwrap().to_string(),
-    }
 }
 
 pub struct LibraryRules {
@@ -83,38 +61,70 @@ pub struct LoggingFile {
     pub size: u64,
     pub url: String,
 }
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Logging {
     pub client: LoggingClient,
-
 }
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct DownloadDetail {
+    pub url: String,
+    pub size: u64,
+    pub sha1: String,
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 pub struct MinecraftManifestVersion {
-    pub libraries: Value,
+    pub libraries: Vec<Library>,
     #[serde(rename = "assetIndex")]
     pub asset_index: Option<AssetIndex>,
-    pub downloads: Option<Value>,
+    pub downloads: Option<HashMap<String, DownloadDetail>>,
     pub logging: Option<Logging>,
     #[serde(rename = "javaVersion")]
     pub java_version: Option<JavaVersion>
 }
+
 #[derive(Debug, Deserialize, Serialize)]
-pub struct JavaVersion{
+pub struct JavaVersion {
     pub component: String,
     #[serde(rename = "majorVersion")]
     pub major_version: u32,
 }
-#[derive(Debug, Deserialize)]
-pub struct Library {
-    pub name: String,
-    pub path: String,
-    pub downloads: LibraryDownloads
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct RuleOS {
+    pub name: Option<String>,
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+pub struct Rule {
+    pub action: String,
+    pub os: Option<RuleOS>,
+}
 
+#[derive(Debug, Deserialize, Serialize)]
+pub struct Library {
+    pub name: String,
+    pub downloads: Option<LibraryDownloads>,
+    pub rules: Option<Vec<Rule>>,
+    pub url: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct LibraryDownloads {
+    pub artifact: Option<LibraryArtifact>,
+    pub classifiers: Option<HashMap<String, LibraryArtifact>>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct LibraryArtifact {
+    pub path: Option<String>,
+    pub url: String,
+    pub size: u64,
+}
 
 #[derive(Debug, Deserialize)]
-
 pub struct LatestVersionDetail {
     pub release: String,
     pub snapshot: String,
@@ -149,7 +159,6 @@ impl VersionLoader {
                 let forge_ver = args[1].split("-").last().unwrap();
                 format!("{}-forge-{}", vanilla_id, forge_ver)
             }
-            /// FIX THESE LATER
             VersionBase::NEOFORGE => self.id.clone(),
             FABRIC => {
                 let args = self.id.split("-").collect::<Vec<_>>();
@@ -166,20 +175,145 @@ impl VersionLoader {
     }
 }
 
-#[derive(Debug, Deserialize)]
-pub struct LibraryDownloads {
-    pub artifact: Option<LibraryArtifact>,
-    pub classifiers: Option<LibraryClassifier>,
+// Models designed specifically for legacy Forge installer profile JSON extraction
+#[derive(Deserialize, Debug)]
+pub struct ForgeInstallProfile {
+    pub install: Option<ForgeInstallData>,
+    #[serde(rename = "versionInfo")]
+    pub version_info: Option<ForgeVersionJsonInfo>,
+    pub libraries: Option<Vec<ForgeLibrary>>,
 }
 
-#[derive(Debug, Deserialize)]
-pub struct LibraryArtifact {
+#[derive(Deserialize, Debug)]
+pub struct ForgeInstallData {
+    #[serde(rename = "filePath")]
+    pub file_path: String,
+    pub path: String,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct ForgeVersionJsonInfo {
+    pub id: String,
+    pub libraries: Vec<ForgeLibrary>,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct ForgeLibrary {
+    pub name: String,
+    pub url: Option<String>,
+    pub downloads: Option<ForgeLibraryDownloads>,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct ForgeLibraryDownloads {
+    pub artifact: Option<ForgeArtifact>,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct ForgeArtifact {
     pub path: Option<String>,
     pub url: String,
-    pub size: u64,
 }
 
-#[derive(Debug, Deserialize)]
-pub struct LibraryClassifier {
+// helper converter to adapter from Library struct
+pub fn library_from_value_legacy(value: &Value) -> LibraryInfo {
 
+    let library_name = value
+
+        .get("name")
+
+        .expect("Parsing library_name failed")
+
+        .as_str()
+
+        .expect("Parsing library_name failed");
+
+    let library_downloads = value.get("downloads").unwrap();
+
+    let library_artifact = library_downloads
+
+        .get("artifact")
+
+        .expect("Parsing library_downloads failed");
+
+    let library_path = if library_artifact.get("path").is_none() {
+
+        let args = library_name.split(":").collect::<Vec<&str>>();
+
+        let group_id = args[0].replace(".", "/");
+
+        let artifact = args[1];
+
+        let version = args[2];
+
+        let artifact_version = format!("{artifact}-{version}.jar");
+
+        format!("{group_id}/{artifact}/{version}/{artifact_version}")
+
+    } else {
+
+        library_artifact["path"].as_str().unwrap().to_string()
+
+    };
+
+
+    let library_url = library_artifact
+
+        .get("url")
+
+        .expect("Parsing library_url failed")
+
+        .as_str();
+
+    let library_size = library_artifact
+
+        .get("size")
+
+        .expect("Parsing library_size failed")
+
+        .as_u64()
+
+        .expect("Parsing library_size failed");
+
+    LibraryInfo {
+
+        name: library_name.to_string(),
+
+        size: library_size,
+
+        path: library_path.to_string(),
+
+        url: library_url.unwrap().to_string(),
+
+    }
+
+}
+
+
+
+pub fn library_from_value(library: &Library) -> LibraryInfo {
+    let library_name = &library.name;
+    let library_artifact = library
+        .downloads
+        .as_ref()
+        .and_then(|d| d.artifact.as_ref())
+        .expect("Parsing library_downloads failed");
+
+    let library_path = if library_artifact.path.is_none() {
+        let args = library_name.split(":").collect::<Vec<&str>>();
+        let group_id = args[0].replace(".", "/");
+        let artifact = args[1];
+        let version = args[2];
+        let artifact_version = format!("{artifact}-{version}.jar");
+        format!("{group_id}/{artifact}/{version}/{artifact_version}")
+    } else {
+        library_artifact.path.as_ref().unwrap().to_string()
+    };
+
+    LibraryInfo {
+        name: library_name.to_string(),
+        size: library_artifact.size,
+        path: library_path,
+        url: library_artifact.url.to_string(),
+    }
 }

@@ -1,4 +1,3 @@
-use std::fs;
 use crate::models::error::{launcher_launch_args_not_found, launcher_version_not_found, Returns, Void};
 use crate::models::mirror::mirror_from;
 use crate::models::platform::get_current_os;
@@ -168,18 +167,20 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
             }
         }
 
-        Command::new(&java.get_bin_file())
+        let mut cmd = Command::new(&java.get_bin_file());
+        cmd
             .arg(format!("-Djava.library.path={}", natives))
             .arg(format!("-Xms{xms}"))
             .arg(format!("-Xmx{xmx}"))
-            .arg("-Xms2048M")
             .current_dir(&game_directory)
             .arg("-cp")
             .arg(format!("{}{}{}", class_path, separator, libraries_str))
             .arg(main_class)
             .args(&run_args)
             .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
+            .stderr(Stdio::piped());
+        apply_dedicated_gpu_env(&mut cmd);
+        cmd
             .spawn()
             .expect("Failed to spawn java process")
     };
@@ -205,6 +206,17 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
 
     update_download_status("", &app_handle);
     Ok(())
+}
+fn apply_dedicated_gpu_env(cmd: &mut Command) {
+    let os = get_current_os();
+
+    if os == "windows" {
+        cmd.env("SHIM_MCCOMPAT", "0x00000001");
+    } else if os == "linux" {
+        cmd.env("__NV_PRIME_RENDER_OFFLOAD", "1");
+        cmd.env("__GLX_VENDOR_LIBRARY_NAME", "nvidia");
+        cmd.env("DRI_PRIME", "1");
+    }
 }
 pub fn get_jvm_args(json: &Value) -> Vec<String> {
     let mut vec = Vec::new();

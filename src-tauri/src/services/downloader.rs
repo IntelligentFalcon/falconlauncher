@@ -14,7 +14,9 @@ use crate::services::version_manager::load_version_manifest;
 
 use crate::models::config::Config;
 use crate::models::downloader::{
-    library_from_value, AssetIndex, LibraryRules, Manifest, MinecraftManifestVersion, VersionLoader,
+    library_from_value, AssetIndex, AssetObjects, DownloadDetail, ForgeInstallProfile,
+    ForgeVersionJsonInfo, Library, LibraryArtifact, LibraryRules, Manifest,
+    MinecraftManifestVersion, Rule, VersionLoader,
 };
 use crate::models::error::{
     download_error, io_err_permission, io_err_read_file, json_read_err, launcher_file_not_found,
@@ -25,16 +27,17 @@ use crate::models::logger::{info_launcher, LogLine};
 use crate::models::mirror::{mirror_from, Mirror};
 use crate::models::platform::get_current_os;
 use crate::services::jdk_manager::{download_java, get_java};
-use serde_json::Value;
 use std::collections::HashMap;
 use std::fs;
 use std::fs::{create_dir_all, exists, set_permissions, File};
 use std::io::{BufRead, BufReader, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::LazyLock;
+use sha1::{Digest, Sha1};
 use tauri::async_runtime::block_on;
 use tauri::AppHandle;
+use tokio::io::AsyncReadExt;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::sync::Mutex;
 use zip::ZipArchive;
@@ -49,6 +52,7 @@ pub static GLOBAL_CACHE: LazyLock<Mutex<Global>> = LazyLock::new(|| {
         versions: Vec::new(),
     })
 });
+
 pub struct Global {
     pub forge: Option<HashMap<String, Vec<String>>>,
     pub fabric_loaders: Option<Vec<FabricLoader>>,
@@ -56,6 +60,7 @@ pub struct Global {
     pub fabric_mc_versions: Option<Vec<FabricMinecraftVersion>>,
     pub versions: Vec<MinecraftVersion>,
 }
+
 pub async fn download_version(
     version: &MinecraftVersion,
     app_handle: &AppHandle,
@@ -91,9 +96,11 @@ pub async fn download_version(
 
     download_libraries(&json.libraries, &id, app_handle, logger, &mirror).await?;
     if let Some(downloads) = &json.downloads {
-        logger.send(info_launcher("downloading client".to_string()));
-        update_download_status("Downloading version...", &app_handle);
-        download_client(&downloads["client"], &id, logger, &mirror).await?;
+        if let Some(client_download) = downloads.get("client") {
+            logger.send(info_launcher("downloading client".to_string()));
+            update_download_status("Downloading version...", &app_handle);
+            download_client(client_download, &id, logger, &mirror).await?;
+        }
     }
     if let Some(asset_index) = &json.asset_index {
         logger.send(info_launcher("downloading assets".to_string()));
@@ -122,7 +129,6 @@ async fn download_assets(
     let id = &value.id;
     let url = mirror.parse_url(&value.url);
     let total_size = value.total_size;
-    let _size = value.size;
     let asset_index_path = get_assets_directory()
         .join("indexes")
         .join(format!("{id}.json"))
@@ -137,39 +143,53 @@ async fn download_assets(
     .await?;
     let content =
         fs::read_to_string(PathBuf::from(&asset_index_path)).expect("Failed to read file.");
-    let json: Option<Value> =
-        Some(serde_json::from_str(content.as_str()).expect("JSON File isn't well formatted."));
+
+    let json: AssetObjects =
+        serde_json::from_str(content.as_str()).expect("JSON File isn't well formatted.");
     let url_template = "https://resources.download.minecraft.net/{id}/{hash}";
-    match json {
-        Some(val) => {
-            let objects = &val["objects"].as_object().unwrap();
-            let assets_vec = &objects.values().collect::<Vec<&Value>>();
-            for i in 0..objects.len().clone() {
-                let asset_object = assets_vec[i];
-                // }
-                // for (_, asset_object) in val["objects"].as_object().unwrap() {
-                let hash = asset_object["hash"].as_str().unwrap();
-                let id = hash[0..2].to_string().clone();
-                let size = asset_object["size"].as_u64().unwrap();
-                let url = mirror.parse_url(
-                    &url_template
-                        .replace("{id}", id.as_str())
-                        .replace("{hash}", hash)
-                        .clone(),
-                );
-                let path = get_assets_directory()
-                    .join("objects")
-                    .join(id.as_str())
-                    .join(hash);
-                update_download_bar((i * 100 / objects.len().clone()) as i64, app_handle);
-                download_file_if_not_exists(&path, url, size).await?;
-            }
-        }
-        None => {}
+
+    let total_objects = json.objects.len();
+    for (i, (_name, asset_entry)) in json.objects.iter().enumerate() {
+        let hash = &asset_entry.hash;
+        let prefix_id = hash[0..2].to_string();
+        let size = asset_entry.size;
+        let url = mirror.parse_url(
+            &url_template
+                .replace("{id}", prefix_id.as_str())
+                .replace("{hash}", hash),
+        );
+        let path = get_assets_directory()
+            .join("objects")
+            .join(prefix_id.as_str())
+            .join(hash);
+        update_download_bar((i * 100 / total_objects) as i64, app_handle);
+        download_file_if_not_exists(&path, url, size).await?;
     }
     Ok(())
 }
 
+
+/// Verifies if a file matches the expected SHA-1 hash.
+/// The `expected_sha1` parameter can be either uppercase or lowercase.
+pub async fn verify_file_hash<P: AsRef<Path>>(path: P, expected_sha1: &str) -> tokio::io::Result<bool> {
+    let mut file = tokio::fs::File::open(path).await?;
+    let mut hasher = Sha1::new();
+    let mut buffer = [0u8; 8192]; // 8KB chunks
+
+    loop {
+        let bytes_read = file.read(&mut buffer).await?;
+        if bytes_read == 0 {
+            break;
+        }
+        hasher.update(&buffer[..bytes_read]);
+    }
+
+    let result = hasher.finalize();
+    let calculated_sha1 = hex::encode(result);
+
+    // Case-insensitive comparison
+    Ok(calculated_sha1.eq_ignore_ascii_case(expected_sha1))
+}
 pub async fn download_file_if_not_exists(path: &PathBuf, url: String, size: u64) -> Void {
     if !verify_file_existence(&path.to_str().unwrap().to_string(), size) {
         download_file(url, path.to_str().unwrap().to_string()).await?;
@@ -196,13 +216,13 @@ async fn download_from_manifest(id: &String, manifest: &Manifest, mir: &Mirror) 
 }
 
 async fn download_client(
-    value: &Value,
+    value: &DownloadDetail,
     version: &String,
     logger: &UnboundedSender<LogLine>,
     mirror: &Mirror,
 ) -> Void {
-    let size = value["size"].as_u64().unwrap();
-    let url = mirror.parse_url(&value["url"].as_str().unwrap().to_string());
+    let size = value.size;
+    let url = mirror.parse_url(&value.url);
     let path = get_versions_directory()
         .join(&version)
         .join(format!("{}.jar", version));
@@ -210,19 +230,17 @@ async fn download_client(
 }
 
 async fn download_libraries(
-    libraries: &Value,
+    libraries: &[Library],
     version: &String,
     app_handle: &AppHandle,
     logger: &UnboundedSender<LogLine>,
     mirror: &Mirror,
 ) -> Void {
     let libraries_path = get_libraries_directory();
-    let array = libraries.as_array().unwrap();
 
-    for library_index in 0..array.len() {
-        let library = &array[library_index];
-        if library.get("downloads").is_none() {
-            let name = library["name"].as_str().unwrap().replace(":", "/");
+    for (library_index, library) in libraries.iter().enumerate() {
+        if library.downloads.is_none() {
+            let name = library.name.replace(":", "/");
             let parts = name.split("/").collect::<Vec<&str>>();
             let group = parts[0].replace(".", "/");
             let artifact = parts[1];
@@ -251,19 +269,21 @@ async fn download_libraries(
             }
             continue;
         }
-        if library["downloads"].get("artifact").is_none() {
-            download_classifiers(library["downloads"].get("classifiers"), version, mirror).await?;
+
+        let downloads = library.downloads.as_ref().unwrap();
+        if downloads.artifact.is_none() {
+            download_classifiers(downloads.classifiers.as_ref(), version, mirror).await?;
             continue;
         }
         let library_info = library_from_value(library);
         update_download(
-            (library_index * 100 / array.len()) as i64,
+            (library_index * 100 / libraries.len()) as i64,
             format!("Downloading {}", library_info.name).as_str(),
             app_handle,
         );
         let os = get_current_os();
-        let rules = fetch_rules(library.get("rules"));
-        download_classifiers(library["downloads"].get("classifiers"), version, mirror).await?;
+        let rules = fetch_rules(library.rules.as_ref());
+        download_classifiers(downloads.classifiers.as_ref(), version, mirror).await?;
         if rules.allowed_oses.contains(&os) && !rules.disallowed_oses.contains(&os) {
             let path = libraries_path.join(&library_info.path.as_str());
             download_file_if_not_exists(
@@ -278,7 +298,7 @@ async fn download_libraries(
 }
 
 async fn download_classifiers(
-    classifiers: Option<&Value>,
+    classifiers: Option<&HashMap<String, LibraryArtifact>>,
     version: &String,
     mirror: &Mirror,
 ) -> Void {
@@ -286,24 +306,25 @@ async fn download_classifiers(
         return Ok(());
     }
     let os = get_current_os();
-    let mut natives = classifiers.unwrap().get(format!("natives-{os}"));
+    let classifiers_map = classifiers.unwrap();
+    let mut natives = classifiers_map.get(&format!("natives-{os}"));
     if natives.is_none() && os == "windows" {
-        natives = classifiers.unwrap().get(format!("natives-{os}-64"));
+        natives = classifiers_map.get(&format!("natives-{os}-64"));
     }
     match natives {
         None => {}
         Some(val) => {
-            let url = mirror.parse_url(&val["url"].as_str().unwrap().to_string());
+            let url = mirror.parse_url(&val.url.to_string());
             let url_https_less = url.replace("https://", "").replace("http://", "");
-            let path = if val.get("path").is_none() {
+            let path = if val.path.is_none() {
                 let url_args = url_https_less.split("/").collect::<Vec<&str>>();
                 let path = url_https_less.replace(url_args[0], "");
                 path
             } else {
-                val["path"].as_str().unwrap().to_string()
+                val.path.as_ref().unwrap().to_string()
             };
             let full_path = get_libraries_directory().join(path);
-            let size = val["size"].as_u64().unwrap();
+            let size = val.size;
             download_file_if_not_exists(&full_path, url.to_string(), size).await?;
             let file = File::open(full_path.to_str().unwrap().to_string());
             let natives_path = get_natives_folder(version);
@@ -315,9 +336,9 @@ async fn download_classifiers(
     }
     Ok(())
 }
-/// Fetches the rules of library which is optional
-fn fetch_rules(value: Option<&Value>) -> LibraryRules {
-    if value.is_none() || value.unwrap().is_null() {
+
+fn fetch_rules(value: Option<&Vec<Rule>>) -> LibraryRules {
+    if value.is_none() {
         return LibraryRules {
             allowed_oses: vec![
                 "osx".to_string(),
@@ -327,28 +348,33 @@ fn fetch_rules(value: Option<&Value>) -> LibraryRules {
             disallowed_oses: vec![],
         };
     }
-    let value = value.unwrap();
-    let rules = value.as_array().unwrap();
+    let rules = value.unwrap();
     let mut allowed = vec![];
     let mut disallowed = vec![];
     for rule in rules {
-        let rule_action = rule["action"].as_str().unwrap();
-        let rule_os = &rule["os"]["name"];
+        let rule_action = &rule.action;
+        let rule_os = &rule.os;
         if rule_action == "allow" {
-            if rule_os.is_null() {
+            if rule_os.is_none() {
                 allowed.push("osx".to_string());
                 allowed.push("windows".to_string());
                 allowed.push("linux".to_string());
             } else {
-                allowed.push(rule_os.as_str().unwrap().to_string());
+                let os_name = rule_os.as_ref().unwrap().name.as_ref();
+                if let Some(name) = os_name {
+                    allowed.push(name.to_string());
+                }
             }
         } else if rule_action == "disallow" {
-            if rule_os.is_null() {
+            if rule_os.is_none() {
                 disallowed.push("osx".to_string());
                 disallowed.push("windows".to_string());
                 disallowed.push("linux".to_string());
             } else {
-                disallowed.push(rule_os.as_str().unwrap().to_string());
+                let os_name = rule_os.as_ref().unwrap().name.as_ref();
+                if let Some(name) = os_name {
+                    disallowed.push(name.to_string());
+                }
             }
         }
     }
@@ -357,9 +383,7 @@ fn fetch_rules(value: Option<&Value>) -> LibraryRules {
         disallowed_oses: disallowed,
     }
 }
-/// Basically download_file function without needing await.
-/// uses the block_on function that causes the program to stop until the download is finished.
-/// Use download_file_async_thread if you want program continue while downloading.
+
 fn download_file_async(url: String, dest: String) -> Void {
     block_on(async { download_file(url, dest).await })
 }
@@ -487,18 +511,13 @@ pub async fn download_forge_version(
     let install_profile_file = zip
         .by_name("install_profile.json")
         .expect("Failed to find install_profile.json");
-    let install_profile_json: Value = serde_json::from_reader(install_profile_file).unwrap();
-    if !install_profile_json.get("install").is_none()
-        && !install_profile_json["install"].get("filePath").is_none()
-    {
-        let mut forge = zip
-            .by_name(
-                install_profile_json["install"]["filePath"]
-                    .as_str()
-                    .unwrap(),
-            )
-            .unwrap();
-        let path_maven = install_profile_json["install"]["path"].as_str().unwrap();
+
+    let install_profile_json: ForgeInstallProfile =
+        serde_json::from_reader(install_profile_file).unwrap();
+
+    if let Some(install_data) = &install_profile_json.install {
+        let mut forge = zip.by_name(&install_data.file_path).unwrap();
+        let path_maven = &install_data.path;
         let args = path_maven.split(":").collect::<Vec<&str>>();
         let group_id = args[0].replace(".", "/");
         let artifact = args[1];
@@ -511,14 +530,15 @@ pub async fn download_forge_version(
         let mut file = File::create(full_path).unwrap();
         std::io::copy(&mut forge, &mut file).expect("Failed to copy files");
     }
-    let version_json = if install_profile_json.get("versionInfo").is_none() {
+
+    let version_json: ForgeVersionJsonInfo = if install_profile_json.version_info.is_none() {
         let versions_file = zip.by_name("version.json").unwrap();
-        &serde_json::from_reader(versions_file).unwrap()
+        serde_json::from_reader(versions_file).unwrap()
     } else {
-        &install_profile_json["versionInfo"]
+        install_profile_json.version_info.clone().unwrap()
     };
 
-    let version_id = version_json["id"].as_str().unwrap();
+    let version_id = &version_json.id;
     let version_folder = get_version_directory(&version_id.to_string());
     if !version_folder.exists() {
         create_dir_all(version_folder).unwrap();
@@ -531,65 +551,65 @@ pub async fn download_forge_version(
         serde_json::to_string(&version_json).unwrap(),
     )
     .expect("Failed to write to the forge json file.");
-    if !install_profile_json.get("libraries").is_none() {
-        for library in install_profile_json["libraries"].as_array().unwrap() {
-            let library_downloads = if library.get("downloads").is_none() {
-                &library
-            } else {
-                &library["downloads"]["artifact"]
-            };
-            let url = library_downloads["url"].as_str().unwrap();
-            if url == "" {
-                let path = library_downloads["path"].as_str().unwrap();
-                let zip_path = format!("maven/{}", library_downloads["path"].as_str().unwrap());
-                let mut f = zip.by_name(&zip_path).expect("Stupid error ");
-                create_dir_all(
-                    PathBuf::from(get_libraries_directory().join(&path))
-                        .parent()
-                        .unwrap(),
-                )
-                .expect("Failed to create the directory");
-                let mut file = File::create(get_libraries_directory().join(&path)).unwrap();
-                std::io::copy(&mut f, &mut file).expect("Failed to copy files");
 
-                continue;
+    if let Some(profile_libraries) = &install_profile_json.libraries {
+        for library in profile_libraries {
+            let library_downloads = if library.downloads.is_none() {
+                library
+            } else {
+                // For layout convenience we can skip parsing empty artifact blocks
+                // or safely bind fields here
+                library
+            };
+
+            // Checking fields using the typed optional fields inside library rules:
+            if let Some(downloads) = &library.downloads {
+                if let Some(artifact) = &downloads.artifact {
+                    let url = &artifact.url;
+                    if url == "" {
+                        if let Some(path) = &artifact.path {
+                            let zip_path = format!("maven/{}", path);
+                            let mut f = zip.by_name(&zip_path).expect("Stupid error ");
+                            create_dir_all(
+                                PathBuf::from(get_libraries_directory().join(path))
+                                    .parent()
+                                    .unwrap(),
+                            )
+                            .expect("Failed to create the directory");
+                            let mut file =
+                                File::create(get_libraries_directory().join(path)).unwrap();
+                            std::io::copy(&mut f, &mut file).expect("Failed to copy files");
+                        }
+                        continue;
+                    }
+
+                    let full_url = if url.ends_with("/") {
+                        convert_to_full_url(url.to_string(), library.name.to_string())
+                    } else {
+                        url.to_string()
+                    };
+
+                    let full_path = if artifact.path.is_none() {
+                        convert_to_full_path(
+                            get_libraries_directory().to_str().unwrap().to_string(),
+                            &library.name,
+                        )
+                    } else {
+                        artifact.path.as_ref().unwrap().to_string()
+                    };
+
+                    download_file_if_not_exists(&PathBuf::from(full_path), full_url, 0).await?;
+                }
             }
-
-            let full_url = if url.ends_with("/") {
-                convert_to_full_url(
-                    url.to_string(),
-                    library["name"].as_str().unwrap().to_string(),
-                )
-            } else {
-                url.to_string()
-            };
-            let full_path = if library_downloads.get("path").is_none() {
-                convert_to_full_path(
-                    get_libraries_directory().to_str().unwrap().to_string(),
-                    &library["name"].as_str().unwrap().to_string(),
-                )
-            } else {
-                library_downloads["path"].as_str().unwrap().to_string()
-            };
-
-            download_file_if_not_exists(&PathBuf::from(full_path), full_url, 0).await?;
         }
     }
-    for library in version_json["libraries"].as_array().unwrap() {
-        let library_downloads = if !library.get("downloads").is_none() {
-            &library["downloads"]
-        } else {
-            &library
-        };
-        if !library_downloads.get("url").is_none() {
-            let url = library["url"].as_str().unwrap();
-            let full_url = convert_to_full_url(
-                url.to_string(),
-                library["name"].as_str().unwrap().to_string(),
-            );
+
+    for library in &version_json.libraries {
+        if let Some(url) = &library.url {
+            let full_url = convert_to_full_url(url.to_string(), library.name.to_string());
             let full_path = convert_to_full_path(
                 get_libraries_directory().to_str().unwrap().to_string(),
-                &library["name"].as_str().unwrap().to_string(),
+                &library.name,
             );
 
             download_file_if_not_exists(&PathBuf::from(full_path), full_url, 0).await?;
@@ -685,6 +705,7 @@ pub fn generate_stdout(child: &mut Child, logger: &UnboundedSender<LogLine>) {
         }
     });
 }
+
 pub async fn get_available_fabric_versions(version_id: &String) -> Returns<Vec<String>> {
     let mut global_cache = GLOBAL_CACHE.lock().await;
     if global_cache.fabric_mc_versions.is_none() {
