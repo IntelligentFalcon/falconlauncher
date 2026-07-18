@@ -65,6 +65,15 @@ pub fn json_read_err(err: serde_json::Error) -> EmptyError {
     }
 }
 
+
+pub fn ini_read_err(err: serde_ini::ser::Error) -> EmptyError {
+    InvokeError {
+        code: 103,
+        message: err.to_string(),
+        data: None,
+    }
+}
+
 pub fn launcher_error_data<T>(message: String, code: u32, data: Option<T>) -> InvokeError<T> {
     InvokeError {
         code,

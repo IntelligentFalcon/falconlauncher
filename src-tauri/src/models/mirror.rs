@@ -1,13 +1,9 @@
-use std::collections::HashMap;
-use std::fs;
-use std::iter::Map;
-use std::time::Duration;
+use crate::services::directory_manager::get_mirrors_dir;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use tracing::info;
-use crate::models::error::Returns;
-use crate::services::directory_manager::get_mirrors_dir;
+use std::collections::HashMap;
+use std::fs;
+use std::time::Duration;
 
 #[derive(Debug,Deserialize,Serialize)]
 pub struct Mirror {

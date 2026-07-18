@@ -3,6 +3,7 @@ use crate::models::config::*;
 use std::fs;
 use std::fs::create_dir_all;
 use std::path::PathBuf;
+use crate::models::error::Void;
 
 pub fn load_config(cfg: &mut Config) {
     let conf = load();
@@ -31,9 +32,10 @@ pub fn default_config() -> Config {
         download_settings: DownloadSettings { mirror: "9craft".to_string() },
     }
 }
-fn initialize_configuration_file() {
+fn initialize_configuration_file() -> Void{
     if !get_config_directory().exists() {
         create_dir_all(get_config_directory().parent().unwrap()).unwrap();
-        default_config().write_to_file()
+        return default_config().write_to_file();
     }
+    Ok(())
 }

@@ -1,5 +1,6 @@
 use std::fs;
 use serde::{Deserialize, Serialize};
+use crate::models::error::{ini_read_err, io_err_read_file, json_read_err, Void};
 use crate::services::directory_manager::get_config_directory;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -50,8 +51,8 @@ impl Bool{
     }
 }
 impl Config {
-    pub fn write_to_file(&self) {
-        let text = serde_ini::to_string(self).expect("Test what the fuck");
-        fs::write(get_config_directory(), text).unwrap();
+    pub fn write_to_file(&self) -> Void {
+        let text = serde_ini::to_string(self).map_err(|x| ini_read_err(x))?;
+        fs::write(get_config_directory(), text).map_err(|x| io_err_read_file(x))
     }
 }
