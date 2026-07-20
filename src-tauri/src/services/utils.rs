@@ -8,7 +8,8 @@ use std::fs::File;
 use std::io::{BufReader, Read};
 use std::path::Path;
 use std::time::Duration;
-
+use tauri::{AppHandle, Emitter};
+use crate::models::java::Java;
 
 fn calculate_file_sha1<P: AsRef<Path>>(path: P) -> Returns<String> {
     let file = File::open(path).map_err(|e| io_err_read_file(e))?;
@@ -43,7 +44,7 @@ pub fn verify_file_existence(path_str: &String, expected_size: u64) -> bool {
 }
 
 pub async fn load_json_url(url: &String) -> Option<Value> {
-    let result = reqwest::get(url).await.unwrap();
+    let result = reqwest::get(url). await.unwrap();
     let text = result.text().await.unwrap_or(String::new());
     Some(serde_json::from_str(text.as_str()).expect("JSON File isn't well formatted."))
 }
@@ -145,4 +146,36 @@ pub fn check_os_rule(rule_map: &Map<String, Value>) -> bool {
     }
     true
 
+}
+
+pub fn update_download_bar(progress: i64, app_handle: &AppHandle) {
+    app_handle.emit("progressBar", progress).unwrap();
+}
+pub fn update_download_status(text: &str, app_handle: &AppHandle) {
+    app_handle.emit("progress", text).unwrap();
+}
+pub fn update_download(progress: i64, text: &str, app_handle: &AppHandle) {
+    app_handle.emit("progress", text).unwrap();
+    app_handle.emit("progressBar", progress).unwrap();
+}
+
+/// Fixes permission issues related to java when using linux.
+pub fn linux_java_permission_fix(java: &Java){
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        if let Ok(metadata) = std::fs::metadata(java.get_bin_file()) {
+            let mut permissions = metadata.permissions();
+            let current_mode = permissions.mode();
+
+            if current_mode & 0o111 == 0 {
+                println!("Adding execute permission to Java binary: {:?}", &java.get_bin_file());
+                permissions.set_mode(current_mode | 0o111);
+                std::fs::set_permissions(&java.get_bin_file(), permissions)
+                    .expect("Failed to set execute permissions on Java binary");
+            }
+        } else {
+            panic!("Java binary not found at: {:?}", &java.get_bin_file());
+        }
+    }
 }

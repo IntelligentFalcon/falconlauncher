@@ -1,6 +1,6 @@
 use crate::models::downloader::Manifest;
 use crate::services::directory_manager::{get_versions_directory, version_manifest_directory};
-use crate::services::downloader::{download_file, GLOBAL_CACHE};
+use crate::services::game_downloader::{download_file, GLOBAL_CACHE};
 use crate::models::mirror::Mirror;
 use crate::models::error::Void;
 use crate::models::versions::MinecraftVersion;

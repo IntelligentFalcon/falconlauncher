@@ -2,7 +2,7 @@ use crate::models::downloader::{VersionInfo, VersionLoader};
 use crate::models::error::Returns;
 use crate::models::versions::VersionBase::{FABRIC, FORGE};
 use crate::models::versions::{VersionBase, VersionCategory, VersionType};
-use crate::services::downloader::{get_available_fabric_versions, get_available_forge_versions};
+use crate::services::game_downloader::{get_available_fabric_versions, get_available_forge_versions};
 use crate::services::version_manager;
 use tauri::{command, AppHandle};
 

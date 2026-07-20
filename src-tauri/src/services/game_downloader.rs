@@ -6,7 +6,7 @@ use crate::services::directory_manager::{
     get_minecraft_directory, get_natives_folder, get_temp_directory, get_version_directory,
     get_versions_directory,
 };
-use crate::services::game_launcher::{
+use crate::services::utils::{
     update_download, update_download_bar, update_download_status,
 };
 use crate::services::utils::{convert_to_full_path, convert_to_full_url, verify_file_existence};

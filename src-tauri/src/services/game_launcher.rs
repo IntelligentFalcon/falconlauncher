@@ -2,18 +2,17 @@ use crate::models::error::{launcher_launch_args_not_found, launcher_version_not_
 use crate::models::mirror::mirror_from;
 use crate::models::platform::get_current_os;
 use crate::models::profiles::get_profile;
-use crate::models::versions::MinecraftVersion;
 use crate::services::directory_manager::*;
-use crate::services::downloader::{Global};
+use crate::services::game_downloader::{Global};
 use crate::services::jdk_manager::get_java;
 use crate::services::utils;
-use crate::services::utils::{extend_once, vec_to_string};
+use crate::services::utils::{extend_once, linux_java_permission_fix, vec_to_string};
 pub use crate::AppState;
 use serde_json::Value;
 use std::io::{BufRead, BufReader};
 use std::path::{PathBuf, MAIN_SEPARATOR_STR};
 use std::process::{Command, Stdio};
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Manager};
 use log::info;
 use crate::models::logger::{error, info};
 
@@ -44,7 +43,6 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
 
 
     let inherited_id = &inherited_version.id;
-    update_download_status("Reading version metadata...", &app_handle);
     let username = &config.launch_options.username;
     let profile = get_profile(username).unwrap();
     let uid = profile.uuid;
@@ -77,7 +75,6 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
         .to_str()
         .unwrap()
         .to_string();
-    update_download(100, "Launching game...", &app_handle);
 
     let xms = config.launch_options.ram_usage_min.to_string() + "M";
     let xmx = config.launch_options.ram_usage_max.to_string() + "M";
@@ -115,25 +112,10 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
         libraries_str = libraries_str.replace("\\", MAIN_SEPARATOR_STR);
     }
     // println!("{}", libraries_str.to_string());
+    linux_java_permission_fix(&java);
+
     let mut child =
     if !jvm_args.is_empty() {
-        #[cfg(unix)] /// Fixes permission issue
-        {
-            use std::os::unix::fs::PermissionsExt;
-            if let Ok(metadata) = std::fs::metadata(&java.get_bin_file()) {
-                let mut permissions = metadata.permissions();
-                let current_mode = permissions.mode();
-
-                if current_mode & 0o111 == 0 {
-                    println!("Adding execute permission to Java binary: {:?}", &java.get_bin_file());
-                    permissions.set_mode(current_mode | 0o111);
-                    std::fs::set_permissions(&java.get_bin_file(), permissions)
-                        .expect("Failed to set execute permissions on Java binary");
-                }
-            } else {
-                panic!("Java binary not found at: {:?}", &java.get_bin_file());
-            }
-        }
         let mut child_cmd = &mut Command::new(java.get_bin_file());
         for arg in jvm_args.clone() {
             child_cmd  = child_cmd.arg(arg.replace("${natives_directory}", get_natives_folder(&version_id.to_string()).to_str().unwrap())
@@ -149,24 +131,6 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
             .spawn()
             .expect("Failed to spawn java process")
     }else {
-        #[cfg(unix)] /// Fixes permission issue
-        {
-            use std::os::unix::fs::PermissionsExt;
-            if let Ok(metadata) = std::fs::metadata(&java.get_bin_file()) {
-                let mut permissions = metadata.permissions();
-                let current_mode = permissions.mode();
-
-                if current_mode & 0o111 == 0 {
-                    println!("Adding execute permission to Java binary: {:?}", &java.get_bin_file());
-                    permissions.set_mode(current_mode | 0o111);
-                    std::fs::set_permissions(&java.get_bin_file(), permissions)
-                        .expect("Failed to set execute permissions on Java binary");
-                }
-            } else {
-                panic!("Java binary not found at: {:?}", &java.get_bin_file());
-            }
-        }
-
         let mut cmd = Command::new(&java.get_bin_file());
         cmd
             .arg(format!("-Djava.library.path={}", natives))
@@ -204,7 +168,6 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
         }
     });
 
-    update_download_status("", &app_handle);
     Ok(())
 }
 fn apply_dedicated_gpu_env(cmd: &mut Command) {
@@ -267,18 +230,4 @@ pub fn get_launch_args(json: &Value) -> Returns<Vec<String>> {
         } else {
             Err(launcher_launch_args_not_found())
         }
-    }
-    pub fn update_download_bar(progress: i64, app_handle: &AppHandle) {
-        app_handle.emit("progressBar", progress).unwrap();
-    }
-    pub fn update_download_status(text: &str, app_handle: &AppHandle) {
-        app_handle.emit("progress", text).unwrap();
-    }
-    pub fn update_download(progress: i64, text: &str, app_handle: &AppHandle) {
-        app_handle.emit("progress", text).unwrap();
-        app_handle.emit("progressBar", progress).unwrap();
-    }
-
-    fn verify_game_files(id: &MinecraftVersion) -> bool {
-        true
     }

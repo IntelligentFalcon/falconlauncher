@@ -5,7 +5,7 @@ use crate::models::platform::{get_current_os, get_current_os_with_architecture};
 use crate::services::directory_manager::{
     auto_detect_javas, get_java_dir, get_launcher_java_directory,
 };
-use crate::services::downloader::download_file_if_not_exists;
+use crate::services::game_downloader::download_file_if_not_exists;
 use crate::services::utils::{load_json_url};
 use serde_json::Value;
 use std::fs;

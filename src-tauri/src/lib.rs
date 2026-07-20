@@ -18,12 +18,12 @@ use models::versions::VersionBase::{FABRIC, FORGE};
 use services::directory_manager::{
     create_necessary_dirs, get_falcon_launcher_directory, get_mods_folder,
 };
-use services::downloader::{download_fabric, download_forge_version, GLOBAL_CACHE};
-use services::game_launcher::{launch_game, update_download_status};
+use services::game_downloader::{download_fabric, download_forge_version, GLOBAL_CACHE};
+use services::game_launcher::{launch_game};
 use services::mod_manager;
 use services::mod_manager::{load_mods, set_mod_enabled};
 use services::version_manager::{download_version_manifest, reload_installed_versions};
-use services::{directory_manager, downloader};
+use services::{directory_manager, game_downloader};
 use std::collections::VecDeque;
 use std::env;
 use std::fs::create_dir_all;
@@ -36,6 +36,7 @@ use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_log::{Target, TargetKind, TimezoneStrategy};
 use tokio::fs::copy;
 use tokio::sync::{mpsc, RwLock};
+use crate::services::utils::update_download_status;
 
 pub struct FalconLauncher {
     pub name: String,
@@ -301,9 +302,9 @@ async fn download_version(
     let inherited_version = version.get_inherited();
     update_download_status("Downloading version...", &app_handle);
     let cfg = &state.config.read().await;
-    downloader::download_version(&version, &app_handle, logger, &*cfg).await?;
+    game_downloader::download_version(&version, &app_handle, logger, &*cfg).await?;
     if inherited_version.id != version.id {
-        downloader::download_version(&inherited_version, &app_handle, logger, &*cfg).await?;
+        game_downloader::download_version(&inherited_version, &app_handle, logger, &*cfg).await?;
     }
     update_download_status("", &app_handle);
     app_handle
