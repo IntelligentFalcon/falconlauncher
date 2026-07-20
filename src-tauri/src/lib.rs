@@ -2,27 +2,21 @@ pub mod commands;
 pub mod models;
 pub mod services;
 
-use crate::commands::downloader::get_categorized_versions;
-use crate::commands::mirrors::{get_mirror, set_mirror};
-use crate::commands::profiles::{create_offline_profile, get_profiles};
 use crate::models::config::Config;
-use crate::models::downloader::VersionLoader;
-use crate::models::logger::{info_launcher, init_log_bridge, LogLine};
+use crate::models::fabric::{FabricInstaller, FabricLoader, FabricMinecraftVersion};
+use crate::models::logger::{init_log_bridge, LogLine};
 use crate::services::config::load;
 use models::error::{Returns, Void};
-use models::mirror::{mirror_from, mojang_mirror};
+use models::mirror::mojang_mirror;
 use models::mods::ModInfo;
 use models::versions::MinecraftVersion;
-use models::versions::VersionBase::{FABRIC, FORGE};
 use services::directory_manager::{
     create_necessary_dirs, get_falcon_launcher_directory, get_mods_folder,
 };
-use services::game_downloader::{download_fabric, download_forge_version};
 use services::game_launcher::launch_game;
 use services::mod_manager;
 use services::mod_manager::{load_mods, set_mod_enabled};
 use services::version_manager::{download_version_manifest, reload_installed_versions};
-use services::{directory_manager, game_downloader};
 use std::collections::{HashMap, VecDeque};
 use std::env;
 use std::string::ToString;
@@ -33,10 +27,8 @@ use tauri_plugin_deep_link::DeepLinkExt;
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_log::{Target, TargetKind, TimezoneStrategy};
 use tokio::fs::copy;
-use tokio::sync::{mpsc, RwLock};
 use tokio::sync;
-use crate::models::fabric::{FabricInstaller, FabricLoader, FabricMinecraftVersion};
-use crate::services::utils::update_download_status;
+use tokio::sync::{mpsc, RwLock};
 
 pub struct FalconLauncher {
     pub name: String,
@@ -66,6 +58,7 @@ pub static GLOBAL_CACHE: LazyLock<sync::Mutex<Global>> = LazyLock::new(|| {
         versions: Vec::new(),
     })
 });
+
 pub const DEV_MODE: bool = true;
 pub const LAUNCHER_NAME: &str = "FalconLauncher";
 pub const LAUNCHER_VERSION: &str = "BETA";
@@ -104,10 +97,6 @@ pub fn run() {
                     window.open_devtools();
                 }
             }
-
-            let fl_path = get_falcon_launcher_directory();
-            let jdk_path = directory_manager::get_launcher_java_directory();
-
             spawn(async {
                 create_necessary_dirs().await;
 

@@ -3,19 +3,18 @@ use crate::models::downloader::Manifest;
 use crate::services::directory_manager::{get_versions_directory, version_manifest_directory};
 use crate::services::game_downloader::download_file;
 use crate::models::mirror::Mirror;
-use crate::models::error::Void;
+use crate::models::error::{json_read_err, Returns, Void};
 use crate::models::versions::MinecraftVersion;
 
-pub async fn load_version_manifest(mirror: &Mirror) -> Option<Manifest> {
-    // let url = "https://launchermeta.mojang.com/mc/game/version_manifest.json";
+pub async fn load_version_manifest(mirror: &Mirror) -> Returns<Manifest> {
     download_version_manifest(mirror).await;
     load_version_manifest_local()
 }
 
-pub fn load_version_manifest_local() -> Option<Manifest> {
+pub fn load_version_manifest_local() -> Returns<Manifest> {
     let path = version_manifest_directory();
     let text = std::fs::read_to_string(&path);
-    serde_json::from_str(text.unwrap().as_str()).expect("Failed to parse json")
+    serde_json::from_str(text.unwrap().as_str()).map_err(|x| json_read_err(x))
 }
 pub async fn reload_installed_versions() {
     let versions_dir = get_versions_directory().read_dir().unwrap();
@@ -38,12 +37,13 @@ pub async fn reload_installed_versions() {
 
 }
 
-pub async fn initialize_versions(){
+pub async fn initialize_versions() -> Void{
     let mut global = GLOBAL_CACHE.lock().await;
-    let manifest = load_version_manifest_local().expect("Failed to parse the manifest version");
+    let manifest = load_version_manifest_local()?;
     for v in &manifest.versions {
         global.versions.push(MinecraftVersion::from_id(v.id.clone()));
     }
+    Ok(())
 }
 pub async fn download_version_manifest(mirror: &Mirror) -> Void {
     let url = mirror.parse_url(&"https://launchermeta.mojang.com/mc/game/version_manifest.json".to_string());

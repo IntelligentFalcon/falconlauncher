@@ -6,10 +6,8 @@ use crate::services::directory_manager::{
     get_minecraft_directory, get_natives_folder, get_temp_directory, get_version_directory,
     get_versions_directory,
 };
-use crate::services::utils::{
-    update_download, update_download_bar, update_download_status,
-};
 use crate::services::utils::{convert_to_full_path, convert_to_full_url, verify_file_existence};
+use crate::services::utils::{update_download, update_download_bar, update_download_status};
 use crate::services::version_manager::load_version_manifest;
 
 use crate::models::config::Config;
@@ -19,28 +17,26 @@ use crate::models::downloader::{
     MinecraftManifestVersion, Rule, VersionLoader,
 };
 use crate::models::error::{
-    download_error, io_err_permission, io_err_read_file, json_read_err, launcher_file_not_found,
-    launcher_manifest_not_found, request_unknown_err, Returns, Void,
+    download_error, io_err_permission, io_err_read_file, json_read_err
+    , request_unknown_err, Returns, Void,
 };
 use crate::models::fabric::{FabricInstaller, FabricLoader, FabricMinecraftVersion};
 use crate::models::logger::{info_launcher, LogLine};
 use crate::models::mirror::{mirror_from, Mirror};
 use crate::models::platform::get_current_os;
 use crate::services::jdk_manager::{download_java, get_java};
+use crate::GLOBAL_CACHE;
 use std::collections::HashMap;
 use std::fs;
 use std::fs::{create_dir_all, exists, set_permissions, File};
 use std::io::{BufRead, BufReader, Write};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
-use sha1::{Digest, Sha1};
 use tauri::async_runtime::block_on;
 use tauri::AppHandle;
-use tokio::io::AsyncReadExt;
 use tokio::sync::mpsc::UnboundedSender;
 use zip::ZipArchive;
 use zip_extract::extract;
-use crate::GLOBAL_CACHE;
 
 pub async fn download_version(
     version: &MinecraftVersion,
@@ -50,18 +46,8 @@ pub async fn download_version(
 ) -> Void {
     let id = &version.id;
     let mirror = mirror_from(&cfg.download_settings.mirror);
-    let manifest = load_version_manifest(&mirror).await;
-    match manifest {
-        None => {
-            return Err(launcher_manifest_not_found());
-        }
-        Some(val) => {
-            let res = download_from_manifest(id, &val, &mirror).await;
-            if res.is_err() {
-                return Err(launcher_file_not_found(format!("{id}.json")));
-            }
-        }
-    }
+    let manifest = load_version_manifest(&mirror).await?;
+    download_from_manifest(id, &manifest, &mirror).await?;
     let content =
         fs::read_to_string(PathBuf::from(version.get_json())).map_err(|x| io_err_read_file(x))?;
     let json: MinecraftManifestVersion =
@@ -149,28 +135,6 @@ async fn download_assets(
     Ok(())
 }
 
-
-/// Verifies if a file matches the expected SHA-1 hash.
-/// The `expected_sha1` parameter can be either uppercase or lowercase.
-pub async fn verify_file_hash<P: AsRef<Path>>(path: P, expected_sha1: &str) -> tokio::io::Result<bool> {
-    let mut file = tokio::fs::File::open(path).await?;
-    let mut hasher = Sha1::new();
-    let mut buffer = [0u8; 8192]; // 8KB chunks
-
-    loop {
-        let bytes_read = file.read(&mut buffer).await?;
-        if bytes_read == 0 {
-            break;
-        }
-        hasher.update(&buffer[..bytes_read]);
-    }
-
-    let result = hasher.finalize();
-    let calculated_sha1 = hex::encode(result);
-
-    // Case-insensitive comparison
-    Ok(calculated_sha1.eq_ignore_ascii_case(expected_sha1))
-}
 pub async fn download_file_if_not_exists(path: &PathBuf, url: String, size: u64) -> Void {
     if !verify_file_existence(&path.to_str().unwrap().to_string(), size) {
         download_file(url, path.to_str().unwrap().to_string()).await?;
