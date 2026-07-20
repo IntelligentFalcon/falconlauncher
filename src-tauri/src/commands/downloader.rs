@@ -1,10 +1,15 @@
 use crate::models::downloader::{VersionInfo, VersionLoader};
-use crate::models::error::Returns;
+use crate::models::error::{Returns, Void};
 use crate::models::versions::VersionBase::{FABRIC, FORGE};
-use crate::models::versions::{VersionBase, VersionCategory, VersionType};
-use crate::services::game_downloader::{get_available_fabric_versions, get_available_forge_versions};
-use crate::services::version_manager;
-use tauri::{command, AppHandle};
+use crate::models::versions::{MinecraftVersion, VersionBase, VersionCategory, VersionType};
+use crate::services::game_downloader::{download_fabric, download_forge_version, get_available_fabric_versions, get_available_forge_versions};
+use crate::services::{game_downloader, version_manager};
+use tauri::{command, AppHandle, State};
+use tauri_plugin_dialog::DialogExt;
+use crate::{AppState, GLOBAL_CACHE};
+use crate::models::logger::info_launcher;
+use crate::models::mirror::mirror_from;
+use crate::services::utils::update_download_status;
 
 #[command]
 pub async fn get_categorized_versions(
@@ -109,4 +114,86 @@ pub async fn get_categorized_versions(
     });
 
     Ok(result)
+}
+
+#[command]
+pub async fn download_version(
+    app_handle: AppHandle,
+    state: State<'_, AppState>,
+    version_loader: VersionLoader,
+) -> Void {
+    let version_id = version_loader.get_installed_id();
+    let cfg = &state.config.read().await;
+    let mir = mirror_from(&cfg.download_settings.mirror);
+    let logger = &state.log_tx;
+    logger.send(info_launcher(format!(
+        "DEBUG: Downloading version {} from 9craft mirror",
+        version_loader.id
+    )));
+    if version_loader.base == FORGE {
+        logger.send(info_launcher(format!(
+            "DEBUG: Forge version detected! {} installing it rn!",
+            version_loader.id
+        )));
+        download_forge_version(&version_loader.id, &app_handle, logger, &mir).await?;
+    };
+    if version_loader.base == FABRIC {
+        logger.send(info_launcher(format!(
+            "DEBUG: Fabric version detected! {} installing it rn!",
+            version_loader.id
+        )));
+        download_fabric(&version_loader, logger, &mir).await?;
+    }
+
+    let version = MinecraftVersion::from_id(version_id);
+    let inherited_version = version.get_inherited();
+    update_download_status("Downloading version...", &app_handle);
+    let cfg = &state.config.read().await;
+    game_downloader::download_version(&version, &app_handle, logger, &*cfg).await?;
+    if inherited_version.id != version.id {
+        game_downloader::download_version(&inherited_version, &app_handle, logger, &*cfg).await?;
+    }
+    update_download_status("", &app_handle);
+    app_handle
+        .dialog()
+        .message("Successfully installed the selected version you can now play it")
+        .title("Done!")
+        .blocking_show();
+    let mut global = GLOBAL_CACHE.lock().await;
+    global.versions.push(version);
+    Ok(())
+}
+
+/// Gives the available versions to download
+#[command]
+pub async fn get_versions() -> Returns<Vec<String>> {
+    let global = GLOBAL_CACHE.lock().await;
+    Ok(global
+        .versions
+        .iter()
+        .map(|x| x.id.to_string())
+        .clone()
+        .collect())
+}
+
+#[command]
+pub async fn get_non_installed_versions() -> Returns<Vec<String>> {
+    let global = GLOBAL_CACHE.lock().await;
+    let versions = global.versions.clone();
+    Ok(versions
+        .iter()
+        .filter(|x| !x.is_installed())
+        .map(|x| x.id.clone())
+        .collect())
+}
+
+#[command]
+pub async fn get_installed_versions() -> Returns<Vec<String>> {
+    let global = GLOBAL_CACHE.lock().await;
+    let versions = global.versions.clone();
+    Ok(versions
+        .iter()
+        .filter(|x| x.is_installed())
+        .map(|x| x.id.clone())
+        .collect())
 }

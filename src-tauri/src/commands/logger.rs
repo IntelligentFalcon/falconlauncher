@@ -1,5 +1,5 @@
-use tauri::State;
-use crate::{AppState};
+use tauri::{command, State};
+use crate::AppState;
 use crate::models::error::{launcher_error, launcher_log_history_not_found, Returns, Void};
 use crate::models::logger::LogLine;
 
@@ -33,4 +33,11 @@ pub async fn clear_log_history_channel(state: State<'_, AppState>, channel: Stri
         }
     }
     Err(launcher_error("Failed to read log history buffer".to_string(),140)) // TODO: Adding a propper error for handling this
+}
+
+/// LINUX Debugger for the js side. use the developer console if you are on Windows build to check logs
+#[command]
+pub async fn debug(text: String) -> Void {
+    println!("{}", text);
+    Ok(())
 }

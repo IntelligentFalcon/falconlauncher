@@ -3,7 +3,6 @@ use crate::models::mirror::mirror_from;
 use crate::models::platform::get_current_os;
 use crate::models::profiles::get_profile;
 use crate::services::directory_manager::*;
-use crate::services::game_downloader::{Global};
 use crate::services::jdk_manager::get_java;
 use crate::services::utils;
 use crate::services::utils::{extend_once, linux_java_permission_fix, vec_to_string};
@@ -14,6 +13,7 @@ use std::path::{PathBuf, MAIN_SEPARATOR_STR};
 use std::process::{Command, Stdio};
 use tauri::{AppHandle, Manager};
 use log::info;
+use crate::Global;
 use crate::models::logger::{error, info};
 
 

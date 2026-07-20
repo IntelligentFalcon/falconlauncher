@@ -33,33 +33,14 @@ use std::fs::{create_dir_all, exists, set_permissions, File};
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
-use std::sync::LazyLock;
 use sha1::{Digest, Sha1};
 use tauri::async_runtime::block_on;
 use tauri::AppHandle;
 use tokio::io::AsyncReadExt;
 use tokio::sync::mpsc::UnboundedSender;
-use tokio::sync::Mutex;
 use zip::ZipArchive;
 use zip_extract::extract;
-
-pub static GLOBAL_CACHE: LazyLock<Mutex<Global>> = LazyLock::new(|| {
-    Mutex::new(Global {
-        forge: None,
-        fabric_loaders: None,
-        fabric_installers: None,
-        fabric_mc_versions: None,
-        versions: Vec::new(),
-    })
-});
-
-pub struct Global {
-    pub forge: Option<HashMap<String, Vec<String>>>,
-    pub fabric_loaders: Option<Vec<FabricLoader>>,
-    pub fabric_installers: Option<Vec<FabricInstaller>>,
-    pub fabric_mc_versions: Option<Vec<FabricMinecraftVersion>>,
-    pub versions: Vec<MinecraftVersion>,
-}
+use crate::GLOBAL_CACHE;
 
 pub async fn download_version(
     version: &MinecraftVersion,

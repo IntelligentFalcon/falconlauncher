@@ -1,6 +1,6 @@
 use tauri::{command, State};
 use crate::AppState;
-use crate::models::config::Bool;
+use crate::models::config::{Bool, Config};
 use crate::models::error::{Returns, Void};
 
 #[command]
@@ -54,6 +54,36 @@ pub async fn set_exit_on_launch(state: State<'_, AppState>, toggle: bool) -> Voi
 #[command]
 pub async fn save(state: State<'_, AppState>) -> Void {
     let cfg = state.config.write().await;
-    cfg.write_to_file();
+    cfg.write_to_file()?;
     Ok(())
 }
+
+#[command]
+pub async fn get_total_ram() -> Returns<u64> {
+    let ram = sys_info::mem_info().unwrap();
+    Ok(ram.total)
+}
+
+#[command]
+pub async fn set_config(state: State<'_, AppState>, config: Config) -> Void {
+    let mut cfg = state.config.write().await;
+    cfg.launch_options = config.launch_options;
+    cfg.launcher_settings = config.launcher_settings;
+    cfg.write_to_file()?;
+    Ok(())
+}
+
+#[command]
+pub async fn get_username(state: State<'_, AppState>) -> Returns<String> {
+    let cfg = state.config.read().await;
+    Ok(cfg.launch_options.username.clone())
+}
+
+#[command]
+pub async fn set_username(state: State<'_, AppState>, username: String) -> Void {
+    let mut cfg = state.config.write().await;
+    cfg.launch_options.username = username;
+
+    Ok(())
+}
+
