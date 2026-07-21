@@ -1,20 +1,17 @@
-use crate::models::error::{download_error, io_err_create_file, Returns, Void};
+use crate::models::error::{download_error, io_err_create_file, todo_err, Returns, Void};
 use crate::models::java::Java;
 use crate::models::mirror::Mirror;
 use crate::models::platform::{get_current_os, get_current_os_with_architecture};
 use crate::services::directory_manager::{
-    auto_detect_javas, get_java_dir, get_launcher_java_directory,
+    get_java_dir,
 };
 use crate::services::game_downloader::download_file_if_not_exists;
 use crate::services::utils::{load_json_url};
 use serde_json::Value;
 use std::fs;
-use std::fs::{create_dir_all, remove_file, File};
-use std::io::Write;
-use std::path::{PathBuf};
+use std::fs::{create_dir_all};
 use tokio::sync::mpsc::UnboundedSender;
 use tracing::info;
-use zip_extract::extract;
 use crate::models::logger::LogLine;
 
 pub fn get_java(java: String) -> Returns<Java> {
@@ -23,7 +20,7 @@ pub fn get_java(java: String) -> Returns<Java> {
 }
 pub async fn download_java(java: &String, version: &String,logger: &UnboundedSender<LogLine>, mirror: &Mirror) -> Void {
     let runtime_dir = get_java_dir().join(&java);
-    // if mirror.is_connected().await {
+    if mirror.is_connected().await {
         let url = mirror.parse_url(&"https://launchermeta.mojang.com/v1/products/java-runtime/2ec0cc96c44e5a76b9c8b7c39df7210883d12871/all.json".to_string());
         let current_os = get_current_os_with_architecture();
         let json: Value = load_json_url(&url.to_string()).await.ok_or(0)
@@ -62,7 +59,10 @@ pub async fn download_java(java: &String, version: &String,logger: &UnboundedSen
                 create_dir_all(runtime_dir.join(k)).expect(format!("error on {}",  runtime_dir.display()).as_str());
             }
         }
-    // }
+    }
+    else {
+        return Err(todo_err("Mirror is not connected to download"));
+    }
     if !runtime_dir.join("release").exists() {
         fs::write(runtime_dir.join("release"),format!("JAVA_VERSION=\"{}\"", version)).map_err(|x| io_err_create_file("release".to_string(),x))?;
     }

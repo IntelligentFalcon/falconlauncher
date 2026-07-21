@@ -52,7 +52,8 @@ pub async fn download_version(
         fs::read_to_string(PathBuf::from(version.get_json())).map_err(|x| io_err_read_file(x))?;
     let json: MinecraftManifestVersion =
         serde_json::from_str(&content).map_err(|x| json_read_err(x))?;
-    let java_version = json.java_version.unwrap();
+    let java_version = &json.java_version.unwrap();
+
     download_java(
         &java_version.component.to_string(),
         &java_version.major_version.to_string(),
@@ -62,6 +63,7 @@ pub async fn download_version(
     .await?;
 
     download_libraries(&json.libraries, &id, app_handle, logger, &mirror).await?;
+
     if let Some(downloads) = &json.downloads {
         if let Some(client_download) = downloads.get("client") {
             logger.send(info_launcher("downloading client".to_string()));
@@ -149,8 +151,7 @@ async fn download_from_manifest(id: &String, manifest: &Manifest, mir: &Mirror) 
         .find(|v| &v.id == id)
         .expect(format!("Couldn't find version in manifest. {id}").as_str());
     let version_url = mir.parse_url(&version.url);
-    download_file(
-        version_url.to_string(),
+    download_file(version_url.to_string(),
         get_version_directory(&id)
             .join(format!("{}.json", id))
             .to_str()

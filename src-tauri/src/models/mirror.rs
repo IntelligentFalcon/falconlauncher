@@ -1,11 +1,13 @@
+use crate::models::error::{todo_err, Returns, Void};
 use crate::services::directory_manager::get_mirrors_dir;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::time::Duration;
+use crate::commands::mirrors::get_available_mirrors;
 
-#[derive(Debug,Deserialize,Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Mirror {
     pub name: String,
     pub description: String,
@@ -14,22 +16,21 @@ pub struct Mirror {
 impl Mirror {
     pub fn parse_url(&self, url: &String) -> String {
         let mut url = url.clone();
-
         if url.to_lowercase().starts_with("http://") {
             url.insert("http".len(), 's');
         }
-        let https_less_url =if url.to_lowercase().starts_with("https://"){
+
+        let https_less_url = if url.to_lowercase().starts_with("https://") {
             &url["https://".len()..].trim().to_string()
         } else {
             &url
         };
-        let domain = https_less_url.split("/")
-            .next()
-            .unwrap().to_lowercase();
+
+        let domain = https_less_url.split("/").next().unwrap().to_lowercase();
 
         let https_domain = format!("https://{domain}/");
 
-        if  !self.maps.contains_key(https_domain.as_str()) {
+        if !self.maps.contains_key(https_domain.as_str()) {
             return url.clone();
         }
         if self.maps.contains_key(https_domain.as_str()) {
@@ -38,7 +39,6 @@ impl Mirror {
             url.clone()
         }
     }
-    /// FIXME: CHANGE THE TEST METHOD TO PING
     pub async fn is_connected(&self) -> bool {
         let mut t = true;
         for url in self.maps.values() {
@@ -50,14 +50,18 @@ impl Mirror {
             if req.is_err() {
                 println!("ERR");
                 t = false;
+                break;
             }
-            break;
         }
         t
     }
-    pub fn write(&self) {
+    pub fn write(&self) -> Void {
         let content = serde_json::to_string(&self).unwrap();
-        fs::write(get_mirrors_dir().join(format!("{}.json", self.name.to_lowercase())),content).expect("failed to write");
+        fs::write(
+            get_mirrors_dir().join(format!("{}.json", self.name.to_lowercase())),
+            content,
+        )
+        .map_err(|x| todo_err("file write filed"))
     }
 }
 pub fn mirror(
@@ -69,20 +73,18 @@ pub fn mirror(
     resources: String,
     libraries: String,
 ) -> Mirror {
-    let mut maps = HashMap::new();
-    maps.insert(
-        "https://launchermeta.mojang.com/".to_string(),
-        launcher_meta,
-    );
-
-    maps.insert("https://piston-meta.mojang.com/".to_string(), piston_meta);
-    maps.insert("https://piston-data.mojang.com/".to_string(), piston_data);
-    maps.insert(
-        "https://resources.download.minecraft.net/".to_string(),
-        resources,
-    );
-    maps.insert("https://libraries.minecraft.net/".to_string(), libraries);
-    Mirror { name, description, maps }
+    let maps = HashMap::from([
+        ("https://launchermeta.mojang.com/".to_string(), launcher_meta),
+        ("https://piston-meta.mojang.com/".to_string(), piston_meta),
+        ("https://piston-data.mojang.com/".to_string(), piston_data),
+        ("https://resources.download.minecraft.net/".to_string(), resources),
+        ("https://libraries.minecraft.net/".to_string(), libraries),
+    ]);
+    Mirror {
+        name,
+        description,
+        maps,
+    }
 }
 pub fn ninecraft_mirror() -> Mirror {
     mirror(
@@ -108,15 +110,36 @@ pub fn mojang_mirror() -> Mirror {
     )
 }
 
+pub fn list_mirrors() -> Returns<Vec<Mirror>> {
+    let mirrors_dir = get_mirrors_dir();
+    let mut vec = Vec::new();
+    for entry in mirrors_dir.read_dir().unwrap() {
+        if let Ok(entry) = entry {
+            if let Ok(content) = fs::read_to_string(get_mirrors_dir().join(entry.file_name())) {
+                if let Ok(value) = serde_json::from_str::<Mirror>(content.as_str()) {
+                    vec.push(value);
+                }
+            }
+        }
+    }
+    if vec.iter().find(|x| x.name == mojang_mirror().name).is_none() {
+        vec.push(mojang_mirror())
+    }
+    Ok(vec)
 
-// pub fn mirror_from_json(json: Value) -> Returns<Mirror>{
-//     let mirror: Mirror = serde_json::from_value;
-// }
-
+}
 pub fn mirror_from(name: &String) -> Mirror {
-    if name == "9craft" {
-        ninecraft_mirror()
-    } else {
-        mojang_mirror()
+    let mirrors = list_mirrors();
+    match mirrors {
+        Ok(val) => {
+            if val.iter().filter(|x| x.name == *name).count() == 0 {
+                mojang_mirror()
+            } else {
+                val.iter().find(|x| x.name == *name).unwrap().clone()
+            }
+        },
+        Err(_) => {
+            mojang_mirror()
+        }
     }
 }

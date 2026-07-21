@@ -1,3 +1,4 @@
+use std::fmt::format;
 use serde::{Deserialize, Serialize};
 use std::io::Error;
 use std::path::PathBuf;
@@ -129,7 +130,7 @@ pub fn download_error(message: String) -> EmptyError {
 pub fn todo_err(comment: &str) -> EmptyError{
     InvokeError {
         code: 999999u32,
-        message: "TODO Error: not implemented YET.".to_string(),
+        message: format!("TODO Error: not implemented YET.\n{comment}"),
         data: None,
     }
 }
