@@ -124,3 +124,12 @@ pub fn request_unknown_err(p0: reqwest::Error) -> EmptyError {
 pub fn download_error(message: String) -> EmptyError {
     request_error(message, 301)
 }
+
+
+pub fn todo_err(comment: &str) -> EmptyError{
+    InvokeError {
+        code: 999999u32,
+        message: "TODO Error: not implemented YET.".to_string(),
+        data: None,
+    }
+}
