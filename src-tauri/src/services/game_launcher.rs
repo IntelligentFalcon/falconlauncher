@@ -1,4 +1,7 @@
-use crate::models::error::{launcher_launch_args_not_found, launcher_version_not_found, Returns, Void};
+use crate::models::error::{
+    launcher_launch_args_not_found, launcher_version_not_found, Returns, Void,
+};
+use crate::models::logger::{error, info};
 use crate::models::mirror::mirror_from;
 use crate::models::platform::get_current_os;
 use crate::models::profiles::get_profile;
@@ -7,15 +10,13 @@ use crate::services::jdk_manager::get_java;
 use crate::services::utils;
 use crate::services::utils::{extend_once, linux_java_permission_fix, vec_to_string};
 pub use crate::AppState;
+use crate::Global;
+use log::info;
 use serde_json::Value;
 use std::io::{BufRead, BufReader};
 use std::path::{PathBuf, MAIN_SEPARATOR_STR};
 use std::process::{Command, Stdio};
 use tauri::{AppHandle, Manager};
-use log::info;
-use crate::Global;
-use crate::models::logger::{error, info};
-
 
 pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &Global) -> Void {
     info!("DEBUG: Starting game in {version} ");
@@ -40,7 +41,6 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
 
     let version_id_err_clone = version_id.clone();
     let version_id_out_clone = version_id.clone();
-
 
     let inherited_id = &inherited_version.id;
     let username = &config.launch_options.username;
@@ -84,7 +84,8 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
     let jvm_args = get_jvm_args(&json);
     let run_args_iter_inherited = get_launch_args(&inherited_json)?;
     let run_args_iter_sum = extend_once(run_args_iter, run_args_iter_inherited);
-    let run_args = run_args_iter_sum
+
+    let mut run_args = run_args_iter_sum
         .iter()
         .map(|v| {
             v.replace("${auth_player_name}", username)
@@ -102,6 +103,19 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
                 .replace("${auth_xuid}", "0")
         })
         .collect::<Vec<String>>();
+
+    if json.pointer("/logging/client/argument").is_some()
+        && json.pointer("/logging/client/file/id").is_some()
+    {
+        let logger_path =
+            version_directory.join(json["logging"]["client"]["file"]["id"].as_str().unwrap());
+        run_args.push(
+            json["logging"]["client"]["argument"]
+                .as_str()
+                .unwrap()
+                .replace("{path}", logger_path.to_str().unwrap()),
+        );
+    }
     let separator = if get_current_os() == "windows" {
         ";"
     } else {
@@ -111,29 +125,36 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
     while libraries_str.contains("\\") {
         libraries_str = libraries_str.replace("\\", MAIN_SEPARATOR_STR);
     }
-    // println!("{}", libraries_str.to_string());
     linux_java_permission_fix(&java);
 
-    let mut child =
-    if !jvm_args.is_empty() {
+    let mut child = if !jvm_args.is_empty() {
         let mut child_cmd = &mut Command::new(java.get_bin_file());
         for arg in jvm_args.clone() {
-            child_cmd  = child_cmd.arg(arg.replace("${natives_directory}", get_natives_folder(&version_id.to_string()).to_str().unwrap())
-                .replace("${launcher_name}", &state.launcher_details.name).replace("${launcher_version}", &state.launcher_details.version)
-                .replace("${classpath}", format!("{}{}{}", class_path, separator, libraries_str).as_str()))
-
+            child_cmd = child_cmd.arg(
+                arg.replace(
+                    "${natives_directory}",
+                    get_natives_folder(&version_id.to_string())
+                        .to_str()
+                        .unwrap(),
+                )
+                .replace("${launcher_name}", &state.launcher_details.name)
+                .replace("${launcher_version}", &state.launcher_details.version)
+                .replace(
+                    "${classpath}",
+                    format!("{}{}{}", class_path, separator, libraries_str).as_str(),
+                ),
+            )
         }
-        // println!("{:?}", child_cmd.get_args());
-            child_cmd.arg(main_class)
+        child_cmd
+            .arg(main_class)
             .args(&run_args)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()
             .expect("Failed to spawn java process")
-    }else {
+    } else {
         let mut cmd = Command::new(&java.get_bin_file());
-        cmd
-            .arg(format!("-Djava.library.path={}", natives))
+        cmd.arg(format!("-Djava.library.path={}", natives))
             .arg(format!("-Xms{xms}"))
             .arg(format!("-Xmx{xmx}"))
             .current_dir(&game_directory)
@@ -144,9 +165,7 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
         apply_dedicated_gpu_env(&mut cmd);
-        cmd
-            .spawn()
-            .expect("Failed to spawn java process")
+        cmd.spawn().expect("Failed to spawn java process")
     };
 
     let stdout = child.stdout.take().expect("Failed to open stdout");
@@ -154,7 +173,9 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
     std::thread::spawn(move || {
         let reader = BufReader::new(stderr);
         for line in reader.lines().flatten() {
-            tx_err.send(error(line, version_id_err_clone.clone())).unwrap();
+            tx_err
+                .send(error(line, version_id_err_clone.clone()))
+                .unwrap();
         }
     });
 
@@ -163,7 +184,9 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
         let reader = BufReader::new(stdout);
         for line in reader.lines() {
             if let Ok(line) = line {
-                tx_out.send(info(line, version_id_out_clone.clone())).unwrap();
+                tx_out
+                    .send(info(line, version_id_out_clone.clone()))
+                    .unwrap();
             }
         }
     });
@@ -188,8 +211,7 @@ pub fn get_jvm_args(json: &Value) -> Vec<String> {
             for rule in jvm_rules {
                 if let Some(arg_str) = rule.as_str() {
                     vec.push(arg_str.to_string());
-                }
-                else if let Some(obj) = rule.as_object() {
+                } else if let Some(obj) = rule.as_object() {
                     if let Some(value) = obj.get("value") {
                         if utils::can_apply_rule(obj) {
                             match value {
@@ -212,22 +234,22 @@ pub fn get_jvm_args(json: &Value) -> Vec<String> {
     vec
 }
 pub fn get_launch_args(json: &Value) -> Returns<Vec<String>> {
-        if json.get("minecraftArguments").is_none() {
-            Ok(json["arguments"]["game"]
-                .as_array()
-                .unwrap()
-                .iter()
-                .filter(|v| v.is_string())
-                .map(|v| v.as_str().unwrap().to_string())
-                .collect::<Vec<String>>())
-        } else if !json.get("minecraftArguments").is_none() {
-            Ok(json["minecraftArguments"]
-                .as_str()
-                .unwrap()
-                .split(" ")
-                .map(|v| v.to_string())
-                .collect::<Vec<String>>())
-        } else {
-            Err(launcher_launch_args_not_found())
-        }
+    if json.get("minecraftArguments").is_none() {
+        Ok(json["arguments"]["game"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|v| v.is_string())
+            .map(|v| v.as_str().unwrap().to_string())
+            .collect::<Vec<String>>())
+    } else if !json.get("minecraftArguments").is_none() {
+        Ok(json["minecraftArguments"]
+            .as_str()
+            .unwrap()
+            .split(" ")
+            .map(|v| v.to_string())
+            .collect::<Vec<String>>())
+    } else {
+        Err(launcher_launch_args_not_found())
     }
+}

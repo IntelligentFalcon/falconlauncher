@@ -48,10 +48,8 @@ pub async fn download_version(
     let mirror = mirror_from(&cfg.download_settings.mirror);
     let manifest = load_version_manifest(&mirror).await?;
     download_from_manifest(id, &manifest, &mirror).await?;
-    let content =
-        fs::read_to_string(PathBuf::from(version.get_json())).map_err(|x| io_err_read_file(x))?;
-    let json: MinecraftManifestVersion =
-        serde_json::from_str(&content).map_err(|x| json_read_err(x))?;
+    let content = fs::read_to_string(PathBuf::from(version.get_json())).map_err(|x| io_err_read_file(x))?;
+    let json: MinecraftManifestVersion = serde_json::from_str(&content).map_err(|x| json_read_err(x))?;
     let java_version = &json.java_version.unwrap();
 
     download_java(
