@@ -1,15 +1,15 @@
 use crate::models::error::{io_err_buffer_read, io_err_read_file, Returns};
+use crate::models::java::Java;
 use crate::models::platform::get_current_os;
 use crate::services::directory_manager::get_libraries_directory;
-use reqwest::Client;
 use serde_json::{Map, Value};
 use sha2::{Digest, Sha256};
 use std::fs::File;
 use std::io::{BufReader, Read};
 use std::path::Path;
-use std::time::Duration;
 use tauri::{AppHandle, Emitter};
-use crate::models::java::Java;
+use uuid::Version::Md5;
+use uuid::{Builder, Uuid};
 
 fn calculate_file_sha1<P: AsRef<Path>>(path: P) -> Returns<String> {
     let file = File::open(path).map_err(|e| io_err_read_file(e))?;
@@ -18,7 +18,9 @@ fn calculate_file_sha1<P: AsRef<Path>>(path: P) -> Returns<String> {
     let mut buffer = [0; 8192]; // Read in 8KB chunks
 
     loop {
-        let bytes_read = reader.read(&mut buffer).map_err(|x| io_err_buffer_read(x))?;
+        let bytes_read = reader
+            .read(&mut buffer)
+            .map_err(|x| io_err_buffer_read(x))?;
         if bytes_read == 0 {
             break;
         }
@@ -44,7 +46,7 @@ pub fn verify_file_existence(path_str: &String, expected_size: u64) -> bool {
 }
 
 pub async fn load_json_url(url: &String) -> Option<Value> {
-    let result = reqwest::get(url). await.unwrap();
+    let result = reqwest::get(url).await.unwrap();
     let text = result.text().await.unwrap_or(String::new());
     Some(serde_json::from_str(text.as_str()).expect("JSON File isn't well formatted."))
 }
@@ -117,7 +119,10 @@ pub fn can_apply_rule(rule_obj: &Map<String, Value>) -> bool {
 
     for rule in rules {
         if let Some(rule_map) = rule.as_object() {
-            let action = rule_map.get("action").and_then(|a| a.as_str()).unwrap_or("allow");
+            let action = rule_map
+                .get("action")
+                .and_then(|a| a.as_str())
+                .unwrap_or("allow");
             let applies = check_os_rule(rule_map);
             if applies {
                 match action {
@@ -145,7 +150,6 @@ pub fn check_os_rule(rule_map: &Map<String, Value>) -> bool {
         return current_os.to_string() == name.to_string();
     }
     true
-
 }
 
 pub fn update_download_bar(progress: i64, app_handle: &AppHandle) {
@@ -160,7 +164,7 @@ pub fn update_download(progress: i64, text: &str, app_handle: &AppHandle) {
 }
 
 /// Fixes permission issues related to java when using linux.
-pub fn linux_java_permission_fix(java: &Java){
+pub fn linux_java_permission_fix(java: &Java) {
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
@@ -169,7 +173,10 @@ pub fn linux_java_permission_fix(java: &Java){
             let current_mode = permissions.mode();
 
             if current_mode & 0o111 == 0 {
-                println!("Adding execute permission to Java binary: {:?}", &java.get_bin_file());
+                println!(
+                    "Adding execute permission to Java binary: {:?}",
+                    &java.get_bin_file()
+                );
                 permissions.set_mode(current_mode | 0o111);
                 std::fs::set_permissions(&java.get_bin_file(), permissions)
                     .expect("Failed to set execute permissions on Java binary");
@@ -178,4 +185,10 @@ pub fn linux_java_permission_fix(java: &Java){
             panic!("Java binary not found at: {:?}", &java.get_bin_file());
         }
     }
+}
+
+pub fn uuid_from_username(username: &str) -> Uuid {
+    let input = format!("OfflinePlayer:{}", username);
+    let hash = md5::compute(input.as_bytes());
+    Builder::from_md5_bytes(*hash).into_uuid()
 }

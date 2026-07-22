@@ -6,6 +6,7 @@ use tauri::async_runtime::block_on;
 use tracing::info;
 use falcon_lib::models::mirror::{mojang_mirror, ninecraft_mirror};
 use falcon_lib::services::directory_manager::auto_detect_javas;
+use falcon_lib::services::utils::uuid_from_username;
 
 #[allow(unused_imports)]
 fn main() {

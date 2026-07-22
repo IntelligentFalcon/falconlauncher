@@ -49,5 +49,7 @@ chrono = "0.4.41"
 lazy_static = "1.5.0"
 sha1 = "0.10.6"
 hex = "0.4.3"
+md5 = "*"
+
 [target."cfg(any(target_os = \"macos\", windows, target_os = \"linux\"))".dependencies]
 tauri-plugin-single-instance = { version = "2.0.0", features = ["deep-link"] }

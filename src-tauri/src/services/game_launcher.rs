@@ -24,6 +24,7 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
     let ver_res = versions.next();
     let state = &app_handle.state::<AppState>();
     let config = state.config.read().await;
+    let launch_options = &config.launch_options;
     let tx_err = state.log_tx.clone();
     let tx_out = state.log_tx.clone();
     let mirror = mirror_from(&config.download_settings.mirror);
@@ -43,9 +44,9 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
     let version_id_out_clone = version_id.clone();
 
     let inherited_id = &inherited_version.id;
-    let username = &config.launch_options.username;
+    let username = &launch_options.username;
     let profile = get_profile(username).unwrap();
-    let uid = profile.uuid;
+    let uid = profile.uuid();
     let version_directory = PathBuf::from(&inherited_version.version_path);
     let json: Value = version.load_json();
 
@@ -57,7 +58,7 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
     let game_directory = get_minecraft_directory().display().to_string();
     let asset_directory = get_assets_directory().display().to_string();
 
-    // This is a very old argument that is even removed in the newer versions but still required for launching past versions like 1.0
+    // This is a very old directory that is even removed in the newer versions but still required for launching older versions like 1.0
     let resources_directory = get_minecraft_directory()
         .join("resources")
         .display()
@@ -76,8 +77,8 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
         .unwrap()
         .to_string();
 
-    let xms = config.launch_options.ram_usage_min.to_string() + "M";
-    let xmx = config.launch_options.ram_usage_max.to_string() + "M";
+    let xms = launch_options.ram_usage_min.to_string() + "M";
+    let xmx = launch_options.ram_usage_max.to_string() + "M";
     let java = get_java(java_component.to_string())?;
     let typ = json["type"].as_str().unwrap();
     let run_args_iter = get_launch_args(&json)?;
@@ -127,8 +128,13 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
     }
     linux_java_permission_fix(&java);
 
-    let mut child = if !jvm_args.is_empty() {
-        let mut child_cmd = &mut Command::new(java.get_bin_file());
+    let mut child_cmd = &mut Command::new(java.get_bin_file());
+    child_cmd
+        .arg(format!("-Xms{xms}"))
+        .arg(format!("-Xmx{xmx}"));
+
+    apply_dedicated_gpu_env(&mut child_cmd);
+    if !jvm_args.is_empty() {
         for arg in jvm_args.clone() {
             child_cmd = child_cmd.arg(
                 arg.replace(
@@ -145,29 +151,19 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
                 ),
             )
         }
-        child_cmd
-            .arg(main_class)
-            .args(&run_args)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
-            .expect("Failed to spawn java process")
     } else {
-        let mut cmd = Command::new(&java.get_bin_file());
-        cmd.arg(format!("-Djava.library.path={}", natives))
-            .arg(format!("-Xms{xms}"))
-            .arg(format!("-Xmx{xmx}"))
+        child_cmd
+            .arg(format!("-Djava.library.path={}", natives))
             .current_dir(&game_directory)
             .arg("-cp")
-            .arg(format!("{}{}{}", class_path, separator, libraries_str))
-            .arg(main_class)
-            .args(&run_args)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped());
-        apply_dedicated_gpu_env(&mut cmd);
-        cmd.spawn().expect("Failed to spawn java process")
+            .arg(format!("{}{}{}", class_path, separator, libraries_str));
     };
-
+    child_cmd
+        .arg(main_class)
+        .args(&run_args)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    let mut child = child_cmd.spawn().expect("Failed to spawn java process");
     let stdout = child.stdout.take().expect("Failed to open stdout");
     let stderr = child.stderr.take().unwrap();
     std::thread::spawn(move || {
@@ -179,7 +175,6 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
         }
     });
 
-    // generate_stdout(&mut child);
     std::thread::spawn(move || {
         let reader = BufReader::new(stdout);
         for line in reader.lines() {
@@ -194,15 +189,10 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
     Ok(())
 }
 fn apply_dedicated_gpu_env(cmd: &mut Command) {
-    let os = get_current_os();
-
-    if os == "windows" {
-        cmd.env("SHIM_MCCOMPAT", "0x00000001");
-    } else if os == "linux" {
-        cmd.env("__NV_PRIME_RENDER_OFFLOAD", "1");
-        cmd.env("__GLX_VENDOR_LIBRARY_NAME", "nvidia");
-        cmd.env("DRI_PRIME", "1");
-    }
+    cmd.env("DRI_PRIME", "1");
+    cmd.env("__NV_PRIME_RENDER_OFFLOAD", "1");
+    cmd.env("__GLX_VENDOR_LIBRARY_NAME", "nvidia");
+    cmd.env("__VK_LAYER_NV_optimus", "NVIDIA_only");
 }
 pub fn get_jvm_args(json: &Value) -> Vec<String> {
     let mut vec = Vec::new();
@@ -242,14 +232,12 @@ pub fn get_launch_args(json: &Value) -> Returns<Vec<String>> {
             .filter(|v| v.is_string())
             .map(|v| v.as_str().unwrap().to_string())
             .collect::<Vec<String>>())
-    } else if !json.get("minecraftArguments").is_none() {
+    } else {
         Ok(json["minecraftArguments"]
             .as_str()
             .unwrap()
             .split(" ")
             .map(|v| v.to_string())
             .collect::<Vec<String>>())
-    } else {
-        Err(launcher_launch_args_not_found())
     }
 }

@@ -1,12 +1,13 @@
+use crate::models::error::{io_err_create_file, json_read_err, Void};
 use crate::services::directory_manager::get_profiles_file;
-use crate::models::error::{io_err_create_file, json_read_err, InvokeError};
+use crate::services::utils::uuid_from_username;
+use serde::{Deserialize, Serialize};
 use std::fs;
 use std::fs::{read_to_string, File};
 use uuid::Uuid;
-use serde::{Deserialize, Serialize};
 
-pub fn create_new_profile(username: String, online: bool) -> Result<(), InvokeError<()>> {
-    let mut profiles: Vec<Profile> = get_profiles();
+pub fn create_new_profile(username: String, online: bool) -> Void {
+    let mut profiles = get_profiles();
     let result = Ok(());
     if !get_profiles_file().exists() {
         let res = File::create(&get_profiles_file());
@@ -17,12 +18,10 @@ pub fn create_new_profile(username: String, online: bool) -> Result<(), InvokeEr
             ));
         }
     }
-    let uid = Uuid::new_v4();
-
-    profiles.push(Profile {
-        name: username,
-        online,
-        uuid: uid,
+    // TODO: implement online profile as well (Profile::Microsoft)
+    // if online { ...
+    profiles.push(ProfileNew::Offline {
+        username,
     });
 
     let json_string = serde_json::to_string_pretty(&profiles);
@@ -33,7 +32,7 @@ pub fn create_new_profile(username: String, online: bool) -> Result<(), InvokeEr
     result
 }
 
-pub fn get_profiles() -> Vec<Profile> {
+pub fn get_profiles() -> Vec<ProfileNew> {
     serde_json::from_str(
         read_to_string(get_profiles_file())
             .unwrap_or("".to_string())
@@ -42,13 +41,41 @@ pub fn get_profiles() -> Vec<Profile> {
     .unwrap_or(Vec::new())
 }
 
-pub fn get_profile(username: &String) -> Option<Profile> {
+pub fn get_profile(username: &String) -> Option<ProfileNew> {
     let un_clone = username.clone();
     let temp = get_profiles().clone();
-    let found = temp.iter().find(|x| x.name == un_clone).cloned();
+    let found = temp.iter().find(|x| x.username() == un_clone).cloned();
     found
 }
 
+#[derive(Serialize, Deserialize, Clone)]
+pub enum ProfileNew {
+    Microsoft {
+        username: String,
+        uuid: Uuid,
+        access_token: String,
+        refresh_token: String,
+    },
+    Offline {
+        username: String,
+    },
+}
+
+impl ProfileNew {
+    pub fn uuid(&self) -> Uuid {
+        match self {
+            ProfileNew::Microsoft { uuid, .. } => *uuid,
+            ProfileNew::Offline { username } => uuid_from_username(username),
+        }
+    }
+
+    pub fn username(&self) -> &str {
+        match self {
+            ProfileNew::Microsoft { username, .. } => username,
+            ProfileNew::Offline { username } => username,
+        }
+    }
+}
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Profile {
     pub name: String,

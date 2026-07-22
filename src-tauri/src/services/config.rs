@@ -14,28 +14,14 @@ pub fn load_config(cfg: &mut Config) {
 pub fn load() -> Config {
     initialize_configuration_file();
     let content = fs::read_to_string(get_config_directory());
-    let config: Config = serde_ini::from_str(content.unwrap().as_str()).unwrap_or(default_config());
+    let config: Config = serde_ini::from_str(content.unwrap().as_str()).unwrap_or(Config::default());
     
     config
-}
-pub fn default_config() -> Config {
-    Config {
-        launch_options: LaunchOptions {
-            username: "".to_string(),
-            ram_usage_max: 2048,
-            ram_usage_min: 1024,
-        },
-        launcher_settings: LauncherSettings {
-            language: "en".to_string(),
-            exit_on_launch: Bool::FALSE,
-        },
-        download_settings: DownloadSettings { mirror: "9craft".to_string() },
-    }
 }
 fn initialize_configuration_file() -> Void{
     if !get_config_directory().exists() {
         create_dir_all(get_config_directory().parent().unwrap()).unwrap();
-        return default_config().write_to_file();
+        return Config::default().write_to_file();
     }
     Ok(())
 }

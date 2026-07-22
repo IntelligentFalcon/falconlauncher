@@ -92,7 +92,7 @@ export function NavProfile() {
               </div>
               <div className="grid flex-1 text-start text-sm leading-tight">
                 <span className="truncate font-medium">{profile?.name}</span>
-                <span className="truncate text-xs">{profile?.uuid}</span>
+                {/*<span className="truncate text-xs">{profile?.uuid}</span>*/}
               </div>
               <HugeiconsIcon
                 icon={UnfoldMoreIcon}
@@ -112,7 +112,7 @@ export function NavProfile() {
                 </DropdownMenuLabel>
                 {profiles?.map((profile) => (
                   <DropdownMenuItem
-                    key={profile.uuid}
+                    key={profile.name}
                     onClick={() => setProfile(profile)}
                     className="gap-2 p-2"
                   >
@@ -167,7 +167,7 @@ export function NavProfile() {
             </FieldGroup>
             <DialogFooter>
               <DialogClose render={<Button variant="outline">Cancel</Button>} />
-              <Button type="submit">Create Profile</Button>
+              <Button type="submit" >Create Profile</Button>
             </DialogFooter>
           </form>
         </DialogContent>

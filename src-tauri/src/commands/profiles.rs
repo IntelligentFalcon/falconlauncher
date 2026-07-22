@@ -2,10 +2,10 @@ use tauri::{command, State};
 use crate::AppState;
 use crate::models::error::{Returns, Void};
 use crate::models::profiles;
-use crate::models::profiles::Profile;
+use crate::models::profiles::{Profile, ProfileNew};
 
 #[command]
-pub async fn get_profiles() -> Returns<Vec<Profile>> {
+pub async fn get_profiles() -> Returns<Vec<ProfileNew>> {
     Ok(profiles::get_profiles())
 }
 
