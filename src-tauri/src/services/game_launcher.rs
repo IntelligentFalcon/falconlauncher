@@ -20,44 +20,36 @@ use tauri::{AppHandle, Manager};
 
 pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &Global) -> Void {
     info!("DEBUG: Starting game in {version} ");
-    let mut versions = global_cache.versions.iter().filter(|x| x.id == version);
-    let ver_res = versions.next();
     let state = &app_handle.state::<AppState>();
-    let config = state.config.read().await;
-    let launch_options = &config.launch_options;
     let tx_err = state.log_tx.clone();
     let tx_out = state.log_tx.clone();
-    let mirror = mirror_from(&config.download_settings.mirror);
-    match ver_res {
-        None => {
-            return Err(launcher_version_not_found());
-        }
-        _ => {}
-    }
-    let version = ver_res.unwrap();
-    let inherited_version = version.get_inherited();
-    let inherited_json = inherited_version.load_json();
 
-    let version_id = &version.id;
-
-    let version_id_err_clone = version_id.clone();
-    let version_id_out_clone = version_id.clone();
-
-    let inherited_id = &inherited_version.id;
+    let config = state.config.read().await;
+    let launch_options = &config.launch_options;
     let username = &launch_options.username;
     let profile = get_profile(username).unwrap();
     let uid = profile.uuid();
-    let version_directory = PathBuf::from(&inherited_version.version_path);
+    let xms = launch_options.ram_usage_min.to_string() + "M";
+    let xmx = launch_options.ram_usage_max.to_string() + "M";
+
+    let mut versions = global_cache.versions.iter().filter(|x| x.id == version);
+    let ver_res = versions.next();
+    let version = ver_res.ok_or(launcher_version_not_found())?;
+    let version_id = &version.id;
+    let version_id_err_clone = version_id.clone();
+    let version_id_out_clone = version_id.clone();
     let json: Value = version.load_json();
 
-    let java_version = inherited_json["javaVersion"]["majorVersion"]
-        .as_i64()
-        .unwrap_or(8)
-        .to_string();
+    let inherited_version = version.get_inherited();
+    let inherited_json = inherited_version.load_json();
+    let inherited_id = &inherited_version.id;
+
     let java_component = inherited_json["javaVersion"]["component"].as_str().unwrap();
+    let java = get_java(java_component.to_string())?;
+
+    let version_directory = PathBuf::from(&inherited_version.version_path);
     let game_directory = get_minecraft_directory().display().to_string();
     let asset_directory = get_assets_directory().display().to_string();
-
     // This is a very old directory that is even removed in the newer versions but still required for launching older versions like 1.0
     let resources_directory = get_minecraft_directory()
         .join("resources")
@@ -77,9 +69,6 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
         .unwrap()
         .to_string();
 
-    let xms = launch_options.ram_usage_min.to_string() + "M";
-    let xmx = launch_options.ram_usage_max.to_string() + "M";
-    let java = get_java(java_component.to_string())?;
     let typ = json["type"].as_str().unwrap();
     let run_args_iter = get_launch_args(&json)?;
     let jvm_args = get_jvm_args(&json);
