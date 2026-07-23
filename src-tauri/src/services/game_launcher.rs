@@ -28,7 +28,7 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
     let launch_options = &config.launch_options;
     let username = &launch_options.username;
     let profile = get_profile(username).unwrap();
-    let uid = profile.uuid();
+    let uid = profile.uuid;
     let xms = launch_options.ram_usage_min.to_string() + "M";
     let xmx = launch_options.ram_usage_max.to_string() + "M";
 

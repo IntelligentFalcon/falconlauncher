@@ -1,9 +1,10 @@
 use crate::models::error::{io_err_create_file, json_read_err, Void};
 use crate::services::directory_manager::get_profiles_file;
 use crate::services::utils::uuid_from_username;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fs;
 use std::fs::{read_to_string, File};
+use serde::ser::SerializeStruct;
 use uuid::Uuid;
 
 pub fn create_new_profile(username: String, online: bool) -> Void {
@@ -18,10 +19,13 @@ pub fn create_new_profile(username: String, online: bool) -> Void {
             ));
         }
     }
+    let uuid = uuid_from_username(username.as_str());
     // TODO: implement online profile as well (Profile::Microsoft)
     // if online { ...
-    profiles.push(ProfileNew::Offline {
+    profiles.push(Profile {
         username,
+        online,
+        uuid,
     });
 
     let json_string = serde_json::to_string_pretty(&profiles);
@@ -32,7 +36,7 @@ pub fn create_new_profile(username: String, online: bool) -> Void {
     result
 }
 
-pub fn get_profiles() -> Vec<ProfileNew> {
+pub fn get_profiles() -> Vec<Profile> {
     serde_json::from_str(
         read_to_string(get_profiles_file())
             .unwrap_or("".to_string())
@@ -41,44 +45,18 @@ pub fn get_profiles() -> Vec<ProfileNew> {
     .unwrap_or(Vec::new())
 }
 
-pub fn get_profile(username: &String) -> Option<ProfileNew> {
+pub fn get_profile(username: &String) -> Option<Profile> {
     let un_clone = username.clone();
     let temp = get_profiles().clone();
-    let found = temp.iter().find(|x| x.username() == un_clone).cloned();
+    let found = temp.iter().find(|x| x.username == un_clone).cloned();
     found
 }
 
-#[derive(Serialize, Deserialize, Clone)]
-pub enum ProfileNew {
-    Microsoft {
-        username: String,
-        uuid: Uuid,
-        access_token: String,
-        refresh_token: String,
-    },
-    Offline {
-        username: String,
-    },
-}
 
-impl ProfileNew {
-    pub fn uuid(&self) -> Uuid {
-        match self {
-            ProfileNew::Microsoft { uuid, .. } => *uuid,
-            ProfileNew::Offline { username } => uuid_from_username(username),
-        }
-    }
-
-    pub fn username(&self) -> &str {
-        match self {
-            ProfileNew::Microsoft { username, .. } => username,
-            ProfileNew::Offline { username } => username,
-        }
-    }
-}
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Profile {
-    pub name: String,
+    pub username: String,
     pub online: bool,
     pub uuid: Uuid,
+
 }

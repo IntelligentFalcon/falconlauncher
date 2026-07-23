@@ -5,7 +5,6 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-  DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
@@ -14,16 +13,11 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@/components/ui/sidebar';
-import { HugeiconsIcon, IconSvgElement } from '@hugeicons/react';
+import { HugeiconsIcon } from '@hugeicons/react';
 import {
   UnfoldMoreIcon,
   PlusSignIcon,
-  ProfileIcon,
-  Profile02Icon,
-  User02Icon,
   MicrosoftIcon,
-  PresentationOnlineIcon,
-  PrescriptionIcon,
   UserIcon,
 } from '@hugeicons/core-free-icons';
 import {
@@ -34,7 +28,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import { useBackend, useBackendMutation } from '@/hooks/use-backend';
 import { Field, FieldGroup } from './ui/field';
@@ -49,17 +42,18 @@ export function NavProfile() {
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [openCreateDialog, setOpenCreateDialog] = useState(false);
+  const [newUsername, setNewUsername] = useState('');
 
-  const { data: profiles } = useBackend({
+  const { data: profiles, refetch: refetchProfiles } = useBackend({
     name: 'get_profiles',
     queryKey: ['profiles'],
   });
 
   useEffect(() => {
-    if (profiles) {
+    if (profiles && profiles.length > 0 && !profile) {
       setProfile(profiles[0]);
     }
-  }, [profiles]);
+  }, [profiles, profile]);
 
   const { mutate: setProfileMutation } = useBackendMutation({
     name: 'set_username',
@@ -67,111 +61,134 @@ export function NavProfile() {
 
   useEffect(() => {
     if (profile) {
-      setProfileMutation({ username: profile.name });
+      setProfileMutation({ username: profile.username });
     }
-  }, [profile]);
+  }, [profile, setProfileMutation]);
+
+  const { mutate: createOfflineProfile, isPending: isCreating } = useBackendMutation({
+    name: 'create_offline_profile',
+    onSuccess: () => {
+      refetchProfiles();
+      setNewUsername('');
+      setOpenCreateDialog(false);
+    },
+  });
+
+  const handleCreateProfile = (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = newUsername.trim();
+    if (!trimmed) return;
+
+    createOfflineProfile({ username: trimmed });
+  };
 
   return (
-    <>
-      <SidebarMenu>
-        <SidebarMenuItem>
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={
-                <SidebarMenuButton
-                  size="lg"
-                  className="data-open:bg-sidebar-accent data-open:text-sidebar-accent-foreground group-data-[state=collapsed]:rounded-full"
-                  tooltip="Switch Profile"
-                />
-              }
-            >
-              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+      <>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                  render={
+                    <SidebarMenuButton
+                        size="lg"
+                        className="data-open:bg-sidebar-accent data-open:text-sidebar-accent-foreground group-data-[state=collapsed]:rounded-full"
+                        tooltip="Switch Profile"
+                    />
+                  }
+              >
+                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+                  <HugeiconsIcon
+                      icon={profile?.online ? MicrosoftIcon : UserIcon}
+                  />
+                </div>
+                <div className="grid flex-1 text-start text-sm leading-tight">
+                  <span className="truncate font-medium">{profile?.username}</span>
+                  <span className="truncate text-xs">{profile?.uuid}</span>
+                </div>
                 <HugeiconsIcon
-                  icon={profile?.online ? MicrosoftIcon : UserIcon}
+                    icon={UnfoldMoreIcon}
+                    strokeWidth={2}
+                    className="ms-auto"
                 />
-              </div>
-              <div className="grid flex-1 text-start text-sm leading-tight">
-                <span className="truncate font-medium">{profile?.name}</span>
-                {/*<span className="truncate text-xs">{profile?.uuid}</span>*/}
-              </div>
-              <HugeiconsIcon
-                icon={UnfoldMoreIcon}
-                strokeWidth={2}
-                className="ms-auto"
-              />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              className="min-w-56 rounded-lg"
-              align="start"
-              side={isMobile ? 'bottom' : 'right'}
-              sideOffset={4}
-            >
-              <DropdownMenuGroup>
-                <DropdownMenuLabel className="text-xs text-muted-foreground">
-                  Profiles
-                </DropdownMenuLabel>
-                {profiles?.map((profile) => (
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                  className="min-w-56 rounded-lg"
+                  align="start"
+                  side={isMobile ? 'bottom' : 'right'}
+                  sideOffset={4}
+              >
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel className="text-xs text-muted-foreground">
+                    Profiles
+                  </DropdownMenuLabel>
+                  {profiles?.map((p) => (
+                      <DropdownMenuItem
+                          key={p.uuid}
+                          onClick={() => setProfile(p)}
+                          className="gap-2 p-2"
+                      >
+                        <div className="flex size-6 items-center justify-center rounded-md border">
+                          <HugeiconsIcon
+                              icon={p?.online ? MicrosoftIcon : UserIcon}
+                          />
+                        </div>
+                        {p.username}
+                      </DropdownMenuItem>
+                  ))}
+                </DropdownMenuGroup>
+                <DropdownMenuSeparator />
+                <DropdownMenuGroup>
                   <DropdownMenuItem
-                    key={profile.name}
-                    onClick={() => setProfile(profile)}
-                    className="gap-2 p-2"
+                      className="gap-2 p-2"
+                      onClick={() => setOpenCreateDialog(true)}
                   >
-                    <div className="flex size-6 items-center justify-center rounded-md border">
+                    <div className="flex size-6 items-center justify-center rounded-md border bg-transparent">
                       <HugeiconsIcon
-                        icon={profile?.online ? MicrosoftIcon : UserIcon}
+                          icon={PlusSignIcon}
+                          strokeWidth={2}
+                          className="size-4"
                       />
                     </div>
-                    {profile.name}
+                    <div className="font-medium text-muted-foreground">
+                      Add Profile
+                    </div>
                   </DropdownMenuItem>
-                ))}
-              </DropdownMenuGroup>
-              <DropdownMenuSeparator />
-              <DropdownMenuGroup>
-                <DropdownMenuItem
-                  className="gap-2 p-2"
-                  onClick={() => setOpenCreateDialog(true)}
-                >
-                  <div className="flex size-6 items-center justify-center rounded-md border bg-transparent">
-                    <HugeiconsIcon
-                      icon={PlusSignIcon}
-                      strokeWidth={2}
-                      className="size-4"
-                    />
-                  </div>
-                  <div className="font-medium text-muted-foreground">
-                    Add Profile
-                  </div>
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </SidebarMenuItem>
-      </SidebarMenu>
-      <Dialog open={openCreateDialog} onOpenChange={setOpenCreateDialog}>
-        <DialogContent className="sm:max-w-sm">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-            }}
-            className="space-y-4"
-          >
-            <DialogHeader>
-              <DialogTitle>Create profile</DialogTitle>
-              <DialogDescription>Make Offline Profile</DialogDescription>
-            </DialogHeader>
-            <FieldGroup>
-              <Field>
-                <Label htmlFor="username">Username</Label>
-                <Input id="username" name="username" />
-              </Field>
-            </FieldGroup>
-            <DialogFooter>
-              <DialogClose render={<Button variant="outline">Cancel</Button>} />
-              <Button type="submit" >Create Profile</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-    </>
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </SidebarMenuItem>
+        </SidebarMenu>
+
+        <Dialog open={openCreateDialog} onOpenChange={setOpenCreateDialog}>
+          <DialogContent className="sm:max-w-sm">
+            <form onSubmit={handleCreateProfile} className="space-y-4">
+              <DialogHeader>
+                <DialogTitle>Create profile</DialogTitle>
+                <DialogDescription>Make Offline Profile</DialogDescription>
+              </DialogHeader>
+              <FieldGroup>
+                <Field>
+                  <Label htmlFor="username">Username</Label>
+                  <Input
+                      id="username"
+                      name="username"
+                      value={newUsername}
+                      onChange={(e) => setNewUsername(e.target.value)}
+                      placeholder="Enter offline username"
+                      autoFocus
+                      required
+                  />
+                </Field>
+              </FieldGroup>
+              <DialogFooter>
+                <DialogClose render={<Button variant="outline" type="button">Cancel</Button>} />
+                <Button type="submit" disabled={isCreating || !newUsername.trim()}>
+                  {isCreating ? 'Creating...' : 'Create Profile'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </>
   );
 }

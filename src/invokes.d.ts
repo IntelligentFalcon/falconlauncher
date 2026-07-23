@@ -156,7 +156,7 @@ enum VersionBase {
 }
 
 interface Profile {
-  name: string;
+  username: string;
   uuid: string;
   online: boolean;
 }
