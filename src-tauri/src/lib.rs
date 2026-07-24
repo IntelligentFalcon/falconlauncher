@@ -59,9 +59,9 @@ pub static GLOBAL_CACHE: LazyLock<sync::Mutex<Global>> = LazyLock::new(|| {
     })
 });
 
-pub const DEV_MODE: bool = true;
+pub const DEV_MODE: bool = false;
 pub const LAUNCHER_NAME: &str = "FalconLauncher";
-pub const LAUNCHER_VERSION: &str = "BETA";
+pub const LAUNCHER_VERSION: &str = "BETA-0.1";
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     dotenvy::dotenv().ok();
