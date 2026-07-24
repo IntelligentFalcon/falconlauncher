@@ -8,18 +8,21 @@ use tauri::{command, AppHandle, State};
 use tauri_plugin_dialog::DialogExt;
 use crate::{AppState, GLOBAL_CACHE};
 use crate::models::logger::info_launcher;
-use crate::models::mirror::mirror_from;
+use crate::models::mirror::{mirror_from, Mirror};
 use crate::services::utils::update_download_status;
 
 #[command]
 pub async fn get_categorized_versions(
     app_handle: AppHandle,
+    state: State<'_, AppState>,
     fabric: bool,
     forge: bool,
     neo_forge: bool,
     lite_loader: bool,
 ) -> Returns<Vec<VersionCategory>> {
     let manifest = version_manager::load_version_manifest_local().expect("Failed to parse version manifest");
+    let cfg = state.config.read().await;
+    let mirror = &cfg.download_settings.mirror;
     let mut result: Vec<VersionCategory> = Vec::new();
     let versions: Vec<&VersionInfo> = manifest
         .versions
@@ -78,7 +81,7 @@ pub async fn get_categorized_versions(
         });
         if forge {
             cat.versions.extend(
-                get_available_forge_versions(&id)
+                get_available_forge_versions(&id, &mirror)
                     .await?
                     .iter()
                     .map(|x| VersionLoader {
@@ -124,7 +127,7 @@ pub async fn download_version(
 ) -> Void {
     let version_id = version_loader.get_installed_id();
     let cfg = &state.config.read().await;
-    let mir = mirror_from(&cfg.download_settings.mirror);
+    let mir = &cfg.download_settings.mirror;
     let logger = &state.log_tx;
     logger.send(info_launcher(format!(
         "DEBUG: Downloading version {} from 9craft mirror",

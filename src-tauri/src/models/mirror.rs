@@ -1,17 +1,21 @@
 use crate::models::error::{todo_err, Returns, Void};
 use crate::services::directory_manager::get_mirrors_dir;
 use reqwest::Client;
-use serde::{Deserialize, Serialize};
+use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::HashMap;
 use std::fs;
 use std::time::Duration;
-use crate::commands::mirrors::get_available_mirrors;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Mirror {
     pub name: String,
     pub description: String,
     pub maps: HashMap<String, String>,
+}
+impl Default for Mirror {
+    fn default() -> Self {
+        mojang_mirror()
+    }
 }
 impl Mirror {
     pub fn parse_url(&self, url: &String) -> String {

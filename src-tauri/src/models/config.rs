@@ -1,4 +1,5 @@
 use crate::models::error::{ini_read_err, io_err_read_file, Void};
+use crate::models::mirror::Mirror;
 use crate::services::directory_manager::get_config_directory;
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -9,7 +10,6 @@ pub struct LaunchOptions {
     pub ram_usage_min: u64,
     pub ram_usage_max: u64,
     pub use_dedicated_gpu: Bool,
-
 }
 impl Default for LaunchOptions {
     fn default() -> Self {
@@ -35,14 +35,30 @@ impl Default for LauncherSettings {
         }
     }
 }
-#[derive(Debug, Serialize, Deserialize)]
-pub struct DownloadSettings {
-    pub mirror: String,
-}
-impl Default for DownloadSettings {
-    fn default() -> Self {
-        Self { mirror: "Official".to_string() }
+mod mirror_serialization {
+    use super::*;
+    use serde::{de, Deserializer, Serializer};
+    use crate::models::mirror::mirror_from;
+
+    pub fn serialize<S>(mirror: &Mirror, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&mirror.name)
     }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Mirror, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let name = String::deserialize(deserializer)?;
+        Ok(mirror_from(&name))
+    }
+}
+#[derive(Debug, Serialize, Deserialize, Default)]
+pub struct DownloadSettings {
+    #[serde(with = "mirror_serialization")]
+    pub mirror: Mirror,
 }
 #[derive(Debug, Deserialize, Serialize, Default)]
 pub struct Config {
@@ -51,37 +67,36 @@ pub struct Config {
     #[serde(rename = "LauncherSettings")]
     pub launcher_settings: LauncherSettings,
     #[serde(rename = "DownloadSettings")]
-    pub download_settings: DownloadSettings
+    pub download_settings: DownloadSettings,
 }
 
-
 #[derive(Debug, Deserialize, Serialize, Default)]
-pub enum  Bool {
+pub enum Bool {
     TRUE,
     #[default]
-    FALSE
+    FALSE,
 }
 impl From<Bool> for bool {
     fn from(value: Bool) -> bool {
-        match value{
-            Bool::TRUE => {true}
-            Bool::FALSE => {false}
+        match value {
+            Bool::TRUE => true,
+            Bool::FALSE => false,
         }
     }
 }
-impl Bool{
-    pub fn new(toggle: bool) -> Bool{
+impl Bool {
+    pub fn new(toggle: bool) -> Bool {
         if toggle {
             Bool::TRUE
-        }else {
+        } else {
             Bool::FALSE
         }
     }
 
     pub fn boolean(&self) -> bool {
-        match self{
-            Bool::TRUE => {true}
-            Bool::FALSE => {false}
+        match self {
+            Bool::TRUE => true,
+            Bool::FALSE => false,
         }
     }
 }

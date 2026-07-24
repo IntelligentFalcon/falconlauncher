@@ -49,7 +49,7 @@ pub async fn download_version_manifest(mirror: &Mirror) -> Void {
     let url = mirror.parse_url(&"https://launchermeta.mojang.com/mc/game/version_manifest.json".to_string());
     download_file(
         url.to_string(),
-        version_manifest_directory().to_str()
+        &version_manifest_directory().to_str()
             .unwrap()
             .to_string(),
     )

@@ -11,7 +11,7 @@ pub struct Manifest {
     pub versions: Vec<VersionInfo>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct AssetIndex {
     pub id: String,
     pub sha1: String,
@@ -74,7 +74,7 @@ pub struct DownloadDetail {
     pub sha1: String,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize)]
 pub struct MinecraftManifestVersion {
     pub libraries: Vec<Library>,
     #[serde(rename = "assetIndex")]
@@ -85,25 +85,25 @@ pub struct MinecraftManifestVersion {
     pub java_version: Option<JavaVersion>
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize)]
 pub struct JavaVersion {
     pub component: String,
     #[serde(rename = "majorVersion")]
     pub major_version: u32,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize)]
 pub struct RuleOS {
     pub name: Option<String>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize)]
 pub struct Rule {
     pub action: String,
     pub os: Option<RuleOS>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize)]
 pub struct Library {
     pub name: String,
     pub downloads: Option<LibraryDownloads>,
@@ -111,13 +111,13 @@ pub struct Library {
     pub url: Option<String>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize)]
 pub struct LibraryDownloads {
     pub artifact: Option<LibraryArtifact>,
     pub classifiers: Option<HashMap<String, LibraryArtifact>>,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct LibraryArtifact {
     pub path: Option<String>,
     pub url: String,
@@ -141,7 +141,7 @@ pub struct VersionInfo {
     pub release_time: String,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct VersionLoader {
     pub id: String,
     pub base: VersionBase,
@@ -287,33 +287,4 @@ pub fn library_from_value_legacy(value: &Value) -> LibraryInfo {
 
     }
 
-}
-
-
-
-pub fn library_from_value(library: &Library) -> LibraryInfo {
-    let library_name = &library.name;
-    let library_artifact = library
-        .downloads
-        .as_ref()
-        .and_then(|d| d.artifact.as_ref())
-        .expect("Parsing library_downloads failed");
-
-    let library_path = if library_artifact.path.is_none() {
-        let args = library_name.split(":").collect::<Vec<&str>>();
-        let group_id = args[0].replace(".", "/");
-        let artifact = args[1];
-        let version = args[2];
-        let artifact_version = format!("{artifact}-{version}.jar");
-        format!("{group_id}/{artifact}/{version}/{artifact_version}")
-    } else {
-        library_artifact.path.as_ref().unwrap().to_string()
-    };
-
-    LibraryInfo {
-        name: library_name.to_string(),
-        size: library_artifact.size,
-        path: library_path,
-        url: library_artifact.url.to_string(),
-    }
 }

@@ -1,3 +1,4 @@
+use crate::models::downloader::{LibraryRules, Rule, RuleOS};
 use crate::models::error::{io_err_buffer_read, io_err_read_file, Returns};
 use crate::models::java::Java;
 use crate::models::platform::get_current_os;
@@ -8,7 +9,6 @@ use std::fs::File;
 use std::io::{BufReader, Read};
 use std::path::Path;
 use tauri::{AppHandle, Emitter};
-use uuid::Version::Md5;
 use uuid::{Builder, Uuid};
 
 fn calculate_file_sha1<P: AsRef<Path>>(path: P) -> Returns<String> {
@@ -191,4 +191,73 @@ pub fn uuid_from_username(username: &str) -> Uuid {
     let input = format!("OfflinePlayer:{}", username);
     let hash = md5::compute(input.as_bytes());
     Builder::from_md5_bytes(*hash).into_uuid()
+}
+
+pub fn fetch_library_path(name: &String) -> String {
+    let parts = name.split("/").collect::<Vec<&str>>();
+    let group = parts[0].replace(".", "/");
+    let artifact = parts[1];
+    let version = parts[2];
+    format!("{group}/{artifact}/{version}/{artifact}-{version}.jar")
+}
+
+pub fn fetch_unofficial_library_repos(path: &String) -> Vec<String> {
+    vec![
+        format!("https://maven.minecraftforge.net/{path}"),
+        format!("https://repo.spongepowered.org/maven/{path}"),
+    ]
+}
+
+
+fn push_rule(rules: &Vec<Rule>, pushing_vec: &mut Vec<String>, rule_os: &Option<RuleOS>){
+    if rule_os.is_none() {
+        pushing_vec.push("osx".to_string());
+        pushing_vec.push("windows".to_string());
+        pushing_vec.push("linux".to_string());
+    } else {
+        let os_name = rule_os.as_ref().unwrap().name.as_ref();
+        if let Some(name) = os_name {
+            pushing_vec.push(name.to_string());
+        }
+    }
+}
+pub fn fetch_rules(value: Option<&Vec<Rule>>) -> LibraryRules {
+    if value.is_none() {
+        return LibraryRules {
+            allowed_oses: vec![
+                "osx".to_string(),
+                "windows".to_string(),
+                "linux".to_string(),
+            ],
+            disallowed_oses: vec![],
+        };
+    }
+    let rules = value.unwrap();
+    let mut allowed = vec![];
+    let mut disallowed = vec![];
+    for rule in rules {
+        let rule_action = &rule.action;
+        let rule_os = &rule.os;
+        if rule_action == "allow" {
+            push_rule(rules, &mut allowed, rule_os);
+        } else if rule_action == "disallow" {
+            push_rule(rules, &mut disallowed, rule_os);
+
+        }
+    }
+    LibraryRules {
+        allowed_oses: allowed,
+        disallowed_oses: disallowed,
+    }
+}
+
+/// Checks if the entered version is older than 1.12 or not.
+/// @returns true if the entered version is older or equal to 1.12
+pub fn is_legacy(version: &String) -> bool {
+    if version.starts_with("1.") {
+        return false;
+    }
+    let mc_args = version.split(".").collect::<Vec<&str>>();
+
+    mc_args[1].parse::<u32>().unwrap() <= 12
 }
