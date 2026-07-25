@@ -8,6 +8,7 @@ use sha2::{Digest, Sha256};
 use std::fs::File;
 use std::io::{BufReader, Read};
 use std::path::Path;
+use log::info;
 use tauri::{AppHandle, Emitter};
 use uuid::{Builder, Uuid};
 
@@ -173,7 +174,7 @@ pub fn linux_java_permission_fix(java: &Java) {
             let current_mode = permissions.mode();
 
             if current_mode & 0o111 == 0 {
-                println!(
+                info!(
                     "Adding execute permission to Java binary: {:?}",
                     &java.get_bin_file()
                 );
@@ -254,10 +255,11 @@ pub fn fetch_rules(value: Option<&Vec<Rule>>) -> LibraryRules {
 /// Checks if the entered version is older than 1.12 or not.
 /// @returns true if the entered version is older or equal to 1.12
 pub fn is_legacy(version: &String) -> bool {
-    if version.starts_with("1.") {
+    if !version.starts_with("1.") {
         return false;
     }
     let mc_args = version.split(".").collect::<Vec<&str>>();
 
     mc_args[1].parse::<u32>().unwrap() <= 12
 }
+

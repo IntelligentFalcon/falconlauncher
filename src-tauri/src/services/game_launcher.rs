@@ -1,8 +1,7 @@
 use crate::models::error::{
-    launcher_launch_args_not_found, launcher_version_not_found, Returns, Void,
+    launcher_version_not_found, Returns, Void,
 };
 use crate::models::logger::{error, info};
-use crate::models::mirror::mirror_from;
 use crate::models::platform::get_current_os;
 use crate::models::profiles::get_profile;
 use crate::services::directory_manager::*;
@@ -68,7 +67,6 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
         .to_str()
         .unwrap()
         .to_string();
-
     let typ = json["type"].as_str().unwrap();
     let run_args_iter = get_launch_args(&json)?;
     let jvm_args = get_jvm_args(&json);
@@ -132,12 +130,12 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
                         .to_str()
                         .unwrap(),
                 )
-                .replace("${launcher_name}", &state.launcher_details.name)
-                .replace("${launcher_version}", &state.launcher_details.version)
-                .replace(
-                    "${classpath}",
-                    format!("{}{}{}", class_path, separator, libraries_str).as_str(),
-                ),
+                    .replace("${launcher_name}", &state.launcher_details.name)
+                    .replace("${launcher_version}", &state.launcher_details.version)
+                    .replace(
+                        "${classpath}",
+                        format!("{}{}{}", class_path, separator, libraries_str).as_str(),
+                    ),
             )
         }
     } else {
@@ -152,6 +150,11 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
         .args(&run_args)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
+
+    let run_args_str = run_args.join(" ");
+
+    tx_out.send(info(format!("Loaded libraries: {libraries_str}\n\n"), version_id_out_clone.clone()));
+    tx_out.send(info(format!("Game arguments: {run_args_str}"), version_id_out_clone.clone()));
     let mut child = child_cmd.spawn().expect("Failed to spawn java process");
     let stdout = child.stdout.take().expect("Failed to open stdout");
     let stderr = child.stderr.take().unwrap();

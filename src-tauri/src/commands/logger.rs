@@ -1,3 +1,4 @@
+use log::info;
 use tauri::{command, State};
 use crate::AppState;
 use crate::models::error::{launcher_error, launcher_log_history_not_found, Returns, Void};
@@ -38,6 +39,6 @@ pub async fn clear_log_history_channel(state: State<'_, AppState>, channel: Stri
 /// LINUX Debugger for the js side. use the developer console if you are on Windows build to check logs
 #[command]
 pub async fn debug(text: String) -> Void {
-    println!("{}", text);
+    info!("{}", text);
     Ok(())
 }

@@ -120,3 +120,9 @@ pub fn get_java_dir() -> PathBuf {
 pub fn get_mirrors_dir() -> PathBuf {
     get_falcon_launcher_directory().join("mirrors")
 }
+
+pub fn get_version_manifest(id: &String) -> PathBuf {
+    get_version_directory(id)
+        .join(format!("{}.json", id))
+    
+}

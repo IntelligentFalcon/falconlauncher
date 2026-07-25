@@ -5,6 +5,7 @@ use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::HashMap;
 use std::fs;
 use std::time::Duration;
+use log::info;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Mirror {
@@ -52,7 +53,7 @@ impl Mirror {
                 .unwrap();
             let req = client.head(url).send().await;
             if req.is_err() {
-                println!("ERR");
+                info!("ERR");
                 t = false;
                 break;
             }

@@ -21,6 +21,7 @@ use std::collections::{HashMap, VecDeque};
 use std::env;
 use std::string::ToString;
 use std::sync::{Arc, LazyLock, Mutex};
+use log::info;
 use tauri::async_runtime::{block_on, spawn};
 use tauri::{command, AppHandle, Manager, State};
 use tauri_plugin_deep_link::DeepLinkExt;
@@ -132,7 +133,7 @@ pub fn run() {
                 app.deep_link().register_all()?;
             }
             app.deep_link().on_open_url(|event| {
-                println!("deep link URLs: {:?}", event.urls());
+                info!("deep link URLs: {:?}", event.urls());
             });
             return Ok(());
         })

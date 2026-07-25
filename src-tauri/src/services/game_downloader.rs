@@ -1,11 +1,7 @@
 #![allow(deprecated)]
 
 use crate::models::versions::MinecraftVersion;
-use crate::services::directory_manager::{
-    get_assets_directory, get_falcon_launcher_directory, get_libraries_directory,
-    get_minecraft_directory, get_natives_folder, get_temp_directory, get_version_directory,
-    get_versions_directory,
-};
+use crate::services::directory_manager::{get_assets_directory, get_falcon_launcher_directory, get_libraries_directory, get_minecraft_directory, get_natives_folder, get_temp_directory, get_version_directory, get_version_manifest, get_versions_directory};
 use crate::services::utils::{convert_to_full_path, convert_to_full_url, fetch_library_path, fetch_rules, fetch_unofficial_library_repos, is_legacy, verify_file_existence};
 use crate::services::utils::{update_download, update_download_bar, update_download_status};
 use crate::services::version_manager::load_version_manifest;
@@ -21,7 +17,7 @@ use crate::models::error::{
 };
 use crate::models::fabric::{FabricInstaller, FabricLoader, FabricMinecraftVersion};
 use crate::models::logger::{info_launcher, LogLine};
-use crate::models::mirror::{mirror_from, Mirror};
+use crate::models::mirror::Mirror;
 use crate::models::platform::get_current_os;
 use crate::models::utils::{LowerCaseStartsWith, ParseWithMirror};
 use crate::services::jdk_manager::{download_java, get_java};
@@ -34,6 +30,7 @@ use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
 use std::process::{Child, ChildStderr, Command, Stdio};
 use std::time::Duration;
+use log::info;
 use tauri::async_runtime::block_on;
 use tauri::AppHandle;
 use tokio::sync::mpsc::UnboundedSender;
@@ -48,8 +45,17 @@ pub async fn download_version(
 ) -> Void {
     let id = &version.id;
     let mirror = &cfg.download_settings.mirror;
+
     let manifest = load_version_manifest(&mirror).await?;
-    download_from_manifest(id, &manifest, &mirror).await?;
+    download_from_manifest(id, &manifest, &mirror).await.or_else(|x| {
+        if exists(get_version_manifest(id)).unwrap() {
+            Ok(())
+        }
+        else {
+            Err(x)
+        }
+    }
+    )?;
     let content =
         fs::read_to_string(PathBuf::from(version.get_json())).map_err(|x| io_err_read_file(x))?;
     let json: MinecraftManifestVersion =
@@ -152,8 +158,7 @@ async fn download_from_manifest(id: &String, manifest: &Manifest, mir: &Mirror) 
     let version = manifest
         .versions
         .iter()
-        .find(|v| &v.id == id)
-        .expect(format!("Couldn't find version in manifest. {id}").as_str());
+        .find(|v| &v.id == id).ok_or(todo_err(format!("Couldn't find version in manifest. {id}").as_str()))?;
     let version_url = mir.parse_url(&version.url);
     download_file(
         version_url.to_string(),
@@ -324,7 +329,7 @@ pub async fn download_file(url: String, dest: &String) -> Void {
     let resp = reqwest::get(&url)
         .await
         .map_err(|x| download_error(format!("Failed to download file from {url}, {}", x)))?;
-    println!(
+    info!(
         "Downloading {url} to {dest} with response of {}",
         resp.content_length().unwrap()
     );
@@ -390,9 +395,10 @@ pub async fn download_forge_version(
 ) -> Void {
     let url = format!("https://maven.minecraftforge.net/net/minecraftforge/forge/{version}/forge-{version}-installer.jar").parse_mirror(mirror);
     let launcher_dir = get_falcon_launcher_directory();
-
+    info!("{}",url);
     let mut path = launcher_dir.join("temp");
     let mut path_str = path.to_str().unwrap();
+    info!("{}", path_str);
 
     if !path.exists() {
         create_dir_all(path_str).unwrap();
@@ -401,13 +407,11 @@ pub async fn download_forge_version(
     path = path.join(format!("forge-{version}-installer.jar"));
     path_str = path.to_str().unwrap();
     download_file(url, &path_str.to_string()).await?;
-    let installer_file = File::open(path_str).unwrap();
 
     let version_args = version.split("-").collect::<Vec<&str>>();
     let mc_version = version_args[0];
     let mc_args = mc_version.split(".").collect::<Vec<&str>>();
-    let version_mid = mc_args[1].parse::<i32>().unwrap();
-    if is_legacy(&version) {
+    if !is_legacy(&version) {
         logger.send(info_launcher(
             "DEBUG: Non legacy version detected!".to_string(),
         ));
@@ -428,12 +432,13 @@ pub async fn download_forge_version(
         spawn_thread(stderr, logger_clone);
 
         generate_stdout(&mut child, logger);
-
+        let _ = child.wait_with_output(); // Ensuring that the forge installer.jar job is done.
         fs::remove_dir_all(launcher_dir.join("temp")).unwrap();
 
         return Ok(());
     }
     logger.send(info_launcher("DEBUG: Legacy version detected!".to_string()));
+    let installer_file = File::open(path_str).unwrap();
 
     let mut zip = ZipArchive::new(installer_file).unwrap();
     let install_profile_file = zip
@@ -454,7 +459,7 @@ pub async fn download_forge_version(
         let full_path = get_libraries_directory().join(format!(
             "{group_id}/{artifact}/{version}/{artifact_version}.jar"
         ));
-        create_dir_all(&full_path.parent().unwrap()).map_err(|x| todo_err("Failed to create the path"))?;
+        // create_dir_all(&full_path.parent().unwrap()).map_err(|x| todo_err("Failed to create the path"))?;
         let mut file = File::create(full_path).unwrap();
         std::io::copy(&mut forge, &mut file).map_err(|x| todo_err("Failed to copy files"))?;
     }

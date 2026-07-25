@@ -31,8 +31,10 @@ export default function Downloads() {
   const { data, isLoading } = useBackend({
     name: 'get_categorized_versions',
     args: {
-      forge: activeLoader === 'forge',
-      fabric: activeLoader === 'fabric',
+      // forge: activeLoader === 'forge',
+      // fabric: activeLoader === 'fabric',
+      forge: true, //?TEMPORARY: MUST BE FIXED
+      fabric: true,
       liteLoader: false,
       neoForge: false,
     },

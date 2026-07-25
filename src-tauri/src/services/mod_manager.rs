@@ -7,6 +7,7 @@ use std::fs::File;
 use std::io::Read;
 use std::path::PathBuf;
 use std::sync::Mutex;
+use log::info;
 use toml::Value;
 use zip::ZipArchive;
 
@@ -34,7 +35,7 @@ pub fn load_mod(mut zip: Mutex<ZipArchive<File>>, path: String) -> ModInfo {
     let enabled = path.to_lowercase().ends_with("jar");
     let mut zip_guard = zip.lock().unwrap();
 
-    println!("Loading mod: {}", path);
+    info!("Loading mod: {}", path);
 
     // Forge legacy versions
     if let Ok(mut mod_info) = zip_guard.by_name("mcmod.info") {

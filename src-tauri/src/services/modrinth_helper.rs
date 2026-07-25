@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::fmt::format;
-
-
+use log::info;
 // TODO: Implementation of Modrinth mod manager
 
 
@@ -13,7 +12,7 @@ pub async fn search_for_project(
     limit: u64,
 ) -> ModrinthSearchResults {
     let api = format!("https://api.modrinth.com/v2/search?name={name}&facets={facets}&offset={offset}&limit={limit}&index={index}");
-    println!("{}", api);
+    info!("{}", api);
     let results = reqwest::get(&api)
         .await
         .unwrap()
