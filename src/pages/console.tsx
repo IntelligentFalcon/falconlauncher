@@ -17,7 +17,7 @@ interface LogLine {
 export default function Console() {
     const [filterLevel, setFilterLevel] = useState<string>('all');
     const [filterChannel, setFilterChannel] = useState<string>('all');
-    const [searchQuery, setSearchQuery] = useState<string>(''); // NEW: Search state tracker
+    const [searchQuery, setSearchQuery] = useState<string>('');
     const [logs, setLogs] = useState<LogLine[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const logContainerRef = useRef<HTMLDivElement>(null);
@@ -115,44 +115,45 @@ export default function Console() {
     };
 
     return (
-        <div className="flex h-full w-full space-x-4">
-            {/* Left Vertical Channel Sidebar Selector Lane */}
-            <div className="w-48 bg-secondary/30 p-2 rounded-2xl flex flex-col justify-between shrink-0 border border-border/40">
-                <div className="space-y-2">
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground px-2 pt-1 flex items-center gap-1.5">
-                        <HugeiconsIcon icon={LayersIcon} size={12} strokeWidth={2.5} />
-                        Log Channels
+        <div className="flex flex-col h-full w-full space-y-3 min-w-0">
+            {/* Top Bar Navigation & Controls */}
+            <div className="flex flex-col gap-2">
+                {/* Channel Filter Row & Actions */}
+                <div className="flex items-center justify-between bg-secondary/30 p-1.5 rounded-2xl border border-border/40 gap-2 overflow-x-auto">
+                    <div className="flex items-center gap-2 min-w-0">
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground px-2 flex items-center gap-1.5 shrink-0">
+                            <HugeiconsIcon icon={LayersIcon} size={12} strokeWidth={2.5} />
+                            Channels
+                        </div>
+
+                        <SidebarMenu className="flex-row items-center space-x-1 space-y-0 min-w-0 overflow-x-auto scrollbar-none">
+                            {channels.map((chan) => (
+                                <SidebarMenuItem key={chan} className="shrink-0">
+                                    <SidebarMenuButton
+                                        onClick={() => setFilterChannel(chan)}
+                                        isActive={filterChannel === chan}
+                                        tooltip={chan === 'all' ? 'All Channels' : chan}
+                                        className="h-8 px-2.5 capitalize"
+                                    >
+                                        <div className={`h-2 w-2 rounded-full ${chan === 'all' ? 'bg-primary' : 'bg-zinc-400'}`} />
+                                        <span className="truncate max-w-[120px]">{chan === 'all' ? 'ALL Channels' : chan}</span>
+                                    </SidebarMenuButton>
+                                </SidebarMenuItem>
+                            ))}
+                        </SidebarMenu>
                     </div>
-                    <SidebarMenu className="space-y-1">
-                        {channels.map((chan) => (
-                            <SidebarMenuItem key={chan}>
-                                <SidebarMenuButton
-                                    onClick={() => setFilterChannel(chan)}
-                                    isActive={filterChannel === chan}
-                                    tooltip={chan === 'all' ? 'All Channels' : chan}
-                                    className="w-full justify-start capitalize"
-                                >
-                                    <div className={`h-2 w-2 rounded-full ${chan === 'all' ? 'bg-primary' : 'bg-zinc-400'}`} />
-                                    <span className="truncate">{chan === 'all' ? 'ALL Channels' : chan}</span>
-                                </SidebarMenuButton>
-                            </SidebarMenuItem>
-                        ))}
-                    </SidebarMenu>
+
+                    <ActionButton
+                        action={handleClearLogs}
+                        variant="destructive"
+                        className="h-8 text-xs gap-1.5 rounded-xl shrink-0 px-3"
+                    >
+                        <HugeiconsIcon icon={Delete02Icon} size={14} strokeWidth={2} />
+                        <span className="hidden sm:inline">Clear {filterChannel === 'all' ? 'All' : filterChannel}</span>
+                    </ActionButton>
                 </div>
 
-                <ActionButton
-                    action={handleClearLogs}
-                    variant="destructive"
-                    className="w-full h-9 text-xs gap-1.5 rounded-xl shrink-0 mt-4"
-                >
-                    <HugeiconsIcon icon={Delete02Icon} size={14} strokeWidth={2} />
-                    Clear {filterChannel === 'all' ? 'All' : filterChannel}
-                </ActionButton>
-            </div>
-
-            {/* Main Terminal panel */}
-            <div className="flex-1 flex flex-col h-full space-y-3 min-w-0">
-                {/* Top Header Filter Bar (Includes Severity + New Search input) */}
+                {/* Sub-Header Bar (Severity Filter & Search Bar) */}
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between bg-secondary p-1.5 rounded-2xl w-full gap-2">
                     <SidebarMenu className="flex-row items-center space-x-1 space-y-0 min-w-0 flex-1">
                         {logLevels.map((lvl) => (
@@ -170,8 +171,8 @@ export default function Console() {
                         ))}
                     </SidebarMenu>
 
-                    {/* NEW: Interactive Search Field Box */}
-                    <div className="relative flex items-center max-w-xs w-full sm:w-64 h-8 bg-background border border-border/80 rounded-xl px-2.5 group focus-within:border-primary/60 transition-colors">
+                    {/* Search Field Box */}
+                    <div className="relative flex items-center max-w-xs w-full sm:w-64 h-8 bg-background border border-border/80 rounded-xl px-2.5 group focus-within:border-primary/60 transition-colors shrink-0">
                         <HugeiconsIcon icon={Search01Icon} size={14} className="text-muted-foreground shrink-0 mr-1.5 group-focus-within:text-primary transition-colors" strokeWidth={2} />
                         <input
                             type="text"
@@ -190,34 +191,34 @@ export default function Console() {
                         )}
                     </div>
                 </div>
+            </div>
 
-                {/* Display Terminal Box Container */}
-                <div className="flex-1 min-h-0">
-                    <LoadingSwap isLoading={isLoading} className="h-full w-full">
-                        <div
-                            ref={logContainerRef}
-                            className="h-full w-full bg-black text-zinc-200 font-mono text-xs p-4 rounded-2xl overflow-y-auto border border-border selection:bg-zinc-700 space-y-1"
-                        >
-                            {filteredLogs.length > 0 ? (
-                                filteredLogs.map((log, index) => (
-                                    <div key={index} className="whitespace-pre-wrap leading-relaxed hover:bg-zinc-900/50 py-0.5 px-1 rounded transition-colors flex items-start">
-                                        <span className="text-muted-foreground mr-2 select-none shrink-0">[{log.timestamp}]</span>
-                                        <span className="text-teal-500/90 mr-2 select-none shrink-0 font-medium">({log.channel})</span>
-                                        <span className="uppercase mr-2 select-none text-zinc-500 font-bold shrink-0">[{log.level}]</span>
-                                        <span className={getLogLevelStyles(log.level)}>{log.message}</span>
-                                    </div>
-                                ))
-                            ) : (
-                                <div className="h-full flex items-center justify-center text-muted-foreground italic text-center p-4">
-                                    No logs match your current criteria.<br />
-                                    <span className="text-[11px] opacity-70">
-                                        (Level: "{filterLevel}" | Channel: "{filterChannel}" {searchQuery && `| Query: "${searchQuery}"`})
-                                    </span>
+            {/* Display Terminal Box Container */}
+            <div className="flex-1 min-h-0">
+                <LoadingSwap isLoading={isLoading} className="h-full w-full">
+                    <div
+                        ref={logContainerRef}
+                        className="h-full w-full bg-black text-zinc-200 font-mono text-xs p-4 rounded-2xl overflow-y-auto border border-border selection:bg-zinc-700 space-y-1"
+                    >
+                        {filteredLogs.length > 0 ? (
+                            filteredLogs.map((log, index) => (
+                                <div key={index} className="whitespace-pre-wrap leading-relaxed hover:bg-zinc-900/50 py-0.5 px-1 rounded transition-colors flex items-start">
+                                    <span className="text-muted-foreground mr-2 select-none shrink-0">[{log.timestamp}]</span>
+                                    <span className="text-teal-500/90 mr-2 select-none shrink-0 font-medium">({log.channel})</span>
+                                    <span className="uppercase mr-2 select-none text-zinc-500 font-bold shrink-0">[{log.level}]</span>
+                                    <span className={getLogLevelStyles(log.level)}>{log.message}</span>
                                 </div>
-                            )}
-                        </div>
-                    </LoadingSwap>
-                </div>
+                            ))
+                        ) : (
+                            <div className="h-full flex items-center justify-center text-muted-foreground italic text-center p-4">
+                                No logs match your current criteria.<br />
+                                <span className="text-[11px] opacity-70">
+                                    (Level: "{filterLevel}" | Channel: "{filterChannel}" {searchQuery && `| Query: "${searchQuery}"`})
+                                </span>
+                            </div>
+                        )}
+                    </div>
+                </LoadingSwap>
             </div>
         </div>
     );

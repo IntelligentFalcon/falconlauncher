@@ -1,6 +1,5 @@
 import { ActionButton } from '@/components/ui/action-button';
 import { LoadingSwap } from '@/components/ui/animated/swapper';
-import { Button } from '@/components/ui/button';
 import {
   Combobox,
   ComboboxContent,
@@ -15,7 +14,10 @@ import { app } from '@tauri-apps/api';
 import { listen } from '@tauri-apps/api/event';
 import { useEffect, useState } from 'react';
 
+type LoaderType = 'vanilla' | 'fabric' | 'forge';
+
 export default function Downloads() {
+  const [activeLoader, setActiveLoader] = useState<LoaderType>('vanilla');
   const [activeVersion, setActiveVersion] = useState<VersionLoader | null>(
       null,
   );
@@ -25,11 +27,12 @@ export default function Downloads() {
   const [progress, setProgress] = useState<number | null>(null);
   const [statusText, setStatusText] = useState<string>('');
 
+  // Dynamically pass arguments to get_categorized_versions depending on active category
   const { data, isLoading } = useBackend({
     name: 'get_categorized_versions',
     args: {
-      forge: false,
-      fabric: false,
+      forge: activeLoader === 'forge',
+      fabric: activeLoader === 'fabric',
       liteLoader: false,
       neoForge: false,
     },
@@ -62,35 +65,91 @@ export default function Downloads() {
   }, []);
 
   useEffect(() => {
-    if (!data) return;
-    if (activeMajorVersion.length === 0) {
-      setActiveMajorVersion(data[0].name);
+    if (!data || data.length === 0) return;
+
+    // Fallback or reset major version if active selection doesn't exist in new data set
+    const hasMajor = data.some((v) => v.name === activeMajorVersion);
+    const selectedMajor = hasMajor ? activeMajorVersion : data[0].name;
+
+    if (!hasMajor) {
+      setActiveMajorVersion(selectedMajor);
     }
-    const versions = data.find((v) => activeMajorVersion === v.name)?.versions;
+
+    const versions = data.find((v) => selectedMajor === v.name)?.versions;
     const versionMatch = versions?.find((v) => v === activeVersion);
     if (versions && !versionMatch) {
-      setActiveVersion(versions[0]);
+      setActiveVersion(versions[0] ?? null);
     }
-  }, [data, activeMajorVersion]);
+  }, [data, activeMajorVersion, activeLoader]);
 
   const { mutateAsync: downloadVersion } = useBackendMutation({
     name: 'download_version',
   });
 
+  const categories: { id: LoaderType; label: string }[] = [
+    { id: 'vanilla', label: 'Vanilla' },
+    { id: 'fabric', label: 'Fabric' },
+    { id: 'forge', label: 'Forge' },
+  ];
+
   return (
-      <div className="flex h-full">
-        <div className="bg-secondary p-1 space-y-1 w-min overflow-y-auto rounded-2xl">
-          {data?.map((v) => (
-              <Button
-                  onClick={() => setActiveMajorVersion(v.name)}
-                  variant={activeMajorVersion === v.name ? 'default' : 'outline'}
-                  className="w-full"
-                  key={v.name}
-              >
-                {v.name}
-              </Button>
-          ))}
-        </div>
+      <div className="flex h-full space-x-6">
+        {/* Redesigned Sidebar with Categories */}
+        <aside className="w-60 bg-secondary/30 backdrop-blur-md p-2.5 flex flex-col rounded-2xl border border-border/40 shrink-0 shadow-sm">
+          {/* Mod Loader Category Selector Segment */}
+          <div className="mb-3 space-y-1">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80 px-2">
+            Mod Loader
+          </span>
+            <div className="grid grid-cols-3 gap-1 bg-background/50 p-1 rounded-xl border border-border/50">
+              {categories.map((cat) => (
+                  <button
+                      key={cat.id}
+                      onClick={() => setActiveLoader(cat.id)}
+                      className={`py-1.5 text-xs font-semibold rounded-lg transition-all text-center ${
+                          activeLoader === cat.id
+                              ? 'bg-primary text-primary-foreground shadow-sm'
+                              : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
+                      }`}
+                  >
+                    {cat.label}
+                  </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Major Versions List Header */}
+          <div className="px-2 mb-1">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80">
+            Major Versions
+          </span>
+          </div>
+
+          {/* Major Version Options */}
+          <div className="space-y-1 overflow-y-auto pr-1 flex-1 scrollbar-thin scrollbar-thumb-muted-foreground/20">
+            {data?.map((v) => {
+              const isActive = activeMajorVersion === v.name;
+              return (
+                  <button
+                      key={v.name}
+                      onClick={() => setActiveMajorVersion(v.name)}
+                      className={`w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-medium transition-all duration-200 outline-none ${
+                          isActive
+                              ? 'bg-primary text-primary-foreground shadow-md shadow-primary/20 font-semibold'
+                              : 'text-muted-foreground hover:bg-secondary/80 hover:text-foreground'
+                      }`}
+                  >
+                    <span>{v.name}</span>
+                    {isActive && (
+                        <span className="h-1.5 w-1.5 rounded-full bg-primary-foreground animate-pulse" />
+                    )}
+                  </button>
+              );
+            })}
+          </div>
+        </aside>
+
+        {/* Main Content Area */}
         <div className="flex-1">
           <LoadingSwap isLoading={isLoading} className="max-w-sm m-auto mt-8">
             <Combobox
@@ -114,6 +173,7 @@ export default function Downloads() {
                 </ComboboxList>
               </ComboboxContent>
             </Combobox>
+
             <ActionButton
                 action={async () => {
                   if (activeVersion) {
@@ -129,7 +189,7 @@ export default function Downloads() {
                 }}
                 className="w-full mt-2"
             >
-              Install
+              Install {activeLoader !== 'vanilla' ? `(${activeLoader.toUpperCase()})` : ''}
             </ActionButton>
 
             {/* Progress bar UI layout */}
@@ -140,15 +200,18 @@ export default function Downloads() {
                     {/* Inner Fill */}
                     <div
                         className="bg-primary h-full rounded-full transition-all duration-300 ease-out"
-                        // Added Number() conversion and template fallback to guarantee it sets a string percentage like "45%"
-                        style={{ width: `${Math.min(Math.max(Number(progress) || 0, 0), 100)}%` }}
+                        style={{
+                          width: `${Math.min(
+                              Math.max(Number(progress) || 0, 0),
+                              100,
+                          )}%`,
+                        }}
                     />
                   </div>
 
                   {/* Status information */}
                   <div className="flex justify-between text-xs text-muted-foreground px-1 font-medium tracking-wide">
                     <span className="truncate max-w-[75%]">{statusText}</span>
-                    {/* Displaying string format just in case it's parsed weirdly */}
                     <span>{String(progress)}%</span>
                   </div>
                 </div>
