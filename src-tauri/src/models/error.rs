@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::io::Error;
 use std::path::PathBuf;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct InvokeError<T> {
     pub code: u32,
     pub message: String,

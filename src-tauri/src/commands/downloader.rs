@@ -138,7 +138,11 @@ pub async fn download_version(
             "DEBUG: Forge version detected! {} installing it rn!",
             version_loader.id
         )));
-        download_forge_version(&version_loader.id, &app_handle, logger, &mir).await?;
+        let t = download_forge_version(&version_loader.id, &app_handle, logger, &mir).await;
+        if t.clone().is_err(){
+            println!("{:?}", t.clone().err().unwrap());
+        }
+        return t;
     };
     if version_loader.base == FABRIC {
         logger.send(info_launcher(format!(

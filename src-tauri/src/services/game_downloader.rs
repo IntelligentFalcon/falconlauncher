@@ -414,7 +414,7 @@ pub async fn download_forge_version(
     if !is_legacy(&version) {
         logger.send(info_launcher(
             "DEBUG: Non legacy version detected!".to_string(),
-        ));
+        )).unwrap();
         download_java(&"jre-legacy".to_string(), &"8".to_string(), logger, mirror).await?;
         let jdk_8 = get_java("jre-legacy".to_string())?;
         let mut child = Command::new(jdk_8.get_bin_file().display().to_string())
@@ -447,7 +447,6 @@ pub async fn download_forge_version(
 
     let install_profile_json: ForgeInstallProfile =
         serde_json::from_reader(install_profile_file).unwrap();
-
     if let Some(install_data) = &install_profile_json.install {
         let mut forge = zip.by_name(&install_data.file_path).unwrap();
         let path_maven = &install_data.path;
@@ -459,7 +458,9 @@ pub async fn download_forge_version(
         let full_path = get_libraries_directory().join(format!(
             "{group_id}/{artifact}/{version}/{artifact_version}.jar"
         ));
-        // create_dir_all(&full_path.parent().unwrap()).map_err(|x| todo_err("Failed to create the path"))?;
+
+        create_dir_all(&full_path.parent().unwrap()).map_err(|x| todo_err("Failed to create the path"))?;
+
         let mut file = File::create(full_path).unwrap();
         std::io::copy(&mut forge, &mut file).map_err(|x| todo_err("Failed to copy files"))?;
     }
@@ -550,6 +551,7 @@ pub async fn download_forge_version(
     }
 
     fs::remove_dir_all(launcher_dir.join("temp")).unwrap();
+    println!("Teast 6");
     Ok(())
 }
 

@@ -222,7 +222,7 @@ pub fn get_launch_args(json: &Value) -> Returns<Vec<String>> {
             .unwrap()
             .iter()
             .filter(|v| v.is_string())
-            .map(|v| v.as_str().unwrap().to_string())
+            .map(|v| v.as_str().unwrap().to_string  ())
             .collect::<Vec<String>>())
     } else {
         Ok(json["minecraftArguments"]
