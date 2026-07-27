@@ -125,7 +125,7 @@ pub async fn download_version(
     state: State<'_, AppState>,
     version_loader: VersionLoader,
 ) -> Void {
-    let version_id = version_loader.get_installed_id();
+    let mut version_id = version_loader.get_installed_id();
     let cfg = &state.config.read().await;
     let mir = &cfg.download_settings.mirror;
     let logger = &state.log_tx;
@@ -138,11 +138,10 @@ pub async fn download_version(
             "DEBUG: Forge version detected! {} installing it rn!",
             version_loader.id
         )));
-        let t = download_forge_version(&version_loader.id, &app_handle, logger, &mir).await;
+        let t = download_forge_version(&version_loader.id, &app_handle, logger, &mir,&mut version_id).await;
         if t.clone().is_err(){
             println!("{:?}", t.clone().err().unwrap());
         }
-        return t;
     };
     if version_loader.base == FABRIC {
         logger.send(info_launcher(format!(
@@ -156,7 +155,6 @@ pub async fn download_version(
     let inherited_version = version.get_inherited();
     update_download_status("Downloading version...", &app_handle);
     let cfg = &state.config.read().await;
-
     game_downloader::download_version(&version, &app_handle, logger, &*cfg).await?;
     if inherited_version.id != version.id {
         game_downloader::download_version(&inherited_version, &app_handle, logger, &*cfg).await?;

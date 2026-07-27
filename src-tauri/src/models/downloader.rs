@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::fmt::Display;
 use serde_json::Value;
 use crate::models::versions::VersionType;
 use crate::models::versions::VersionBase;
@@ -74,15 +75,16 @@ pub struct DownloadDetail {
     pub sha1: String,
 }
 
+
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MinecraftManifestVersion {
     pub libraries: Vec<Library>,
-    #[serde(rename = "assetIndex")]
     pub asset_index: Option<AssetIndex>,
     pub downloads: Option<HashMap<String, DownloadDetail>>,
     pub logging: Option<Logging>,
-    #[serde(rename = "javaVersion")]
-    pub java_version: Option<JavaVersion>
+    pub java_version: Option<JavaVersion>,
+    pub inherits_from: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -153,6 +155,7 @@ impl VersionLoader {
         match self.base {
             VersionBase::VANILLA => self.id.clone(),
             FORGE => {
+                println!("{}", self.id);
                 let id_clone = self.id.clone();
                 let args = id_clone.split("-").collect::<Vec<_>>();
                 let vanilla_id = args[0];
@@ -183,19 +186,41 @@ pub struct ForgeInstallProfile {
     pub version_info: Option<ForgeVersionJsonInfo>,
     pub libraries: Option<Vec<ForgeLibrary>>,
 }
-
-#[derive(Deserialize, Debug)]
+fn default_mirror_list() -> String {
+    "https://files.minecraftforge.net/mirror-brand.list".to_string()
+}
+#[derive(Deserialize, Serialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct ForgeInstallData {
-    #[serde(rename = "filePath")]
-    pub file_path: String,
+    pub profile_name: String,
+    pub target: String,
     pub path: String,
+    pub version: String,
+    pub file_path: String,
+    pub welcome: Option<String>,
+    pub minecraft: String,
+
+    #[serde(default = "default_mirror_list")]
+    pub mirror_list: String,
+    pub logo: Option<String>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct ForgeVersionJsonInfo {
     pub id: String,
+    pub time: Option<String>,
+    pub release_time: Option<String>,
+    pub r#type: Option<String>,
+    pub main_class: Option<String>,
+    pub minecraft_arguments: Option<String>,
+    pub minimum_launcher_version: Option<u32>,
+    pub assets: Option<String>,
+    pub inherits_from: Option<String>,
+    pub jar: Option<String>,
     pub libraries: Vec<ForgeLibrary>,
 }
+
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct ForgeLibrary {

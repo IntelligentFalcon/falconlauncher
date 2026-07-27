@@ -1,12 +1,13 @@
-use std::fs;
-use std::path::{PathBuf, MAIN_SEPARATOR, MAIN_SEPARATOR_STR};
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use crate::models::downloader;
 use crate::models::downloader::VersionLoader;
 use crate::models::platform::get_current_os;
 use crate::services::directory_manager::{get_libraries_directory, get_versions_directory};
 use crate::services::utils::{extend_once, parse_library_name_to_path};
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use serde_json::Value::Null;
+use std::fs;
+use std::path::{PathBuf, MAIN_SEPARATOR, MAIN_SEPARATOR_STR};
 
 impl PartialEq for VersionType {
     fn eq(&self, other: &Self) -> bool {
@@ -26,6 +27,7 @@ pub enum VersionType {
 
 impl MinecraftVersion {
     pub fn is_installed(&self) -> bool {
+        println!("{}",self.get_json());
         PathBuf::from(self.get_json()).exists()
     }
 
@@ -90,12 +92,18 @@ impl MinecraftVersion {
     }
     pub fn get_inherited(&self) -> MinecraftVersion {
         let json = self.load_json();
+        let id = json["id"].as_str().unwrap().to_string();
         if json.get("inheritsFrom").is_none() {
+            if id.to_lowercase().contains("forge") {
+                let id = id.split("-").collect::<Vec<&str>>()[0].to_string();
+                if id.as_str() != "forge" {
+                    return MinecraftVersion::from_id(id);
+                }
+            }
             self.clone()
         } else {
             let inherited = json["inheritsFrom"].as_str().unwrap().to_string();
-            let version = MinecraftVersion::from_id(inherited);
-            version
+            MinecraftVersion::from_id(inherited)
         }
     }
     pub fn is_fabric(&self) -> bool {
@@ -103,17 +111,19 @@ impl MinecraftVersion {
     }
     fn get_library_paths(&self) -> Vec<String> {
         let value = &self.load_json()["libraries"];
+
         let libraries_path = get_libraries_directory();
         let mut libraries = vec![];
-
         for library in value.as_array().unwrap() {
-            if library.get("downloads").is_none() {
+            if library.get("downloads").is_none() || library["downloads"].is_null() {
                 let library_name = library["name"].as_str().unwrap();
-                let library_path_str =
-                    parse_library_name_to_path(library_name.to_string()).replace("/", MAIN_SEPARATOR_STR);
+                let library_path_str = parse_library_name_to_path(library_name.to_string())
+                    .replace("/", MAIN_SEPARATOR_STR);
+                println!("{}",library_path_str);
                 let library_path = PathBuf::from(&library_path_str);
                 if library_path.exists() && !libraries.contains(&library_path_str) {
                     libraries.push(library_path_str);
+                    println!("Worked");
                 }
                 continue;
             } else if library["downloads"].get("artifact").is_none() {
@@ -137,7 +147,8 @@ impl MinecraftVersion {
                                     natives.get("path").unwrap().as_str().unwrap().to_string()
                                 };
                                 let path = libraries_path.join(p).to_str().unwrap().to_string();
-                                libraries.push(path.replace("/", MAIN_SEPARATOR.to_string().as_str()));
+                                libraries
+                                    .push(path.replace("/", MAIN_SEPARATOR.to_string().as_str()));
                             }
                         }
                     }
@@ -151,7 +162,7 @@ impl MinecraftVersion {
                 .join(&library_info.path.as_str().replace("\\", MAIN_SEPARATOR_STR))
                 .to_str()
                 .unwrap()
-                .replace("\\",MAIN_SEPARATOR_STR);
+                .replace("\\", MAIN_SEPARATOR_STR);
             if !libraries.contains(&path) {
                 libraries.push(path);
             }
@@ -200,8 +211,8 @@ impl MinecraftVersion {
     }
 }
 
-#[derive(Debug,Serialize, Deserialize)]
-pub struct  VersionCategory {
+#[derive(Debug, Serialize, Deserialize)]
+pub struct VersionCategory {
     pub versions: Vec<VersionLoader>,
     pub name: String,
 }
@@ -225,9 +236,7 @@ pub struct LibraryJson {
     pub path: String,
     pub url: String,
     pub sha1: Option<String>,
-    pub size: u64
+    pub size: u64,
 }
 /// Reimplementing the version json read system.
-pub struct VersionJson {
-
-}
+pub struct VersionJson {}

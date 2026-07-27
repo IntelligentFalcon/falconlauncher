@@ -42,7 +42,7 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
     let inherited_version = version.get_inherited();
     let inherited_json = inherited_version.load_json();
     let inherited_id = &inherited_version.id;
-
+    println!("{}", inherited_id);
     let java_component = inherited_json["javaVersion"]["component"].as_str().unwrap();
     let java = get_java(java_component.to_string())?;
 
@@ -56,6 +56,7 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
         .to_string();
 
     let libraries = version.get_libraries();
+
     let asset_index = inherited_json["assets"].as_str().unwrap().to_string();
     let main_class = json["mainClass"].as_str().unwrap();
     let class_path = version_directory
