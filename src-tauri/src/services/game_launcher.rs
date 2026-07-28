@@ -42,7 +42,6 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
     let inherited_version = version.get_inherited();
     let inherited_json = inherited_version.load_json();
     let inherited_id = &inherited_version.id;
-    println!("{}", inherited_id);
     let java_component = inherited_json["javaVersion"]["component"].as_str().unwrap();
     let java = get_java(java_component.to_string())?;
 
@@ -70,7 +69,9 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
         .to_string();
     let typ = json["type"].as_str().unwrap();
     let run_args_iter = get_launch_args(&json)?;
-    let jvm_args = get_jvm_args(&json);
+    let mut jvm_args = get_jvm_args(&json);
+    let jvm_args_inherited = get_jvm_args(&inherited_json);
+    jvm_args = extend_once(jvm_args_inherited,jvm_args);
     let run_args_iter_inherited = get_launch_args(&inherited_json)?;
     let run_args_iter_sum = extend_once(run_args_iter, run_args_iter_inherited);
 
@@ -121,6 +122,11 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
         .arg(format!("-Xms{xms}"))
         .arg(format!("-Xmx{xmx}"));
 
+    if utils::is_wayland() {
+        child_cmd.env("XDG_SESSION_TYPE", "x11")
+            .env("GDK_BACKEND", "x11")
+            .env("__GL_THREADED_OPTIMIZATIONS", "0");
+    }
     apply_dedicated_gpu_env(&mut child_cmd);
     if !jvm_args.is_empty() {
         for arg in jvm_args.clone() {
@@ -153,9 +159,11 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
         .stderr(Stdio::piped());
 
     let run_args_str = run_args.join(" ");
+    let jvm_args_str = jvm_args.join(" ");
 
     tx_out.send(info(format!("Loaded libraries: {libraries_str}\n\n"), version_id_out_clone.clone()));
     tx_out.send(info(format!("Game arguments: {run_args_str}"), version_id_out_clone.clone()));
+    tx_out.send(info(format!("JVM arguments: {jvm_args_str}"), version_id_out_clone.clone()));
     let mut child = child_cmd.spawn().expect("Failed to spawn java process");
     let stdout = child.stdout.take().expect("Failed to open stdout");
     let stderr = child.stderr.take().unwrap();

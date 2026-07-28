@@ -1,3 +1,4 @@
+use std::env;
 use crate::models::downloader::{LibraryRules, Rule, RuleOS};
 use crate::models::error::{io_err_buffer_read, io_err_read_file, Returns};
 use crate::models::java::Java;
@@ -263,3 +264,11 @@ pub fn is_legacy(version: &String) -> bool {
     mc_args[1].parse::<u32>().unwrap() <= 12
 }
 
+pub(crate) fn is_wayland() -> bool {
+    let wayland_display = env::var("WAYLAND_DISPLAY").is_ok();
+    let session_type = env::var("XDG_SESSION_TYPE")
+        .map(|v| v.to_lowercase() == "wayland")
+        .unwrap_or(false);
+
+    wayland_display || session_type
+}

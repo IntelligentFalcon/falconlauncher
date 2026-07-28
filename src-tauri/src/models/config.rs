@@ -3,13 +3,33 @@ use crate::models::mirror::Mirror;
 use crate::services::directory_manager::get_config_directory;
 use serde::{Deserialize, Serialize};
 use std::fs;
+use crate::models::config::Bool::FALSE;
 
+#[derive(Serialize, Deserialize, Debug)]
+pub struct NativeLibraries {
+    pub use_custom_glfw: Bool,
+    pub glfw_path: Option<String>,
+    pub use_custom_openal: Bool,
+    pub openal_path: Option<String>,
+
+}
+impl Default for NativeLibraries {
+    fn default() -> Self {
+        Self {
+            use_custom_glfw: FALSE,
+            glfw_path: None,
+            use_custom_openal: FALSE,
+            openal_path: None,
+        }
+    }
+}
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LaunchOptions {
     pub username: String,
     pub ram_usage_min: u64,
     pub ram_usage_max: u64,
     pub use_dedicated_gpu: Bool,
+
 }
 impl Default for LaunchOptions {
     fn default() -> Self {
@@ -25,6 +45,7 @@ impl Default for LaunchOptions {
 pub struct LauncherSettings {
     pub language: String,
     pub exit_on_launch: Bool,
+
 }
 
 impl Default for LauncherSettings {
@@ -61,13 +82,12 @@ pub struct DownloadSettings {
     pub mirror: Mirror,
 }
 #[derive(Debug, Deserialize, Serialize, Default)]
+#[serde(rename_all = "camelCase")]
 pub struct Config {
-    #[serde(rename = "LaunchOptions")]
     pub launch_options: LaunchOptions,
-    #[serde(rename = "LauncherSettings")]
     pub launcher_settings: LauncherSettings,
-    #[serde(rename = "DownloadSettings")]
     pub download_settings: DownloadSettings,
+    pub native_libraries: NativeLibraries
 }
 
 #[derive(Debug, Deserialize, Serialize, Default)]
