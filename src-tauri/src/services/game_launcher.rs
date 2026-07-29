@@ -1,6 +1,4 @@
-use crate::models::error::{
-    launcher_version_not_found, Returns, Void,
-};
+use crate::models::error::{launcher_version_not_found, Returns, Void};
 use crate::models::logger::{error, info};
 use crate::models::platform::get_current_os;
 use crate::models::profiles::get_profile;
@@ -12,6 +10,7 @@ pub use crate::AppState;
 use crate::Global;
 use log::info;
 use serde_json::Value;
+use std::ffi::OsStr;
 use std::io::{BufRead, BufReader};
 use std::path::{PathBuf, MAIN_SEPARATOR_STR};
 use std::process::{Command, Stdio};
@@ -71,7 +70,7 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
     let run_args_iter = get_launch_args(&json)?;
     let mut jvm_args = get_jvm_args(&json);
     let jvm_args_inherited = get_jvm_args(&inherited_json);
-    jvm_args = extend_once(jvm_args_inherited,jvm_args);
+    jvm_args = extend_once(jvm_args_inherited, jvm_args);
     let run_args_iter_inherited = get_launch_args(&inherited_json)?;
     let run_args_iter_sum = extend_once(run_args_iter, run_args_iter_inherited);
 
@@ -123,7 +122,8 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
         .arg(format!("-Xmx{xmx}"));
 
     if utils::is_wayland() {
-        child_cmd.env("XDG_SESSION_TYPE", "x11")
+        child_cmd
+            .env("XDG_SESSION_TYPE", "x11")
             .env("GDK_BACKEND", "x11")
             .env("__GL_THREADED_OPTIMIZATIONS", "0");
     }
@@ -137,12 +137,12 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
                         .to_str()
                         .unwrap(),
                 )
-                    .replace("${launcher_name}", &state.launcher_details.name)
-                    .replace("${launcher_version}", &state.launcher_details.version)
-                    .replace(
-                        "${classpath}",
-                        format!("{}{}{}", class_path, separator, libraries_str).as_str(),
-                    ),
+                .replace("${launcher_name}", &state.launcher_details.name)
+                .replace("${launcher_version}", &state.launcher_details.version)
+                .replace(
+                    "${classpath}",
+                    format!("{}{}{}", class_path, separator, libraries_str).as_str(),
+                ),
             )
         }
     } else {
@@ -161,9 +161,34 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
     let run_args_str = run_args.join(" ");
     let jvm_args_str = jvm_args.join(" ");
 
-    tx_out.send(info(format!("Loaded libraries: {libraries_str}\n\n"), version_id_out_clone.clone()));
-    tx_out.send(info(format!("Game arguments: {run_args_str}"), version_id_out_clone.clone()));
-    tx_out.send(info(format!("JVM arguments: {jvm_args_str}"), version_id_out_clone.clone()));
+    tx_out.send(info(
+        format!("Loaded libraries: {libraries_str}\n\n"),
+        version_id_out_clone.clone(),
+    ));
+    tx_out.send(info(
+        format!("Game arguments: {run_args_str}"),
+        version_id_out_clone.clone(),
+    ));
+    tx_out.send(info(
+        format!("JVM arguments: {jvm_args_str}"),
+        version_id_out_clone.clone(),
+    ));
+    let envs = &child_cmd
+        .get_envs()
+        .map(|x| {
+            format!(
+                "{}={}",
+                x.0.to_str().unwrap(),
+                x.1.unwrap_or(OsStr::new("")).to_str().unwrap()
+            )
+        })
+        .collect::<Vec<String>>()
+        .join("\n");
+    tx_out.send(info(
+        format!("Environments: {envs}"),
+        version_id_out_clone.clone(),
+    ));
+    println!("{}", child_cmd.get_program().to_str().unwrap());
     let mut child = child_cmd.spawn().expect("Failed to spawn java process");
     let stdout = child.stdout.take().expect("Failed to open stdout");
     let stderr = child.stderr.take().unwrap();
@@ -231,7 +256,7 @@ pub fn get_launch_args(json: &Value) -> Returns<Vec<String>> {
             .unwrap()
             .iter()
             .filter(|v| v.is_string())
-            .map(|v| v.as_str().unwrap().to_string  ())
+            .map(|v| v.as_str().unwrap().to_string())
             .collect::<Vec<String>>())
     } else {
         Ok(json["minecraftArguments"]

@@ -214,7 +214,6 @@ async fn download_libraries(
     for (library_index, library) in libraries.iter().enumerate() {
         println!("{}", library.name);
         if library.downloads.is_none() {
-            println!("Catch!");
             let name = library.name.replace(":", "/");
             let path = fetch_library_path(&name);
             if name.starts_with_lower_case("net/minecraft") {
@@ -631,7 +630,6 @@ pub async fn download_fabric(
         get_temp_directory().to_str().unwrap().to_string(),
         &stable_installer.maven,
     );
-
     download_file(
         stable_installer.url.to_string(),
         &installer_path_download.clone(),

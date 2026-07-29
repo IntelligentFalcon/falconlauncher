@@ -92,8 +92,8 @@ impl MinecraftVersion {
     }
     pub fn get_inherited(&self) -> MinecraftVersion {
         let json = self.load_json();
-        let id = json["id"].as_str().unwrap().to_string();
         if json.get("inheritsFrom").is_none() {
+            let id = json["id"].as_str().unwrap().to_string();
             if id.to_lowercase().contains("forge") {
                 let id = id.split("-").collect::<Vec<&str>>()[0].to_string();
                 if id.as_str() != "forge" {
@@ -119,11 +119,9 @@ impl MinecraftVersion {
                 let library_name = library["name"].as_str().unwrap();
                 let library_path_str = parse_library_name_to_path(library_name.to_string())
                     .replace("/", MAIN_SEPARATOR_STR);
-                println!("{}",library_path_str);
                 let library_path = PathBuf::from(&library_path_str);
                 if library_path.exists() && !libraries.contains(&library_path_str) {
                     libraries.push(library_path_str);
-                    println!("Worked");
                 }
                 continue;
             } else if library["downloads"].get("artifact").is_none() {
