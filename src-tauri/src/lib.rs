@@ -91,6 +91,7 @@ pub fn run() {
                 .build(),
         )
         .setup(move |app| {
+            info!("Launcher's initialization has started...");
             #[cfg(debug_assertions)]
             {
                 let window = app.get_webview_window("main").unwrap();
@@ -98,6 +99,8 @@ pub fn run() {
                     window.open_devtools();
                 }
             }
+
+            info!("Successfully passed the debug assertions.");
             spawn(async {
                 create_necessary_dirs().await;
 
@@ -105,8 +108,9 @@ pub fn run() {
                     download_version_manifest(&mojang_mirror()).await.unwrap();
                 }
             });
+            info!("Created required necessary directories.");
             let app_handle = app.handle().clone();
-            let shared_history = Arc::new(Mutex::new(VecDeque::with_capacity(1000)));
+            let shared_history = Arc::new(Mutex::new(VecDeque::with_capacity(10000)));
 
             let bridge_history = shared_history.clone();
             let log_tx = init_log_bridge(app_handle, bridge_history);
@@ -122,6 +126,8 @@ pub fn run() {
             block_on(async {
                 reload_installed_versions().await;
             });
+            info!("Reloaded installed versions.");
+
             let window = app.handle().get_window("main").unwrap();
 
             window.center().expect("Failed to center the window");
@@ -135,7 +141,10 @@ pub fn run() {
             app.deep_link().on_open_url(|event| {
                 info!("deep link URLs: {:?}", event.urls());
             });
+            info!("Program window's properties was modified successfully .");
+
             return Ok(());
+
         })
         .invoke_handler(tauri::generate_handler![
             play,

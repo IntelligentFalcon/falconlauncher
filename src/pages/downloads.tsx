@@ -18,40 +18,34 @@ type LoaderType = 'vanilla' | 'fabric' | 'forge';
 
 export default function Downloads() {
   const [activeLoader, setActiveLoader] = useState<LoaderType>('vanilla');
-  const [activeVersion, setActiveVersion] = useState<VersionLoader | null>(
-      null,
-  );
+  const [activeVersion, setActiveVersion] = useState<VersionLoader | null>(null);
   const [activeMajorVersion, setActiveMajorVersion] = useState('');
 
   // States to keep track of download progress and text
   const [progress, setProgress] = useState<number | null>(null);
   const [statusText, setStatusText] = useState<string>('');
 
-  // Dynamically pass arguments to get_categorized_versions depending on active category
+  // Dynamically pass parameters based on the active tab selection
   const { data, isLoading } = useBackend({
     name: 'get_categorized_versions',
     args: {
-      // forge: activeLoader === 'forge',
-      // fabric: activeLoader === 'fabric',
-      forge: true, //?TEMPORARY: MUST BE FIXED
-      fabric: true,
+      forge: activeLoader === 'forge',
+      fabric: activeLoader === 'fabric',
       liteLoader: false,
       neoForge: false,
     },
   });
 
-  // Listen to Rust backend events when the component loads
+  // Listen to Rust backend events when component mounts
   useEffect(() => {
     let unlistenProgress: () => void;
     let unlistenProgressBar: () => void;
 
     async function setupListeners() {
-      // Listen to the 'progress' text event from Rust
       unlistenProgress = await listen<string>('progress', (event) => {
         setStatusText(event.payload);
       });
 
-      // Listen to the 'progressBar' number event from Rust
       unlistenProgressBar = await listen<number>('progressBar', (event) => {
         setProgress(event.payload);
       });
@@ -59,17 +53,17 @@ export default function Downloads() {
 
     setupListeners();
 
-    // Clean up listeners when leaving this page to prevent performance issues
     return () => {
       if (unlistenProgress) unlistenProgress();
       if (unlistenProgressBar) unlistenProgressBar();
     };
   }, []);
 
+  // Sync state safely when data changes or category tab is clicked
   useEffect(() => {
     if (!data || data.length === 0) return;
 
-    // Fallback or reset major version if active selection doesn't exist in new data set
+    // Check if current major version selection exists in the returned data
     const hasMajor = data.some((v) => v.name === activeMajorVersion);
     const selectedMajor = hasMajor ? activeMajorVersion : data[0].name;
 
@@ -77,8 +71,12 @@ export default function Downloads() {
       setActiveMajorVersion(selectedMajor);
     }
 
+    // Find versions list for the selected major version
     const versions = data.find((v) => selectedMajor === v.name)?.versions;
-    const versionMatch = versions?.find((v) => v === activeVersion);
+
+    // Safely compare version IDs to prevent null references or stale state
+    const versionMatch = versions?.find((v) => v.id === activeVersion?.id);
+
     if (versions && !versionMatch) {
       setActiveVersion(versions[0] ?? null);
     }
@@ -96,7 +94,7 @@ export default function Downloads() {
 
   return (
       <div className="flex h-full space-x-6">
-        {/* Redesigned Sidebar with Categories */}
+        {/* Sidebar with Categories */}
         <aside className="w-60 bg-secondary/30 backdrop-blur-md p-2.5 flex flex-col rounded-2xl border border-border/40 shrink-0 shadow-sm">
           {/* Mod Loader Category Selector Segment */}
           <div className="mb-3 space-y-1">
@@ -179,7 +177,6 @@ export default function Downloads() {
             <ActionButton
                 action={async () => {
                   if (activeVersion) {
-                    // Initialize the progress bar states right when clicking install
                     setProgress(0);
                     setStatusText('Initializing download...');
 
@@ -197,21 +194,18 @@ export default function Downloads() {
             {/* Progress bar UI layout */}
             {progress !== null && (
                 <div className="mt-4 w-full space-y-2">
-                  {/* Outer Track */}
                   <div className="w-full bg-muted border border-border/40 rounded-full h-3 overflow-hidden shadow-inner">
-                    {/* Inner Fill */}
                     <div
                         className="bg-primary h-full rounded-full transition-all duration-300 ease-out"
                         style={{
                           width: `${Math.min(
                               Math.max(Number(progress) || 0, 0),
-                              100,
+                              100
                           )}%`,
                         }}
                     />
                   </div>
 
-                  {/* Status information */}
                   <div className="flex justify-between text-xs text-muted-foreground px-1 font-medium tracking-wide">
                     <span className="truncate max-w-[75%]">{statusText}</span>
                     <span>{String(progress)}%</span>

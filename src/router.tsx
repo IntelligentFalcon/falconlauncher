@@ -4,6 +4,7 @@ import IndexPage from './pages';
 import Downloads from './pages/downloads';
 import Console from './pages/console.tsx'
 import Settings from "@/pages/settings.tsx";
+import Mods from "@/pages/mods.tsx";
 
 export const router = createMemoryRouter([
   {
@@ -20,6 +21,10 @@ export const router = createMemoryRouter([
       {
         path: '/settings',
         element: <Settings/>
+      },
+      {
+        path: '/mods',
+        element: <Mods/>
       },
       {
         path: '/console',

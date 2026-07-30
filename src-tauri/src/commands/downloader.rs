@@ -151,6 +151,7 @@ pub async fn download_version(
         download_fabric(&version_loader, logger, &mir).await?;
     }
 
+    println!("{}", version_id);
     let version = MinecraftVersion::from_id(version_id);
     let inherited_version = version.get_inherited();
     update_download_status("Downloading version...", &app_handle);

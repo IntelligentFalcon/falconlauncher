@@ -20,7 +20,7 @@ import {
   ArrowRight01Icon,
   Download01Icon,
   GameboyIcon,
-  ConsoleIcon, Settings01Icon,
+  ConsoleIcon, Settings01Icon, Package01Icon,
 } from '@hugeicons/core-free-icons';
 import { NavLink } from 'react-router';
 
@@ -42,6 +42,11 @@ const NAVIGATION_ITEMS: {
     title: 'Download',
     url: '/downloads',
     icon: <HugeiconsIcon icon={Download01Icon} strokeWidth={2} />,
+  },
+  {
+    title: 'Mods',
+    url: '/mods',
+    icon: <HugeiconsIcon icon={Package01Icon} strokeWidth={2}/>
   },
   {
     title: 'Settings',
