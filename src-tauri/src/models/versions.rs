@@ -8,6 +8,7 @@ use serde_json::Value;
 use serde_json::Value::Null;
 use std::fs;
 use std::path::{PathBuf, MAIN_SEPARATOR, MAIN_SEPARATOR_STR};
+use crate::models::error::{todo_err, Returns};
 
 impl PartialEq for VersionType {
     fn eq(&self, other: &Self) -> bool {
@@ -27,7 +28,7 @@ pub enum VersionType {
 
 impl MinecraftVersion {
     pub fn is_installed(&self) -> bool {
-        println!("{}",self.get_json());
+        println!("{}", self.get_json());
         PathBuf::from(self.get_json()).exists()
     }
 
@@ -48,36 +49,22 @@ impl MinecraftVersion {
     pub fn from_id(id: String) -> Self {
         MinecraftVersion::new(id.clone(), id)
     }
-    pub fn from_folder(directory: PathBuf) -> MinecraftVersion {
-        let ignored_jsons = vec![
-            "tlauncheradditional.json",
-            "usercache.json",
-            "usernamecache.json",
-        ];
+    pub fn from_folder(directory: PathBuf) -> Returns<MinecraftVersion> {
         let file: PathBuf = directory
             .read_dir()
             .unwrap()
             .map(|x| x.unwrap().path())
             .find(|x| {
-                x.is_file()
-                    && (x.extension().unwrap() == "json"
-                        && !ignored_jsons.contains(
-                            &x.file_name()
-                                .unwrap()
-                                .to_str()
-                                .unwrap()
-                                .to_lowercase()
-                                .as_str(),
-                        ))
+                x.is_file() && (x.extension().unwrap() == "json")
             })
-            .unwrap();
+            .ok_or(todo_err("Directory not found"))?;
         let json: Value = serde_json::from_str(fs::read_to_string(file).unwrap().as_str()).unwrap();
         let name = json["id"].as_str().unwrap().to_string();
         let version_folder = directory.to_str().unwrap().to_string();
-        Self {
+        Ok(Self {
             id: name,
             version_path: directory.as_path().to_str().unwrap().to_string(),
-        }
+        })
     }
     pub fn is_forge(&self) -> bool {
         self.id.contains("forge")

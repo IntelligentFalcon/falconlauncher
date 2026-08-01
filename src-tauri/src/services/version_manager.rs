@@ -31,7 +31,7 @@ pub async fn reload_installed_versions() {
             return  Some(MinecraftVersion::from_folder(d.path()));
         }
         return None;
-    }).collect::<Vec<MinecraftVersion>>();
+    }).filter(|x| x.is_ok()).map(|x| x.unwrap()).collect::<Vec<MinecraftVersion>>();
     let mut global = GLOBAL_CACHE.lock().await;
     global.versions = versions;
 
