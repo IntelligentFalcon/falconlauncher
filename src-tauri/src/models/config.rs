@@ -8,18 +8,18 @@ use crate::models::config::Bool::FALSE;
 #[derive(Serialize, Deserialize, Debug)]
 pub struct NativeLibraries {
     pub use_custom_glfw: Bool,
-    pub glfw_path: Option<String>,
+    pub glfw_path: String,
     pub use_custom_openal: Bool,
-    pub openal_path: Option<String>,
+    pub openal_path: String,
 
 }
 impl Default for NativeLibraries {
     fn default() -> Self {
         Self {
             use_custom_glfw: FALSE,
-            glfw_path: None,
+            glfw_path: "".to_string(),
             use_custom_openal: FALSE,
-            openal_path: None,
+            openal_path: "".to_string(),
         }
     }
 }
