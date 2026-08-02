@@ -51,7 +51,6 @@ impl MinecraftVersion {
         MinecraftVersion::new(id.clone(), id)
     }
     pub fn from_folder(directory: PathBuf) -> Returns<MinecraftVersion> {
-        debug!("successfully bypassed previous test.");
 
         let file: PathBuf = directory
             .read_dir()
@@ -61,7 +60,6 @@ impl MinecraftVersion {
                 x.is_file() && (x.extension().unwrap() == "json")
             })
             .ok_or(todo_err("Directory not found"))?;
-        debug!("Read directory has also passed successfully!");
         let json: MinecraftManifestVersion = serde_json::from_str(fs::read_to_string(file)
             .map_err(|x| todo_err("some unknown error to be fixed later"))?.as_str())
             .map_err(|x| todo_err("Parsing json failed"))?;
