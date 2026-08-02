@@ -8,6 +8,7 @@ use serde_json::Value;
 use serde_json::Value::Null;
 use std::fs;
 use std::path::{PathBuf, MAIN_SEPARATOR, MAIN_SEPARATOR_STR};
+use log::debug;
 use crate::models::error::{todo_err, Returns};
 
 impl PartialEq for VersionType {
@@ -50,6 +51,8 @@ impl MinecraftVersion {
         MinecraftVersion::new(id.clone(), id)
     }
     pub fn from_folder(directory: PathBuf) -> Returns<MinecraftVersion> {
+        debug!("successfully bypassed previous test.");
+
         let file: PathBuf = directory
             .read_dir()
             .unwrap()
@@ -58,7 +61,10 @@ impl MinecraftVersion {
                 x.is_file() && (x.extension().unwrap() == "json")
             })
             .ok_or(todo_err("Directory not found"))?;
-        let json: MinecraftManifestVersion = serde_json::from_str(fs::read_to_string(file).unwrap().as_str()).map_err(|x| todo_err("Parsing json failed"))?;
+        debug!("Read directory has also passed successfully!");
+        let json: MinecraftManifestVersion = serde_json::from_str(fs::read_to_string(file)
+            .map_err(|x| todo_err("some unknown error to be fixed later"))?.as_str())
+            .map_err(|x| todo_err("Parsing json failed"))?;
         let name = json.id; // TODO: Still needs some rechecking over how to verify that's a Minecraft version or not (forge is kinda messed up)
         Ok(Self {
             id: name,

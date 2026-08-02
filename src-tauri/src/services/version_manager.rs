@@ -1,3 +1,4 @@
+use log::debug;
 use crate::GLOBAL_CACHE;
 use crate::models::downloader::Manifest;
 use crate::services::directory_manager::{get_versions_directory, version_manifest_directory};
@@ -17,7 +18,9 @@ pub fn load_version_manifest_local() -> Returns<Manifest> {
     serde_json::from_str(text.unwrap().as_str()).map_err(|x| json_read_err(x))
 }
 pub async fn reload_installed_versions() {
+    debug!("Beginning of reload_installed_versions");
     let versions_dir = get_versions_directory().read_dir().unwrap();
+    debug!("Passed versions_dir successfully");
     let versions = versions_dir.filter_map(|x| {
         let d = x.unwrap();
         if d.file_type().unwrap().is_file() {
@@ -26,13 +29,19 @@ pub async fn reload_installed_versions() {
 
         if d.path().read_dir().unwrap().find(|x| {
             let ent = x.as_ref().unwrap();
+            debug!("{}", ent.path().display());
+
             ent.file_name().to_str().unwrap().to_lowercase().contains(".json")
         }).is_some() {
             return  Some(MinecraftVersion::from_folder(d.path()));
         }
         return None;
     }).filter(|x| x.is_ok()).map(|x| x.unwrap()).collect::<Vec<MinecraftVersion>>();
+    debug!("Passed versions successfully");
+
     let mut global = GLOBAL_CACHE.lock().await;
+    debug!("Locked global_cache variable successfully.");
+
     global.versions = versions;
 
 }
