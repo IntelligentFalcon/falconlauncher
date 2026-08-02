@@ -58,7 +58,7 @@ impl MinecraftVersion {
                 x.is_file() && (x.extension().unwrap() == "json")
             })
             .ok_or(todo_err("Directory not found"))?;
-        let json: Value = serde_json::from_str(fs::read_to_string(file).unwrap().as_str()).unwrap();
+        let json: Value = serde_json::from_str(fs::read_to_string(file).unwrap().as_str()).map_err(|x| todo_err("Parsing json failed"))?;
         let name = json["id"].as_str().unwrap().to_string();
         let version_folder = directory.to_str().unwrap().to_string();
         Ok(Self {
