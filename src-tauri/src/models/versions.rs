@@ -60,7 +60,6 @@ impl MinecraftVersion {
             .ok_or(todo_err("Directory not found"))?;
         let json: MinecraftManifestVersion = serde_json::from_str(fs::read_to_string(file).unwrap().as_str()).map_err(|x| todo_err("Parsing json failed"))?;
         let name = json.id; // TODO: Still needs some rechecking over how to verify that's a Minecraft version or not (forge is kinda messed up)
-        let version_folder = directory.to_str().unwrap().to_string();
         Ok(Self {
             id: name,
             version_path: directory.as_path().to_str().unwrap().to_string(),

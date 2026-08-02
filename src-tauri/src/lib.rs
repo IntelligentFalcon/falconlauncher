@@ -82,7 +82,7 @@ pub fn run() {
                 .targets([
                     Target::new(TargetKind::Folder {
                         path: get_falcon_launcher_directory(),
-                        file_name: Some("logs".to_string()),
+                        file_name: Some("latest".to_string()),
                     }),
                     Target::new(TargetKind::Stdout),
                     Target::new(TargetKind::Webview),
