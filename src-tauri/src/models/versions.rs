@@ -1,5 +1,5 @@
 use crate::models::downloader;
-use crate::models::downloader::VersionLoader;
+use crate::models::downloader::{MinecraftManifestVersion, VersionLoader};
 use crate::models::platform::get_current_os;
 use crate::services::directory_manager::{get_libraries_directory, get_versions_directory};
 use crate::services::utils::{extend_once, parse_library_name_to_path};
@@ -58,8 +58,8 @@ impl MinecraftVersion {
                 x.is_file() && (x.extension().unwrap() == "json")
             })
             .ok_or(todo_err("Directory not found"))?;
-        let json: Value = serde_json::from_str(fs::read_to_string(file).unwrap().as_str()).map_err(|x| todo_err("Parsing json failed"))?;
-        let name = json["id"].as_str().unwrap().to_string();
+        let json: MinecraftManifestVersion = serde_json::from_str(fs::read_to_string(file).unwrap().as_str()).map_err(|x| todo_err("Parsing json failed"))?;
+        let name = json.id; // TODO: Still needs some rechecking over how to verify that's a Minecraft version or not (forge is kinda messed up)
         let version_folder = directory.to_str().unwrap().to_string();
         Ok(Self {
             id: name,

@@ -85,6 +85,7 @@ pub struct MinecraftManifestVersion {
     pub logging: Option<Logging>,
     pub java_version: Option<JavaVersion>,
     pub inherits_from: Option<String>,
+    pub id: String,
 }
 
 #[derive(Debug, Deserialize)]
