@@ -1,16 +1,16 @@
 use tauri::{command, State};
 use crate::AppState;
-use crate::models::error::{Returns, Void};
+use crate::models::error::AppError;
 use crate::models::profiles;
 use crate::models::profiles::{Profile};
 
 #[command]
-pub async fn get_profiles() -> Returns<Vec<Profile>> {
+pub async fn get_profiles() -> Result<Vec<Profile>, AppError> {
     Ok(profiles::get_profiles())
 }
 
 #[command]
-pub async fn create_offline_profile(state: State<'_, AppState>, username: String) -> Void {
+pub async fn create_offline_profile(state: State<'_, AppState>, username: String) -> Result<(), AppError> {
     let mut cfg = state.config.write().await;
     let result = profiles::create_new_profile(username.clone(), false);
     cfg.launch_options.username = username;

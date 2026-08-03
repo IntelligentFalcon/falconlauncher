@@ -1,5 +1,5 @@
 use crate::services::directory_manager::get_mods_folder;
-use crate::models::error::{io_err_rename_file, Void};
+use crate::models::error::AppError;
 use crate::models::mods::{FabricModInfo, McModInfo};
 use crate::models::mods::ModInfo;
 use std::fs;
@@ -11,7 +11,7 @@ use log::info;
 use toml::Value;
 use zip::ZipArchive;
 
-pub fn set_mod_enabled(m: ModInfo, toggle: bool) -> Void {
+pub fn set_mod_enabled(m: ModInfo, toggle: bool) -> Result<(), AppError> {
     let mut path = PathBuf::from(&m.path);
     let new_path = if toggle {
         let mut new = path.clone();
@@ -24,7 +24,7 @@ pub fn set_mod_enabled(m: ModInfo, toggle: bool) -> Void {
         new.set_extension("disabled");
         new
     };
-    fs::rename(&path, &new_path).map_err(|x| io_err_rename_file(path.display().to_string(), x))
+    fs::rename(&path, &new_path).map_err(|x| AppError::FileRenameFailed(x.to_string()))
 
 }
 pub fn delete_mod(mod_info: &ModInfo) {

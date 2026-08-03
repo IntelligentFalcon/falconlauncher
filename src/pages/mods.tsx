@@ -12,6 +12,15 @@ import { useBackend, useBackendMutation } from '@/hooks/use-backend';
 import { ModInfo } from '@/invokes';
 import { Download, FolderOpen, PackagePlus, Power, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Alert01Icon } from '@hugeicons/core-free-icons';
+import {
+  Empty,
+  EmptyDescription,
+  EmptyMedia,
+  EmptyTitle,
+} from '@/components/ui/empty';
+import { errorText } from '@/messages';
 
 // Adjust fields if your ModInfo type in @/invokes differs slightly
 export interface ModItem {
@@ -29,7 +38,7 @@ export default function Mods() {
   const [modsList, setModsList] = useState<ModItem[]>([]);
 
   // ✅ FIX 1 & 2: Use registered command 'get_versions'
-  const { data: installedVersions, isLoading: isLoadingVersions } = useBackend({
+  const { data: installedVersions, isLoading: isLoadingVersions, error: versionsError } = useBackend({
     name: 'get_versions',
   });
 
@@ -44,6 +53,7 @@ export default function Mods() {
     data: fetchedMods,
     isLoading: isLoadingMods,
     refetch: refreshMods,
+    error: modsError,
   } = useBackend({
     name: 'get_mods',
   });
@@ -142,6 +152,12 @@ export default function Mods() {
       <div className="flex items-center justify-between gap-4 bg-secondary/30 backdrop-blur-md p-3 rounded-2xl border border-border/40 shadow-sm">
         <div className="w-64">
           <LoadingSwap isLoading={isLoadingVersions}>
+            {versionsError ? (
+              <Empty className="p-2 border border-destructive/20 h-10 flex-row gap-2 rounded-xl bg-destructive/5 justify-start">
+                <HugeiconsIcon icon={Alert01Icon} size={16} className="text-destructive" />
+                <EmptyTitle className="text-xs text-destructive">{errorText(versionsError.code).title}</EmptyTitle>
+              </Empty>
+            ) : (
             <Combobox
               items={versionItems}
               autoHighlight
@@ -163,6 +179,7 @@ export default function Mods() {
                 </ComboboxList>
               </ComboboxContent>
             </Combobox>
+            )}
           </LoadingSwap>
         </div>
 
@@ -198,7 +215,21 @@ export default function Mods() {
       {/* Main Mods List Area */}
       <div className="flex-1 bg-secondary/20 rounded-2xl border border-border/40 p-4 overflow-hidden flex flex-col">
         <LoadingSwap isLoading={isLoadingMods} className="h-full">
-          {modsList.length === 0 ? (
+          {modsError ? (
+            <div className="h-full flex flex-col items-center justify-center text-center text-muted-foreground space-y-2">
+                <Empty>
+                  <EmptyMedia variant="icon">
+                    <HugeiconsIcon icon={Alert01Icon} size={24} />
+                  </EmptyMedia>
+                  <EmptyTitle>
+                    {errorText(modsError.code).title}
+                  </EmptyTitle>
+                  <EmptyDescription>
+                    {errorText(modsError.code).description}
+                  </EmptyDescription>
+                </Empty>
+            </div>
+          ) : modsList.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center text-muted-foreground space-y-2">
               <p className="text-sm font-medium">
                 No mods installed for {selectedVersion || 'this version'}.

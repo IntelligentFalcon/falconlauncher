@@ -1,4 +1,4 @@
-use crate::models::error::{todo_err, Returns, Void};
+use crate::models::error::AppError;
 use crate::services::directory_manager::get_mirrors_dir;
 use reqwest::Client;
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
@@ -60,13 +60,13 @@ impl Mirror {
         }
         t
     }
-    pub fn write(&self) -> Void {
+    pub fn write(&self) -> Result<(), AppError> {
         let content = serde_json::to_string(&self).unwrap();
         fs::write(
             get_mirrors_dir().join(format!("{}.json", self.name.to_lowercase())),
             content,
         )
-        .map_err(|x| todo_err("file write filed"))
+        .map_err(|x| AppError::NotImplemented("file write filed".to_string()))
     }
 }
 pub fn mirror(
@@ -115,7 +115,7 @@ pub fn mojang_mirror() -> Mirror {
     )
 }
 
-pub fn list_mirrors() -> Returns<Vec<Mirror>> {
+pub fn list_mirrors() -> Result<Vec<Mirror>, AppError> {
     let mirrors_dir = get_mirrors_dir();
     let mut vec = Vec::new();
     for entry in mirrors_dir.read_dir().unwrap() {

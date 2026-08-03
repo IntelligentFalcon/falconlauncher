@@ -1,4 +1,4 @@
-use crate::models::error::{launcher_version_not_found, Returns, Void};
+use crate::models::error::AppError;
 use crate::models::logger::{error, info};
 use crate::models::platform::get_current_os;
 use crate::models::profiles::get_profile;
@@ -16,7 +16,7 @@ use std::path::{PathBuf, MAIN_SEPARATOR_STR};
 use std::process::{Command, Stdio};
 use tauri::{AppHandle, Manager};
 
-pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &Global) -> Void {
+pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &Global) -> Result<(), AppError> {
     info!("DEBUG: Starting game in {version} ");
     let state = &app_handle.state::<AppState>();
     let tx_err = state.log_tx.clone();
@@ -32,7 +32,7 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
 
     let mut versions = global_cache.versions.iter().filter(|x| x.id == version);
     let ver_res = versions.next();
-    let version = ver_res.ok_or(launcher_version_not_found())?;
+    let version = ver_res.ok_or(AppError::VersionNotFound)?;
     let version_id = &version.id;
     let version_id_err_clone = version_id.clone();
     let version_id_out_clone = version_id.clone();
@@ -249,7 +249,7 @@ pub fn get_jvm_args(json: &Value) -> Vec<String> {
     }
     vec
 }
-pub fn get_launch_args(json: &Value) -> Returns<Vec<String>> {
+pub fn get_launch_args(json: &Value) -> Result<Vec<String>, AppError> {
     if json.get("minecraftArguments").is_none() {
         Ok(json["arguments"]["game"]
             .as_array()

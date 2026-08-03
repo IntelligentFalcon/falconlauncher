@@ -1,4 +1,4 @@
-use crate::models::error::{download_error, io_err_create_file, todo_err, Returns, Void};
+use crate::models::error::AppError;
 use crate::models::java::Java;
 use crate::models::logger::LogLine;
 use crate::models::mirror::Mirror;
@@ -12,7 +12,7 @@ use std::fs::create_dir_all;
 use tokio::sync::mpsc::UnboundedSender;
 use tracing::info;
 
-pub fn get_java(java: String) -> Returns<Java> {
+pub fn get_java(java: String) -> Result<Java, AppError> {
     let runtime_dir = get_java_dir().join(&java);
     Ok(Java::new(runtime_dir))
 }
@@ -21,7 +21,7 @@ pub async fn download_java(
     version: &String,
     logger: &UnboundedSender<LogLine>,
     mirror: &Mirror,
-) -> Void {
+) -> Result<(), AppError> {
     let runtime_dir = get_java_dir().join(&java);
     if mirror.is_connected().await {
         let url = mirror.parse_url(&"https://launchermeta.mojang.com/v1/products/java-runtime/2ec0cc96c44e5a76b9c8b7c39df7210883d12871/all.json".to_string());
@@ -30,7 +30,7 @@ pub async fn download_java(
             .await
             .ok_or(0)
             //"Couldn't get or read the runtime json manifest file.".to_string()
-            .map_err(|_x| download_error())?;
+            .map_err(|_x| AppError::DownloadFailed)?;
         let runtime_arr = &json[current_os][java];
         let runtime_v = runtime_arr
             .as_array()
@@ -49,11 +49,11 @@ pub async fn download_java(
         let runtime_manifest: Value = reqwest::get(runtime_manifest_url)
             .await
             //"Couldn't get runtime manifest.".to_string()
-            .map_err(|_x| download_error())?
+            .map_err(|_x| AppError::DownloadFailed)?
             .json()
             .await
             //"Failed to read the runtime json file.".to_string()
-            .map_err(|_x| download_error())?;
+            .map_err(|_x| AppError::DownloadFailed)?;
 
         let files = &runtime_manifest["files"];
         for (k, v) in files.as_object().unwrap() {
@@ -72,14 +72,14 @@ pub async fn download_java(
             }
         }
     } else {
-        return Err(todo_err("Mirror is not connected to download"));
+        return Err(AppError::NotImplemented("Mirror is not connected to download".to_string()));
     }
     if !runtime_dir.join("release").exists() {
         fs::write(
             runtime_dir.join("release"),
             format!("JAVA_VERSION=\"{}\"", version),
         )
-        .map_err(|x| io_err_create_file("release".to_string(), x))?;
+        .map_err(|x| AppError::FileCreateFailed(x.to_string()))?;
     }
     Ok(())
 }

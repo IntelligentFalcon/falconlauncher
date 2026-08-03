@@ -18,10 +18,7 @@ use crate::models::downloader::{
     AssetIndex, AssetObjects, DownloadDetail, ForgeInstallProfile, ForgeVersionJsonInfo, Library,
     LibraryArtifact, Manifest, MinecraftManifestVersion, VersionLoader,
 };
-use crate::models::error::{
-    download_error, io_err_permission, io_err_read_file, json_read_err, request_unknown_err,
-    todo_err, Returns, Void,
-};
+use crate::models::error::AppError;
 use crate::models::fabric::{FabricInstaller, FabricLoader, FabricMinecraftVersion};
 use crate::models::logger::{info_launcher, LogLine};
 use crate::models::mirror::Mirror;
@@ -50,7 +47,7 @@ pub async fn download_version(
     app_handle: &AppHandle,
     logger: &UnboundedSender<LogLine>,
     cfg: &Config,
-) -> Void {
+) -> Result<(), AppError> {
     let id = &version.id;
     let mirror = &cfg.download_settings.mirror;
 
@@ -65,15 +62,15 @@ pub async fn download_version(
             }
         })?;
     let content =
-        fs::read_to_string(PathBuf::from(version.get_json())).map_err(|x| io_err_read_file(x))?;
+        fs::read_to_string(PathBuf::from(version.get_json())).map_err(|x| AppError::FileReadFailed(x.to_string()))?;
     let json: MinecraftManifestVersion =
-        serde_json::from_str(&content).map_err(|x| json_read_err(x))?;
+        serde_json::from_str(&content).map_err(|x| AppError::JsonParseFailed(x.to_string()))?;
     let java_version = if json.inherits_from.is_none() {
         &json.java_version.unwrap()
     } else {
         let dir = get_version_manifest(&json.inherits_from.unwrap().as_str().to_string());
         let content = fs::read_to_string(dir);
-        let m: MinecraftManifestVersion = serde_json::from_str(&content.unwrap()).map_err(|x| json_read_err(x))?;
+        let m: MinecraftManifestVersion = serde_json::from_str(&content.unwrap()).map_err(|x| AppError::JsonParseFailed(x.to_string()))?;
         &m.java_version.unwrap()
     };
     download_java(
@@ -118,7 +115,7 @@ async fn download_assets(
     logger: &UnboundedSender<LogLine>,
     mirror: &Mirror,
     app_handle: &AppHandle,
-) -> Void {
+) -> Result<(), AppError> {
     let id = &value.id;
     let url = mirror.parse_url(&value.url);
     let total_size = value.total_size;
@@ -161,20 +158,20 @@ async fn download_assets(
     Ok(())
 }
 
-pub async fn download_file_if_not_exists(path: &PathBuf, url: String, size: u64) -> Void {
+pub async fn download_file_if_not_exists(path: &PathBuf, url: String, size: u64) -> Result<(), AppError> {
     if !verify_file_existence(&path.to_str().unwrap().to_string(), size) {
         download_file(url, &path.to_str().unwrap().to_string()).await?;
     }
     Ok(())
 }
 
-async fn download_from_manifest(id: &String, manifest: &Manifest, mir: &Mirror) -> Void {
+async fn download_from_manifest(id: &String, manifest: &Manifest, mir: &Mirror) -> Result<(), AppError> {
     let version = manifest
         .versions
         .iter()
         .find(|v| &v.id == id)
-        .ok_or(todo_err(
-            format!("Couldn't find version in manifest. {id}").as_str(),
+        .ok_or(AppError::NotImplemented(
+            format!("Couldn't find version in manifest. {id}")
         ))?;
     let version_url = mir.parse_url(&version.url);
     download_file(
@@ -193,7 +190,7 @@ async fn download_client(
     version: &String,
     logger: &UnboundedSender<LogLine>,
     mirror: &Mirror,
-) -> Void {
+) -> Result<(), AppError> {
     let size = value.size;
     let url = mirror.parse_url(&value.url);
     let path = get_versions_directory()
@@ -208,7 +205,7 @@ async fn download_libraries(
     app_handle: &AppHandle,
     logger: &UnboundedSender<LogLine>,
     mirror: &Mirror,
-) -> Void {
+) -> Result<(), AppError> {
     let libraries_path = get_libraries_directory();
 
     for (library_index, library) in libraries.iter().enumerate() {
@@ -232,7 +229,7 @@ async fn download_libraries(
                         .head(url.clone())
                         .send()
                         .await
-                        .map_err(|x| request_unknown_err(x))?
+                        .map_err(|x| AppError::NetworkRequestFailed(x.to_string()))?
                         .status()
                         .is_success()
                     {
@@ -253,7 +250,7 @@ async fn download_libraries(
             .downloads
             .as_ref()
             .and_then(|d| d.artifact.as_ref())
-            .ok_or(todo_err("Parsing library downloads failed"))?;
+            .ok_or(AppError::NotImplemented("Parsing library downloads failed".to_string()))?;
 
         let library_path = if library_artifact.path.is_none() {
             let args = library.name.split(":").collect::<Vec<&str>>();
@@ -294,7 +291,7 @@ async fn download_classifiers(
     classifiers: Option<&HashMap<String, LibraryArtifact>>,
     version: &String,
     mirror: &Mirror,
-) -> Void {
+) -> Result<(), AppError> {
     if classifiers.is_none() {
         return Ok(());
     }
@@ -330,24 +327,24 @@ async fn download_classifiers(
             }
             // TODO: changing natives folder to a better place
             extract(file.unwrap(), &natives_path, false)
-                .map_err(|x| todo_err("Zip extraction of classifier failed"))?;
+                .map_err(|x| AppError::NotImplemented("Zip extraction of classifier failed".to_string()))?;
         }
     }
     Ok(())
 }
 
-fn download_file_async(url: String, dest: String) -> Void {
+fn download_file_async(url: String, dest: String) -> Result<(), AppError> {
     block_on(async { download_file(url, &dest).await })
 }
-fn download_file_async_thread(url: String, dest: String) -> Void {
+fn download_file_async_thread(url: String, dest: String) -> Result<(), AppError> {
     block_on(async { download_file(url, &dest).await })
 }
 
-pub async fn download_file(url: String, dest: &String) -> Void {
+pub async fn download_file(url: String, dest: &String) -> Result<(), AppError> {
     let resp = reqwest::get(&url)
         .await
         //format!("Failed to download file from {url}, {}", x))
-        .map_err(|x| download_error())?;
+        .map_err(|x| AppError::DownloadFailed)?;
     info!(
         "Downloading {url} to {dest} with response of {}",
         resp.content_length().unwrap()
@@ -374,7 +371,7 @@ pub async fn download_file(url: String, dest: &String) -> Void {
         if let Ok(metadata) = std::fs::metadata(&dest) {
             let mut permissions = metadata.permissions();
             permissions.set_mode(0o755); // rwxr-xr-x
-            set_permissions(&dest, permissions).map_err(|x| io_err_permission(x))?;
+            set_permissions(&dest, permissions).map_err(|x| AppError::AccessDenied(x.to_string()))?;
         }
     }
     Ok(())
@@ -383,7 +380,7 @@ pub async fn download_file(url: String, dest: &String) -> Void {
 pub async fn get_available_forge_versions(
     version_id: &String,
     mirror: &Mirror,
-) -> Returns<Vec<String>> {
+) -> Result<Vec<String>, AppError> {
     let mut global_cache = GLOBAL_CACHE.lock().await;
     if global_cache.forge.is_none() {
         let url = "https://files.minecraftforge.net/net/minecraftforge/forge/maven-metadata.json"
@@ -391,10 +388,10 @@ pub async fn get_available_forge_versions(
 
         let map: HashMap<String, Vec<String>> = reqwest::get(url)
             .await
-            .map_err(|x| request_unknown_err(x))?
+            .map_err(|x| AppError::NetworkRequestFailed(x.to_string()))?
             .json()
             .await
-            .map_err(|x| request_unknown_err(x))?;
+            .map_err(|x| AppError::NetworkRequestFailed(x.to_string()))?;
         global_cache.forge = Some(map);
     }
     let map = &global_cache.forge;
@@ -421,7 +418,7 @@ pub async fn download_forge_version(
     logger: &UnboundedSender<LogLine>,
     mirror: &Mirror,
     ver: &mut String,
-) -> Void {
+) -> Result<(), AppError> {
     let url = format!("https://maven.minecraftforge.net/net/minecraftforge/forge/{version}/forge-{version}-installer.jar").parse_mirror(mirror);
     let launcher_dir = get_falcon_launcher_directory();
     info!("{}", url);
@@ -475,7 +472,7 @@ pub async fn download_forge_version(
     let mut zip = ZipArchive::new(installer_file).unwrap();
     let install_profile_file = zip
         .by_name("install_profile.json")
-        .map_err(|x| todo_err("Failed to find install_profile.json"))?;
+        .map_err(|x| AppError::NotImplemented("Failed to find install_profile.json".to_string()))?;
 
     let install_profile_json: ForgeInstallProfile =
         serde_json::from_reader(install_profile_file).unwrap();
@@ -500,10 +497,10 @@ pub async fn download_forge_version(
             }
         }
         create_dir_all(&full_path.parent().unwrap())
-            .map_err(|x| todo_err("Failed to create the path"))?;
+            .map_err(|x| AppError::NotImplemented("Failed to create the path".to_string()))?;
 
         let mut file = File::create(full_path).unwrap();
-        std::io::copy(&mut forge, &mut file).map_err(|x| todo_err("Failed to copy files"))?;
+        std::io::copy(&mut forge, &mut file).map_err(|x| AppError::NotImplemented("Failed to copy files".to_string()))?;
     }
 
     let version_json: ForgeVersionJsonInfo = if install_profile_json.version_info.is_none() {
@@ -527,7 +524,7 @@ pub async fn download_forge_version(
         version_json_path,
         serde_json::to_string(&version_json).unwrap(),
     )
-        .map_err(|x| todo_err("Failed to write to the forge json file."))?;
+        .map_err(|x| AppError::NotImplemented("Failed to write to the forge json file.".to_string()))?;
 
     if let Some(profile_libraries) = &install_profile_json.libraries {
         for library in profile_libraries {
@@ -539,17 +536,17 @@ pub async fn download_forge_version(
                             let zip_path = format!("maven/{}", path);
                             let mut f = zip
                                 .by_name(&zip_path)
-                                .map_err(|x| todo_err("Parsing zip file failed."))?;
+                                .map_err(|x| AppError::NotImplemented("Parsing zip file failed.".to_string()))?;
                             create_dir_all(
                                 PathBuf::from(get_libraries_directory().join(path))
                                     .parent()
                                     .unwrap(),
                             )
-                                .map_err(|x| todo_err("Failed to create the directory"))?;
+                                .map_err(|x| AppError::NotImplemented("Failed to create the directory".to_string()))?;
                             let mut file =
                                 File::create(get_libraries_directory().join(path)).unwrap();
                             std::io::copy(&mut f, &mut file)
-                                .map_err(|x| todo_err("Failed to copy files"))?;
+                                .map_err(|x| AppError::NotImplemented("Failed to copy files".to_string()))?;
                         }
                         continue;
                     }
@@ -604,7 +601,7 @@ pub async fn download_fabric(
     version_loader: &VersionLoader,
     logger: &UnboundedSender<LogLine>,
     mirror: &Mirror,
-) -> Void {
+) -> Result<(), AppError> {
     let loaders_url = "https://meta.fabricmc.net/v2/versions/loader";
     let installers_url = "https://meta.fabricmc.net/v2/versions/installer";
     type FabricLoaders = Vec<FabricLoader>;
@@ -680,36 +677,36 @@ pub fn generate_stdout(child: &mut Child, logger: &UnboundedSender<LogLine>) {
     });
 }
 
-pub async fn get_available_fabric_versions(version_id: &String) -> Returns<Vec<String>> {
+pub async fn get_available_fabric_versions(version_id: &String) -> Result<Vec<String>, AppError> {
     let mut global_cache = GLOBAL_CACHE.lock().await;
     if global_cache.fabric_mc_versions.is_none() {
         let url = "https://meta.fabricmc.net/v2/versions/game";
         let map: Vec<FabricMinecraftVersion> = reqwest::get(url)
             .await
-            .map_err(|x| request_unknown_err(x))?
+            .map_err(|x| AppError::NetworkRequestFailed(x.to_string()))?
             .json()
             .await
-            .map_err(|x| request_unknown_err(x))?;
+            .map_err(|x| AppError::NetworkRequestFailed(x.to_string()))?;
         global_cache.fabric_mc_versions = Some(map);
     }
     if global_cache.fabric_installers.is_none() {
         let url = "https://meta.fabricmc.net/v2/versions/installer";
         let map: Vec<FabricInstaller> = reqwest::get(url)
             .await
-            .map_err(|x| request_unknown_err(x))?
+            .map_err(|x| AppError::NetworkRequestFailed(x.to_string()))?
             .json()
             .await
-            .map_err(|x| request_unknown_err(x))?;
+            .map_err(|x| AppError::NetworkRequestFailed(x.to_string()))?;
         global_cache.fabric_installers = Some(map);
     }
     if global_cache.fabric_loaders.is_none() {
         let url = "https://meta.fabricmc.net/v2/versions/loader";
         let map: Vec<FabricLoader> = reqwest::get(url)
             .await
-            .map_err(|x| request_unknown_err(x))?
+            .map_err(|x| AppError::NetworkRequestFailed(x.to_string()))?
             .json()
             .await
-            .map_err(|x| request_unknown_err(x))?;
+            .map_err(|x| AppError::NetworkRequestFailed(x.to_string()))?;
         global_cache.fabric_loaders = Some(map);
     }
 

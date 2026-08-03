@@ -6,7 +6,7 @@ use crate::models::config::Config;
 use crate::models::fabric::{FabricInstaller, FabricLoader, FabricMinecraftVersion};
 use crate::models::logger::{init_log_bridge, LogLine};
 use crate::services::config::load;
-use models::error::{Returns, Void};
+use crate::models::error::AppError;
 use models::mirror::mojang_mirror;
 use models::mods::ModInfo;
 use models::versions::MinecraftVersion;
@@ -187,21 +187,21 @@ pub fn run() {
         .expect("error while running tauri application");
 }
 #[command]
-async fn toggle_mod(mod_info: ModInfo, toggle: bool) -> Void {
+async fn toggle_mod(mod_info: ModInfo, toggle: bool) -> Result<(), AppError> {
     set_mod_enabled(mod_info, toggle)
 }
 #[command]
-async fn play(app: AppHandle, state: State<'_, AppState>, selected_version: String) -> Void {
+async fn play(app: AppHandle, state: State<'_, AppState>, selected_version: String) -> Result<(), AppError> {
     launch_game(app, selected_version, &*GLOBAL_CACHE.lock().await).await
 }
 
 #[command]
-async fn get_mods() -> Returns<Vec<ModInfo>> {
+async fn get_mods() -> Result<Vec<ModInfo>, AppError> {
     Ok(load_mods())
 }
 
 #[command]
-async fn install_mod_from_local(app: AppHandle) -> Void {
+async fn install_mod_from_local(app: AppHandle) -> Result<(), AppError> {
     let paths = app
         .dialog()
         .file()
@@ -217,7 +217,7 @@ async fn install_mod_from_local(app: AppHandle) -> Void {
     Ok(())
 }
 #[command]
-async fn delete_mod(mod_info: ModInfo) -> Void {
+async fn delete_mod(mod_info: ModInfo) -> Result<(), AppError> {
     mod_manager::delete_mod(&mod_info);
     Ok(())
 }

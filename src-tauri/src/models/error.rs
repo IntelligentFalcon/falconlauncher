@@ -1,131 +1,104 @@
-use std::fmt::format;
-use serde::{Deserialize, Serialize};
-use std::io::Error;
-use std::path::PathBuf;
+use serde::{Serialize, Serializer};
+use thiserror::Error;
 
+#[derive(Debug, Error)]
+pub enum AppError {
+    #[error("Manifest Missing")]
+    ManifestNotFound,
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct InvokeError<T> {
-    pub code: String,
-    pub data: Option<T>,
+    #[error("File Not Found: {0}")]
+    FileNotFound(String),
+
+    #[error("Version Not Found")]
+    VersionNotFound,
+
+    #[error("Launch Arguments Missing")]
+    LaunchArgsNotFound,
+
+    #[error("Creation Failed: {0}")]
+    FileCreateFailed(String),
+
+    #[error("Rename Failed: {0}")]
+    FileRenameFailed(String),
+
+    #[error("Read Error: {0}")]
+    FileReadFailed(String),
+
+    #[error("Buffer Error: {0}")]
+    BufferReadFailed(String),
+
+    #[error("Invalid JSON: {0}")]
+    JsonParseFailed(String),
+
+    #[error("Invalid INI: {0}")]
+    IniParseFailed(String),
+
+    #[error("Access Denied: {0}")]
+    AccessDenied(String),
+
+    #[error("Log Missing")]
+    LogHistoryNotFound,
+
+    #[error("Network Error: {0}")]
+    NetworkRequestFailed(String),
+
+    #[error("Download Failed")]
+    DownloadFailed,
+
+    #[error("Not Implemented: {0}")]
+    NotImplemented(String),
+
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
+
+    #[error(transparent)]
+    Anyhow(#[from] anyhow::Error),
+
+    #[error(transparent)]
+    Reqwest(#[from] reqwest::Error),
+
+    #[error(transparent)]
+    SerdeJson(#[from] serde_json::Error),
+
+    #[error(transparent)]
+    SerdeIni(#[from] serde_ini::ser::Error),
 }
 
-pub type EmptyError = InvokeError<String>;
+// Since frontend expects `{ "code": "...", "data": "..." }`:
+impl Serialize for AppError {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        use serde::ser::SerializeStruct;
+        let mut state = serializer.serialize_struct("AppError", 2)?;
+        
+        let (code, data) = match self {
+            AppError::ManifestNotFound => ("ERROR_MANIFEST_NOT_FOUND", None),
+            AppError::FileNotFound(_) => ("ERROR_FILE_NOT_FOUND", None),
+            AppError::VersionNotFound => ("ERROR_VERSION_NOT_FOUND", None),
+            AppError::LaunchArgsNotFound => ("ERROR_LAUNCH_ARGS_NOT_FOUND", None),
+            AppError::FileCreateFailed(e) => ("ERROR_FILE_CREATE_FAILED", Some(e.to_string())),
+            AppError::FileRenameFailed(e) => ("ERROR_FILE_RENAME_FAILED", Some(e.to_string())),
+            AppError::FileReadFailed(e) => ("ERROR_FILE_READ_FAILED", Some(e.to_string())),
+            AppError::BufferReadFailed(e) => ("ERROR_BUFFER_READ_FAILED", Some(e.to_string())),
+            AppError::JsonParseFailed(e) => ("ERROR_JSON_PARSE_FAILED", Some(e.to_string())),
+            AppError::IniParseFailed(e) => ("ERROR_INI_PARSE_FAILED", Some(e.to_string())),
+            AppError::AccessDenied(e) => ("ERROR_ACCESS_DENIED", Some(e.to_string())),
+            AppError::LogHistoryNotFound => ("ERROR_LOG_HISTORY_NOT_FOUND", None),
+            AppError::NetworkRequestFailed(e) => ("ERROR_NETWORK_REQUEST_FAILED", Some(e.to_string())),
+            AppError::DownloadFailed => ("ERROR_DOWNLOAD_FAILED", None),
+            AppError::NotImplemented(e) => ("ERROR_NOT_IMPLEMENTED", Some(e.to_string())),
+            
+            AppError::Io(e) => ("ERROR_FILE_READ_FAILED", Some(e.to_string())), // Fallback mapping
+            AppError::Anyhow(e) => ("ERROR_INTERNAL", Some(e.to_string())),
+            AppError::Reqwest(e) => ("ERROR_NETWORK_REQUEST_FAILED", Some(e.to_string())),
+            AppError::SerdeJson(e) => ("ERROR_JSON_PARSE_FAILED", Some(e.to_string())),
+            AppError::SerdeIni(e) => ("ERROR_INI_PARSE_FAILED", Some(e.to_string())),
+        };
 
-/// Result<T, InvokeError<E>>
-pub type ReturnsAndErrorType<T, E> = Result<T, InvokeError<E>>;
-/// Result<T, InvokeError<()>>
-pub type Returns<T> = ReturnsAndErrorType<T, String>;
-/// Result<(), InvokeError<E>>
-pub type VoidErrorType<E> = ReturnsAndErrorType<(), E>;
-/// Result<(), InvokeError<()>>
-pub type Void = VoidErrorType<String>;
-
-pub fn io_error_data<T>(code: &str, data: Option<T>) -> InvokeError<T> {
-    InvokeError {
-        code: code.to_string(),
-        data,
-    }
-}
-
-pub fn io_error(code: &str) -> EmptyError {
-    io_error_data(code, None)
-}
-
-pub fn io_err_permission(err: std::io::Error) -> InvokeError<String> {
-    io_error_data("ERROR_ACCESS_DENIED", Some(err.to_string()))
-}
-
-pub fn io_err_create_file(file_name: String, err: std::io::Error) -> InvokeError<String> {
-    io_error_data("ERROR_FILE_CREATE_FAILED", Some(err.to_string()))
-}
-
-pub fn io_err_rename_file(file_name: String, error: std::io::Error) -> InvokeError<String> {
-    io_error_data("ERROR_FILE_RENAME_FAILED", Some(error.to_string()))
-}
-
-pub fn io_err_read_file(err: std::io::Error) -> InvokeError<String> {
-    io_error_data("ERROR_FILE_READ_FAILED", Some(err.to_string()))
-}
-
-pub fn io_err_buffer_read(err: std::io::Error) -> InvokeError<String> {
-    io_error_data("ERROR_BUFFER_READ_FAILED", Some(err.to_string()))
-}
-
-pub fn json_read_err(err: serde_json::Error) -> InvokeError<String> {
-    InvokeError {
-        code: "ERROR_JSON_PARSE_FAILED".to_string(),
-        data: Some(err.to_string()),
-    }
-}
-
-pub fn ini_read_err(err: serde_ini::ser::Error) -> InvokeError<String> {
-    InvokeError {
-        code: "ERROR_INI_PARSE_FAILED".to_string(),
-        data: Some(err.to_string()),
-    }
-}
-
-pub fn launcher_error_data<T>(code: &str, data: Option<T>) -> InvokeError<T> {
-    InvokeError {
-        code: code.to_string(),
-        data,
-    }
-}
-
-pub fn launcher_error(code: &str) -> EmptyError {
-    launcher_error_data(code, None)
-}
-
-pub fn launcher_manifest_not_found() -> EmptyError {
-    launcher_error("ERROR_MANIFEST_NOT_FOUND")
-}
-
-pub fn launcher_file_not_found(file: String) -> EmptyError {
-    // format!("Failed to load {file}. make sure you are connected to the internet.")
-    launcher_error("ERROR_FILE_NOT_FOUND")
-}
-
-pub fn launcher_version_not_found() -> EmptyError {
-    // "Couldn't find any selected version. might have to try selecting a version before launching the game".to_string()
-    launcher_error("ERROR_VERSION_NOT_FOUND")
-}
-
-pub fn launcher_launch_args_not_found() -> EmptyError {
-    // "Couldn't find launch arguments".to_string()
-    launcher_error("ERROR_LAUNCH_ARGS_NOT_FOUND")
-}
-
-pub fn launcher_log_history_not_found() -> EmptyError {
-    // "Failed to read log history buffer".to_string()
-    launcher_error("ERROR_LOG_HISTORY_NOT_FOUND")
-}
-
-pub fn request_error(code: &str) -> EmptyError {
-    InvokeError {
-        code: code.to_string(),
-        data: None,
-    }
-}
-
-pub fn request_error_data<E>(code: &str, e: E) -> InvokeError<E> {
-    InvokeError {
-        code: code.to_string(),
-        data: Some(e),
-    }
-}
-
-pub fn request_unknown_err(err: reqwest::Error) -> InvokeError<String> {
-    request_error_data("ERROR_NETWORK_REQUEST_FAILED", err.to_string())
-}
-
-pub fn download_error() -> EmptyError {
-    request_error("ERROR_DOWNLOAD_FAILED")
-}
-
-pub fn todo_err(comment: &str) -> EmptyError {
-    InvokeError {
-        code: "ERROR_NOT_IMPLEMENTED".to_string(),
-        data: Some(comment.to_string())
+        state.serialize_field("code", code)?;
+        state.serialize_field("data", &data)?;
+        state.end()
     }
 }

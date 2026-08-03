@@ -1,5 +1,5 @@
 use crate::models::downloader::{VersionInfo, VersionLoader};
-use crate::models::error::{todo_err, Returns, Void};
+use crate::models::error::AppError;
 use crate::models::logger::info_launcher;
 use crate::models::mirror::{mirror_from, Mirror};
 use crate::models::versions::VersionBase::{FABRIC, FORGE};
@@ -18,9 +18,9 @@ use tauri_plugin_dialog::DialogExt;
 pub async fn get_vanilla_versions(
     app_handle: AppHandle,
     state: State<'_, AppState>)
-    -> Returns<Vec<VersionCategory>> {
+    -> Result<Vec<VersionCategory>, AppError> {
     let manifest = version_manager::load_version_manifest_local()
-        .map_err(|x| todo_err("Failed to parse version manifest"))?;
+        .map_err(|x| AppError::NotImplemented("Failed to parse version manifest".to_string()))?;
     let cfg = state.config.read().await;
     let mirror = &cfg.download_settings.mirror;
     let mut result: Vec<VersionCategory> = Vec::new();
@@ -96,9 +96,9 @@ pub async fn get_vanilla_versions(
 pub async fn get_forge_versions(
     app_handle: AppHandle,
     state: State<'_, AppState>,
-) -> Returns<Vec<VersionCategory>> {
+) -> Result<Vec<VersionCategory>, AppError> {
     let manifest = version_manager::load_version_manifest_local()
-        .map_err(|x| todo_err("Failed to parse version manifest"))?;
+        .map_err(|x| AppError::NotImplemented("Failed to parse version manifest".to_string()))?;
     let cfg = state.config.read().await;
     let mirror = &cfg.download_settings.mirror;
     let mut result: Vec<VersionCategory> = Vec::new();
@@ -141,9 +141,9 @@ pub async fn get_forge_versions(
 pub async fn get_fabric_versions(
     app_handle: AppHandle,
     state: State<'_, AppState>,
-) -> Returns<Vec<VersionCategory>> {
+) -> Result<Vec<VersionCategory>, AppError> {
     let manifest = version_manager::load_version_manifest_local()
-        .map_err(|x| todo_err("Failed to parse version manifest"))?;
+        .map_err(|x| AppError::NotImplemented("Failed to parse version manifest".to_string()))?;
     let cfg = state.config.read().await;
     let mirror = &cfg.download_settings.mirror;
     let mut result: Vec<VersionCategory> = Vec::new();
@@ -187,7 +187,7 @@ pub async fn download_version(
     app_handle: AppHandle,
     state: State<'_, AppState>,
     version_loader: VersionLoader,
-) -> Void {
+) -> Result<(), AppError> {
     let mut version_id = version_loader.get_installed_id();
     let cfg = &state.config.read().await;
     let mir = &cfg.download_settings.mirror;
@@ -209,8 +209,8 @@ pub async fn download_version(
             &mut version_id,
         )
         .await;
-        if t.clone().is_err() {
-            println!("{:?}", t.clone().err().unwrap());
+        if let Err(e) = &t {
+            println!("{:?}", e);
         }
     };
     if version_loader.base == FABRIC {
@@ -243,7 +243,7 @@ pub async fn download_version(
 
 /// Gives the available versions to download
 #[command]
-pub async fn get_versions() -> Returns<Vec<String>> {
+pub async fn get_versions() -> Result<Vec<String>, AppError> {
     let global = GLOBAL_CACHE.lock().await;
     Ok(global
         .versions
@@ -254,7 +254,7 @@ pub async fn get_versions() -> Returns<Vec<String>> {
 }
 
 #[command]
-pub async fn get_non_installed_versions() -> Returns<Vec<String>> {
+pub async fn get_non_installed_versions() -> Result<Vec<String>, AppError> {
     let global = GLOBAL_CACHE.lock().await;
     let versions = global.versions.clone();
     Ok(versions
@@ -265,7 +265,7 @@ pub async fn get_non_installed_versions() -> Returns<Vec<String>> {
 }
 
 #[command]
-pub async fn get_installed_versions() -> Returns<Vec<String>> {
+pub async fn get_installed_versions() -> Result<Vec<String>, AppError> {
     let global = GLOBAL_CACHE.lock().await;
     let versions = global.versions.clone();
     Ok(versions

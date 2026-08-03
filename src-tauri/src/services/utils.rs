@@ -1,6 +1,6 @@
 use std::env;
 use crate::models::downloader::{LibraryRules, Rule, RuleOS};
-use crate::models::error::{io_err_buffer_read, io_err_read_file, Returns};
+use crate::models::error::AppError;
 use crate::models::java::Java;
 use crate::models::platform::get_current_os;
 use crate::services::directory_manager::get_libraries_directory;
@@ -13,8 +13,8 @@ use log::info;
 use tauri::{AppHandle, Emitter};
 use uuid::{Builder, Uuid};
 
-fn calculate_file_sha1<P: AsRef<Path>>(path: P) -> Returns<String> {
-    let file = File::open(path).map_err(|e| io_err_read_file(e))?;
+fn calculate_file_sha1<P: AsRef<Path>>(path: P) -> Result<String, AppError> {
+    let file = File::open(path).map_err(|e| AppError::FileReadFailed(e.to_string()))?;
     let mut reader = BufReader::new(file);
     let mut hasher = Sha256::new();
     let mut buffer = [0; 8192]; // Read in 8KB chunks
@@ -22,7 +22,7 @@ fn calculate_file_sha1<P: AsRef<Path>>(path: P) -> Returns<String> {
     loop {
         let bytes_read = reader
             .read(&mut buffer)
-            .map_err(|x| io_err_buffer_read(x))?;
+            .map_err(|x| AppError::BufferReadFailed(x.to_string()))?;
         if bytes_read == 0 {
             break;
         }

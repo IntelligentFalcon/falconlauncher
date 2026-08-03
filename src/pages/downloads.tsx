@@ -20,7 +20,15 @@ import {
   Download01Icon,
   CheckmarkBadge01Icon,
   PackageIcon,
+  Alert01Icon,
 } from '@hugeicons/core-free-icons';
+import {
+  Empty,
+  EmptyDescription,
+  EmptyMedia,
+  EmptyTitle,
+} from '@/components/ui/empty';
+import { errorText } from '@/messages';
 
 type LoaderType = 'vanilla' | 'fabric' | 'forge';
 type WizardStep = 1 | 2 | 3;
@@ -59,7 +67,7 @@ export default function InstallerWizard() {
     }
   };
 
-  const { data, isLoading } = useBackend({
+  const { data, isLoading, error } = useBackend({
     name: getBackendCommand(),
   });
 
@@ -219,9 +227,25 @@ export default function InstallerWizard() {
               isLoading={isLoading}
               className="flex-1 flex flex-col min-h-0"
             >
-              <div className="space-y-6 overflow-y-auto pr-2 pb-4 scrollbar-thin flex-1">
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              {error ? (
+                <div className="flex-1 flex items-center justify-center">
+                  <Empty>
+                    <EmptyMedia variant="icon">
+                      <HugeiconsIcon icon={Alert01Icon} size={24} />
+                    </EmptyMedia>
+                    <EmptyTitle>
+                      {errorText(error.code).title}
+                    </EmptyTitle>
+                    <EmptyDescription>
+                      {errorText(error.code).description}
+                    </EmptyDescription>
+                  </Empty>
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-6 overflow-y-auto pr-2 pb-4 scrollbar-thin flex-1">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                     Instance Name
                   </label>
                   <input
@@ -293,13 +317,15 @@ export default function InstallerWizard() {
               <div className="pt-4 mt-auto border-t border-border/40 shrink-0">
                 <ActionButton
                   action={handleStartInstall}
-                  disabled={!activeVersion || (data && data.length === 0)}
+                  disabled={!activeVersion || (data && data.length === 0) || !!error}
                   className="w-full py-3 h-auto text-sm font-semibold rounded-xl gap-2"
                 >
                   <HugeiconsIcon icon={Download01Icon} size={18} />
                   Start Installation
                 </ActionButton>
               </div>
+              </>
+              )}
             </LoadingSwap>
           </div>
         )}

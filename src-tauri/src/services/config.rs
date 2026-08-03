@@ -3,7 +3,7 @@ use crate::models::config::*;
 use std::fs;
 use std::fs::create_dir_all;
 use std::path::PathBuf;
-use crate::models::error::Void;
+use crate::models::error::AppError;
 
 pub fn load_config(cfg: &mut Config) {
     let conf = load();
@@ -18,7 +18,7 @@ pub fn load() -> Config {
     
     config
 }
-fn initialize_configuration_file() -> Void{
+fn initialize_configuration_file() -> Result<(), AppError>{
     if !get_config_directory().exists() {
         create_dir_all(get_config_directory().parent().unwrap()).unwrap();
         return Config::default().write_to_file();

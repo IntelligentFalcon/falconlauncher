@@ -1,4 +1,4 @@
-use crate::models::error::{ini_read_err, io_err_read_file, Void};
+use crate::models::error::AppError;
 use crate::models::mirror::Mirror;
 use crate::services::directory_manager::get_config_directory;
 use serde::{Deserialize, Serialize};
@@ -121,8 +121,8 @@ impl Bool {
     }
 }
 impl Config {
-    pub fn write_to_file(&self) -> Void {
-        let text = serde_ini::to_string(self).map_err(|x| ini_read_err(x))?;
-        fs::write(get_config_directory(), text).map_err(|x| io_err_read_file(x))
+    pub fn write_to_file(&self) -> Result<(), AppError> {
+        let text = serde_ini::to_string(self).map_err(|x| AppError::IniParseFailed(x.to_string()))?;
+        fs::write(get_config_directory(), text).map_err(|x| AppError::FileReadFailed(x.to_string()))
     }
 }

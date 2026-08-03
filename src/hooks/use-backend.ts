@@ -1,5 +1,6 @@
 import { InvokeError, Invokes } from '@/invokes';
 import { backend } from '@/lib/utils';
+import { errorText } from '@/messages';
 import {
   QueryKey,
   useMutation,
@@ -8,9 +9,6 @@ import {
   UseQueryOptions,
 } from '@tanstack/react-query';
 import { toast } from 'sonner';
-
-import errors from '@/messages/errors.json';
-const errorsMap = new Map(Object.entries(errors));
 
 export function useBackend<
   Invoke extends keyof Invokes,
@@ -73,8 +71,7 @@ export function useBackendMutation<
       if (onError) {
         onError(error, vars, res, context);
       } else {
-        const displayError =
-          errorsMap.get(error.code) ?? errors.ERROR_NOT_IMPLEMENTED;
+        const displayError = errorText(error.code);
         toast.error(displayError.title, {
           description: displayError.description,
         });

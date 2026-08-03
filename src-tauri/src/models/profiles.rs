@@ -1,4 +1,4 @@
-use crate::models::error::{io_err_create_file, json_read_err, Void};
+use crate::models::error::AppError;
 use crate::services::directory_manager::get_profiles_file;
 use crate::services::utils::uuid_from_username;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -7,16 +7,13 @@ use std::fs::{read_to_string, File};
 use serde::ser::SerializeStruct;
 use uuid::Uuid;
 
-pub fn create_new_profile(username: String, online: bool) -> Void {
+pub fn create_new_profile(username: String, online: bool) -> Result<(), AppError> {
     let mut profiles = get_profiles();
     let result = Ok(());
     if !get_profiles_file().exists() {
         let res = File::create(&get_profiles_file());
         if res.is_err() {
-            return Err(io_err_create_file(
-                get_profiles_file().to_str().unwrap().to_string(),
-                res.err().unwrap(),
-            ));
+            return Err(AppError::FileCreateFailed(res.err().unwrap().to_string()));
         }
     }
     let uuid = uuid_from_username(username.as_str());
@@ -30,7 +27,7 @@ pub fn create_new_profile(username: String, online: bool) -> Void {
 
     let json_string = serde_json::to_string_pretty(&profiles);
     if json_string.is_err() {
-        return Err(json_read_err(json_string.err().unwrap()));
+        return Err(AppError::JsonParseFailed(json_string.err().unwrap().to_string()));
     }
     fs::write(get_profiles_file(), json_string.unwrap()).expect("Failed to write the file!");
     result

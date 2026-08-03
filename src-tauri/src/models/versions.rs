@@ -9,7 +9,7 @@ use serde_json::Value::Null;
 use std::fs;
 use std::path::{PathBuf, MAIN_SEPARATOR, MAIN_SEPARATOR_STR};
 use log::debug;
-use crate::models::error::{todo_err, Returns};
+use crate::models::error::AppError;
 
 impl PartialEq for VersionType {
     fn eq(&self, other: &Self) -> bool {
@@ -50,7 +50,7 @@ impl MinecraftVersion {
     pub fn from_id(id: String) -> Self {
         MinecraftVersion::new(id.clone(), id)
     }
-    pub fn from_folder(directory: PathBuf) -> Returns<MinecraftVersion> {
+    pub fn from_folder(directory: PathBuf) -> Result<MinecraftVersion, AppError> {
 
         let file: PathBuf = directory
             .read_dir()
@@ -60,10 +60,10 @@ impl MinecraftVersion {
                 x.is_file() && (x.extension().unwrap() == "json") &&
                     serde_json::from_str::<MinecraftManifestVersion>(fs::read_to_string(x).unwrap().as_str()).is_ok()
             })
-            .ok_or(todo_err("Directory not found"))?;
+            .ok_or(AppError::NotImplemented("Directory not found".to_string()))?;
         let json: MinecraftManifestVersion = serde_json::from_str(fs::read_to_string(file)
-            .map_err(|x| todo_err("some unknown error to be fixed later"))?.as_str())
-            .map_err(|x| todo_err("Parsing json failed"))?;
+            .map_err(|x| AppError::NotImplemented("some unknown error to be fixed later".to_string()))?.as_str())
+            .map_err(|x| AppError::NotImplemented("Parsing json failed".to_string()))?;
         let name = json.id;
         Ok(Self {
             id: name,

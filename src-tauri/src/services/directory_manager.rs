@@ -1,4 +1,4 @@
-use crate::models::error::Returns;
+use crate::models::error::AppError;
 use crate::models::java::Java;
 use crate::models::platform::get_current_os;
 use std::env::{home_dir, var_os};
@@ -83,7 +83,7 @@ fn validate_java(path: PathBuf) -> bool{
     path.join("bin").join(java_file).exists()
 
 }
-pub fn auto_detect_javas() -> Returns<Vec<Java>> {
+pub fn auto_detect_javas() -> Result<Vec<Java>, AppError> {
     let mut paths = Vec::new();
     let dirs = if get_current_os() == "windows" {
        vec![

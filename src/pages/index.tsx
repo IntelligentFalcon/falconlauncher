@@ -9,6 +9,12 @@ import {
   ComboboxItem,
   ComboboxList,
 } from '@/components/ui/combobox';
+import {
+  Empty,
+  EmptyTitle,
+} from '@/components/ui/empty';
+import { errorText } from '@/messages';
+import { Alert01Icon } from '@hugeicons/core-free-icons';
 
 import { app } from '@tauri-apps/api';
 import { useConfig } from '@/stores/config';
@@ -111,11 +117,20 @@ export default function IndexPage() {
 function VersionSelect() {
   const { version, setVersion } = useConfig();
 
-  const { data: installedVersions } = useBackend({
+  const { data: installedVersions, error } = useBackend({
     name: 'get_installed_versions',
     initialData: [],
     initialDataUpdatedAt: 0,
   });
+
+  if (error) {
+    return (
+      <Empty className="p-2 border border-destructive/20 h-12 flex-row gap-2 rounded-xl bg-destructive/5 justify-start w-full">
+        <HugeiconsIcon icon={Alert01Icon} size={20} className="text-destructive" />
+        <EmptyTitle className="text-sm text-destructive">{errorText(error.code).title}</EmptyTitle>
+      </Empty>
+    );
+  }
 
   return (
     <Combobox
