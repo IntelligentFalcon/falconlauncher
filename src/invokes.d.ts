@@ -179,20 +179,20 @@ interface Config {
   downloadsettings: DownloadSettings;
 }
 interface DownloadSettings {
-  mirror: String;
+  mirror: string;
 }
 interface LauncherSettings {
-  language: String;
+  language: string;
 }
 interface LaunchOptions {
-  username: String;
+  username: string;
   ramusage: u64;
 }
 interface ModInfo {
-  path: String;
-  modid: String;
-  name: String;
-  version: String;
-  description: String;
-  enabled: bool;
+  path: string;
+  modid: string;
+  name: string;
+  version: string;
+  description: string;
+  enabled: boolean;
 }
