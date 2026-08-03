@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use std::collections::HashMap;
 use std::fmt::Display;
 use serde_json::Value;
@@ -47,6 +47,7 @@ pub struct LibraryRules {
     pub disallowed_oses: Vec<String>,
 }
 
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct LoggingClient {
     pub argument: String,
@@ -75,13 +76,26 @@ pub struct DownloadDetail {
     pub sha1: String,
 }
 
+fn empty_object_as_none<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>
+where
+    D: Deserializer<'de>,
+    T: Deserialize<'de>,
+{
+    let opt_value: Option<Value> = Option::deserialize(deserializer)?;
 
+    match opt_value {
+        Some(Value::Object(map)) if map.is_empty() => Ok(None),
+        Some(value) => T::deserialize(value).map(Some).map_err(serde::de::Error::custom),
+        None => Ok(None),
+    }
+}
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MinecraftManifestVersion {
     pub libraries: Vec<Library>,
     pub asset_index: Option<AssetIndex>,
     pub downloads: Option<HashMap<String, DownloadDetail>>,
+    #[serde(default, deserialize_with = "empty_object_as_none")]
     pub logging: Option<Logging>,
     pub java_version: Option<JavaVersion>,
     pub inherits_from: Option<String>,

@@ -26,7 +26,6 @@ export default function Console() {
         let active = true;
         let unlistenFn: (() => void) | null = null;
 
-        // 1. Fetch historical data cache from Rust state store
         invoke<LogLine[]>('get_log_history')
             .then((history) => {
                 if (active) {
@@ -36,7 +35,6 @@ export default function Console() {
             })
             .catch((err) => console.error("History pipeline failure:", err));
 
-        // 2. Attach live stream listener simultaneously
         const setupListener = async () => {
             const unlisten = await listen<LogLine>('launcher-log-stream', (event) => {
                 if (active) {
@@ -57,20 +55,17 @@ export default function Console() {
         };
     }, []);
 
-    // Sticky scroll implementation
     useEffect(() => {
         if (logContainerRef.current) {
             logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
         }
     }, [logs, filterLevel, filterChannel, searchQuery]);
 
-    // Extract unique channels dynamically from existing logs array
     const channels = useMemo(() => {
         const uniqueChannels = new Set(logs.map(log => log.channel));
         return ['all', ...Array.from(uniqueChannels)];
     }, [logs]);
 
-    // Multi-axis filtering logic (Level + Channel + Search Text query matching)
     const filteredLogs = logs.filter((log) => {
         const matchesLevel = filterLevel === 'all' || log.level.toLowerCase() === filterLevel;
         const matchesChannel = filterChannel === 'all' || log.channel === filterChannel;
@@ -115,38 +110,43 @@ export default function Console() {
     };
 
     return (
-        <div className="flex flex-col h-full w-full space-y-3 min-w-0">
-            {/* Top Bar Navigation & Controls */}
-            <div className="flex flex-col gap-2">
+        // 1. overflow-hidden ensures the entire component NEVER scrolls
+        <div className="flex flex-col h-full w-full overflow-hidden min-w-0 bg-background">
+
+            {/* Top Bar Navigation & Controls - shrink-0 ensures this stays pinned and doesn't squish */}
+            <div className="flex flex-col gap-2 shrink-0 pb-2 sm:pb-3">
+
                 {/* Channel Filter Row & Actions */}
-                <div className="flex items-center justify-between bg-secondary/30 p-1.5 rounded-2xl border border-border/40 gap-2 overflow-x-auto">
-                    <div className="flex items-center gap-2 min-w-0">
-                        <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground px-2 flex items-center gap-1.5 shrink-0">
+                <div className="flex items-center justify-between bg-secondary/30 p-1.5 rounded-2xl border border-border/40 gap-2 w-full">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <div className="hidden sm:flex text-[10px] font-bold uppercase tracking-wider text-muted-foreground px-2 items-center gap-1.5 shrink-0">
                             <HugeiconsIcon icon={LayersIcon} size={12} strokeWidth={2.5} />
                             Channels
                         </div>
 
-                        <SidebarMenu className="flex-row items-center space-x-1 space-y-0 min-w-0 overflow-x-auto scrollbar-none">
-                            {channels.map((chan) => (
-                                <SidebarMenuItem key={chan} className="shrink-0">
-                                    <SidebarMenuButton
-                                        onClick={() => setFilterChannel(chan)}
-                                        isActive={filterChannel === chan}
-                                        tooltip={chan === 'all' ? 'All Channels' : chan}
-                                        className="h-8 px-2.5 capitalize"
-                                    >
-                                        <div className={`h-2 w-2 rounded-full ${chan === 'all' ? 'bg-primary' : 'bg-zinc-400'}`} />
-                                        <span className="truncate max-w-[120px]">{chan === 'all' ? 'ALL Channels' : chan}</span>
-                                    </SidebarMenuButton>
-                                </SidebarMenuItem>
-                            ))}
-                        </SidebarMenu>
+                        <div className="flex-1 overflow-x-auto scrollbar-none min-w-0">
+                            <SidebarMenu className="flex-row items-center space-x-1 space-y-0 w-max min-w-full">
+                                {channels.map((chan) => (
+                                    <SidebarMenuItem key={chan} className="shrink-0">
+                                        <SidebarMenuButton
+                                            onClick={() => setFilterChannel(chan)}
+                                            isActive={filterChannel === chan}
+                                            tooltip={chan === 'all' ? 'All Channels' : chan}
+                                            className="h-8 px-2.5 capitalize"
+                                        >
+                                            <div className={`h-2 w-2 rounded-full shrink-0 ${chan === 'all' ? 'bg-primary' : 'bg-zinc-400'}`} />
+                                            <span className="truncate max-w-[120px]">{chan === 'all' ? 'ALL Channels' : chan}</span>
+                                        </SidebarMenuButton>
+                                    </SidebarMenuItem>
+                                ))}
+                            </SidebarMenu>
+                        </div>
                     </div>
 
                     <ActionButton
                         action={handleClearLogs}
                         variant="destructive"
-                        className="h-8 text-xs gap-1.5 rounded-xl shrink-0 px-3"
+                        className="h-8 text-xs gap-1.5 rounded-xl shrink-0 px-2 sm:px-3"
                     >
                         <HugeiconsIcon icon={Delete02Icon} size={14} strokeWidth={2} />
                         <span className="hidden sm:inline">Clear {filterChannel === 'all' ? 'All' : filterChannel}</span>
@@ -154,37 +154,38 @@ export default function Console() {
                 </div>
 
                 {/* Sub-Header Bar (Severity Filter & Search Bar) */}
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between bg-secondary p-1.5 rounded-2xl w-full gap-2">
-                    <SidebarMenu className="flex-row items-center space-x-1 space-y-0 min-w-0 flex-1">
-                        {logLevels.map((lvl) => (
-                            <SidebarMenuItem key={lvl.name} className="flex-1 max-w-[120px]">
-                                <SidebarMenuButton
-                                    onClick={() => setFilterLevel(lvl.name)}
-                                    isActive={filterLevel === lvl.name}
-                                    tooltip={lvl.label}
-                                    className="w-full justify-center md:justify-start"
-                                >
-                                    <HugeiconsIcon icon={lvl.icon} strokeWidth={2} />
-                                    <span className="hidden sm:inline">{lvl.label}</span>
-                                </SidebarMenuButton>
-                            </SidebarMenuItem>
-                        ))}
-                    </SidebarMenu>
+                <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between bg-secondary p-1.5 rounded-2xl w-full gap-2">
+                    <div className="overflow-x-auto scrollbar-none w-full md:w-auto md:flex-1">
+                        <SidebarMenu className="flex-row items-center space-x-1 space-y-0 w-max md:w-full min-w-0">
+                            {logLevels.map((lvl) => (
+                                <SidebarMenuItem key={lvl.name} className="flex-1 md:max-w-[120px] shrink-0">
+                                    <SidebarMenuButton
+                                        onClick={() => setFilterLevel(lvl.name)}
+                                        isActive={filterLevel === lvl.name}
+                                        tooltip={lvl.label}
+                                        className="w-full justify-center md:justify-start px-3 md:px-2"
+                                    >
+                                        <HugeiconsIcon icon={lvl.icon} strokeWidth={2} className="shrink-0" />
+                                        <span className="inline">{lvl.label}</span>
+                                    </SidebarMenuButton>
+                                </SidebarMenuItem>
+                            ))}
+                        </SidebarMenu>
+                    </div>
 
-                    {/* Search Field Box */}
-                    <div className="relative flex items-center max-w-xs w-full sm:w-64 h-8 bg-background border border-border/80 rounded-xl px-2.5 group focus-within:border-primary/60 transition-colors shrink-0">
+                    <div className="relative flex items-center w-full md:max-w-xs md:w-64 h-8 bg-background border border-border/80 rounded-xl px-2.5 group focus-within:border-primary/60 transition-colors shrink-0">
                         <HugeiconsIcon icon={Search01Icon} size={14} className="text-muted-foreground shrink-0 mr-1.5 group-focus-within:text-primary transition-colors" strokeWidth={2} />
                         <input
                             type="text"
                             placeholder="Search console logs..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full bg-transparent text-xs font-sans text-foreground placeholder:text-muted-foreground/60 outline-none border-none p-0 focus:ring-0"
+                            className="w-full bg-transparent text-xs font-sans text-foreground placeholder:text-muted-foreground/60 outline-none border-none p-0 focus:ring-0 min-w-0"
                         />
                         {searchQuery && (
                             <button
                                 onClick={() => setSearchQuery('')}
-                                className="text-[10px] bg-secondary text-muted-foreground hover:text-foreground px-1.5 py-0.5 rounded-md font-sans shrink-0 transition-colors"
+                                className="text-[10px] bg-secondary text-muted-foreground hover:text-foreground px-1.5 py-0.5 rounded-md font-sans shrink-0 transition-colors ml-1.5"
                             >
                                 Clear
                             </button>
@@ -193,28 +194,32 @@ export default function Console() {
                 </div>
             </div>
 
-            {/* Display Terminal Box Container */}
-            <div className="flex-1 min-h-0">
-                <LoadingSwap isLoading={isLoading} className="h-full w-full">
+            {/* Display Terminal Box Container - flex-1 gives it ALL remaining height, min-h-0 allows internal scrolling */}
+            <div className="flex-1 min-h-0 relative">
+                <LoadingSwap isLoading={isLoading} className="absolute inset-0">
                     <div
                         ref={logContainerRef}
-                        className="h-full w-full bg-black text-zinc-200 font-mono text-xs p-4 rounded-2xl overflow-y-auto border border-border selection:bg-zinc-700 space-y-1"
+                        className="h-full w-full bg-black text-zinc-200 font-mono text-[11px] sm:text-xs p-2 sm:p-4 rounded-2xl overflow-y-auto border border-border selection:bg-zinc-700 space-y-1"
                     >
                         {filteredLogs.length > 0 ? (
                             filteredLogs.map((log, index) => (
-                                <div key={index} className="whitespace-pre-wrap leading-relaxed hover:bg-zinc-900/50 py-0.5 px-1 rounded transition-colors flex items-start">
-                                    <span className="text-muted-foreground mr-2 select-none shrink-0">[{log.timestamp}]</span>
-                                    <span className="text-teal-500/90 mr-2 select-none shrink-0 font-medium">({log.channel})</span>
-                                    <span className="uppercase mr-2 select-none text-zinc-500 font-bold shrink-0">[{log.level}]</span>
-                                    <span className={getLogLevelStyles(log.level)}>{log.message}</span>
+                                <div key={index} className="whitespace-pre-wrap break-words leading-relaxed hover:bg-zinc-900/50 py-0.5 px-1 rounded transition-colors flex flex-col sm:flex-row sm:items-start">
+                                    <div className="flex items-center flex-wrap shrink-0 sm:mb-0 mb-0.5">
+                                        <span className="text-muted-foreground mr-1.5 sm:mr-2 select-none shrink-0">[{log.timestamp}]</span>
+                                        <span className="text-teal-500/90 mr-1.5 sm:mr-2 select-none shrink-0 font-medium">({log.channel})</span>
+                                        <span className="uppercase mr-1.5 sm:mr-2 select-none text-zinc-500 font-bold shrink-0">[{log.level}]</span>
+                                    </div>
+                                    <span className={`${getLogLevelStyles(log.level)} flex-1`}>{log.message}</span>
                                 </div>
                             ))
                         ) : (
                             <div className="h-full flex items-center justify-center text-muted-foreground italic text-center p-4">
-                                No logs match your current criteria.<br />
-                                <span className="text-[11px] opacity-70">
-                                    (Level: "{filterLevel}" | Channel: "{filterChannel}" {searchQuery && `| Query: "${searchQuery}"`})
-                                </span>
+                                <div className="max-w-xs">
+                                    No logs match your current criteria.<br />
+                                    <span className="text-[10px] sm:text-[11px] opacity-70 break-words mt-1 block">
+                                        (Level: "{filterLevel}" | Channel: "{filterChannel}" {searchQuery && `| Query: "${searchQuery}"`})
+                                    </span>
+                                </div>
                             </div>
                         )}
                     </div>

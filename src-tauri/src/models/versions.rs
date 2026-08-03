@@ -57,13 +57,14 @@ impl MinecraftVersion {
             .unwrap()
             .map(|x| x.unwrap().path())
             .find(|x| {
-                x.is_file() && (x.extension().unwrap() == "json")
+                x.is_file() && (x.extension().unwrap() == "json") &&
+                    serde_json::from_str::<MinecraftManifestVersion>(fs::read_to_string(x).unwrap().as_str()).is_ok()
             })
             .ok_or(todo_err("Directory not found"))?;
         let json: MinecraftManifestVersion = serde_json::from_str(fs::read_to_string(file)
             .map_err(|x| todo_err("some unknown error to be fixed later"))?.as_str())
             .map_err(|x| todo_err("Parsing json failed"))?;
-        let name = json.id; // TODO: Still needs some rechecking over how to verify that's a Minecraft version or not (forge is kinda messed up)
+        let name = json.id;
         Ok(Self {
             id: name,
             version_path: directory.as_path().to_str().unwrap().to_string(),
