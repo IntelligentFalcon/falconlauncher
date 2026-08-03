@@ -346,7 +346,8 @@ fn download_file_async_thread(url: String, dest: String) -> Void {
 pub async fn download_file(url: String, dest: &String) -> Void {
     let resp = reqwest::get(&url)
         .await
-        .map_err(|x| download_error(format!("Failed to download file from {url}, {}", x)))?;
+        //format!("Failed to download file from {url}, {}", x))
+        .map_err(|x| download_error())?;
     info!(
         "Downloading {url} to {dest} with response of {}",
         resp.content_length().unwrap()

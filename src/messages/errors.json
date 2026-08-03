@@ -1,0 +1,62 @@
+{
+  "ERROR_MANIFEST_NOT_FOUND": {
+    "title": "Manifest Missing",
+    "description": "The launcher manifest file could not be found."
+  },
+  "ERROR_FILE_NOT_FOUND": {
+    "title": "File Not Found",
+    "description": "Failed to load the requested file. Make sure you are connected to the internet."
+  },
+  "ERROR_VERSION_NOT_FOUND": {
+    "title": "Version Not Found",
+    "description": "Couldn't find the selected version. Try selecting a version before launching the game."
+  },
+  "ERROR_LAUNCH_ARGS_NOT_FOUND": {
+    "title": "Launch Arguments Missing",
+    "description": "Could not determine the launch arguments for this instance."
+  },
+  "ERROR_FILE_CREATE_FAILED": {
+    "title": "Creation Failed",
+    "description": "The system failed to create a necessary file."
+  },
+  "ERROR_FILE_RENAME_FAILED": {
+    "title": "Rename Failed",
+    "description": "The system failed to rename a file."
+  },
+  "ERROR_FILE_READ_FAILED": {
+    "title": "Read Error",
+    "description": "Failed to read data from a file on the disk."
+  },
+  "ERROR_BUFFER_READ_FAILED": {
+    "title": "Buffer Error",
+    "description": "Failed to read the data buffer."
+  },
+  "ERROR_JSON_PARSE_FAILED": {
+    "title": "Invalid JSON",
+    "description": "Failed to parse JSON data."
+  },
+  "ERROR_INI_PARSE_FAILED": {
+    "title": "Invalid INI",
+    "description": "Failed to parse INI configuration data."
+  },
+  "ERROR_ACCESS_DENIED": {
+    "title": "Access Denied",
+    "description": "Permission denied. The launcher might need administrator privileges."
+  },
+  "ERROR_LOG_HISTORY_NOT_FOUND": {
+    "title": "Log Missing",
+    "description": "Failed to read the log history buffer."
+  },
+  "ERROR_NETWORK_REQUEST_FAILED": {
+    "title": "Network Error",
+    "description": "A network request failed to complete."
+  },
+  "ERROR_DOWNLOAD_FAILED": {
+    "title": "Download Failed",
+    "description": "A required download failed to complete."
+  },
+  "ERROR_NOT_IMPLEMENTED": {
+    "title": "Not Implemented",
+    "description": "An internal feature is not yet implemented."
+  }
+}

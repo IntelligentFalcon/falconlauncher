@@ -17,15 +17,19 @@ type WithDefaultError<T> = T &
   >;
 
 type Invokes = WithDefaultError<{
-  get_categorized_versions: {
-    args: {
-      forge: boolean;
-      fabric: boolean;
-      liteLoader: boolean;
-      neoForge: boolean;
-    };
+  get_fabric_versions: {
+    args: {};
     returns: VersionCategory[];
   };
+  get_forge_versions: {
+    args: {};
+    returns: VersionCategory[];
+  };
+  get_vanilla_versions: {
+    args: {};
+    returns: VersionCategory[];
+  };
+
   get_versions: {
     args: undefined;
     returns: string[];

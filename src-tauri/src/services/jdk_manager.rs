@@ -1,30 +1,36 @@
 use crate::models::error::{download_error, io_err_create_file, todo_err, Returns, Void};
 use crate::models::java::Java;
+use crate::models::logger::LogLine;
 use crate::models::mirror::Mirror;
 use crate::models::platform::{get_current_os, get_current_os_with_architecture};
-use crate::services::directory_manager::{
-    get_java_dir,
-};
+use crate::services::directory_manager::get_java_dir;
 use crate::services::game_downloader::download_file_if_not_exists;
-use crate::services::utils::{load_json_url};
+use crate::services::utils::load_json_url;
 use serde_json::Value;
 use std::fs;
-use std::fs::{create_dir_all};
+use std::fs::create_dir_all;
 use tokio::sync::mpsc::UnboundedSender;
 use tracing::info;
-use crate::models::logger::LogLine;
 
 pub fn get_java(java: String) -> Returns<Java> {
     let runtime_dir = get_java_dir().join(&java);
     Ok(Java::new(runtime_dir))
 }
-pub async fn download_java(java: &String, version: &String,logger: &UnboundedSender<LogLine>, mirror: &Mirror) -> Void {
+pub async fn download_java(
+    java: &String,
+    version: &String,
+    logger: &UnboundedSender<LogLine>,
+    mirror: &Mirror,
+) -> Void {
     let runtime_dir = get_java_dir().join(&java);
     if mirror.is_connected().await {
         let url = mirror.parse_url(&"https://launchermeta.mojang.com/v1/products/java-runtime/2ec0cc96c44e5a76b9c8b7c39df7210883d12871/all.json".to_string());
         let current_os = get_current_os_with_architecture();
-        let json: Value = load_json_url(&url.to_string()).await.ok_or(0)
-            .map_err(|_x| download_error("Couldn't get or read the runtime json manifest file.".to_string()))?;
+        let json: Value = load_json_url(&url.to_string())
+            .await
+            .ok_or(0)
+            //"Couldn't get or read the runtime json manifest file.".to_string()
+            .map_err(|_x| download_error())?;
         let runtime_arr = &json[current_os][java];
         let runtime_v = runtime_arr
             .as_array()
@@ -38,11 +44,16 @@ pub async fn download_java(java: &String, version: &String,logger: &UnboundedSen
                     .starts_with(version.as_str())
             })
             .unwrap_or(&runtime_arr[0]);
-        let runtime_manifest_url = mirror.parse_url(&runtime_v["manifest"]["url"].as_str().unwrap().to_string());
-        let runtime_manifest: Value = reqwest::get(runtime_manifest_url).await
-            .map_err(|_x| download_error("Couldn't get runtime manifest.".to_string()))?
-            .json().await
-            .map_err(|_x| download_error("Failed to read the runtime json file.".to_string()))?;
+        let runtime_manifest_url =
+            mirror.parse_url(&runtime_v["manifest"]["url"].as_str().unwrap().to_string());
+        let runtime_manifest: Value = reqwest::get(runtime_manifest_url)
+            .await
+            //"Couldn't get runtime manifest.".to_string()
+            .map_err(|_x| download_error())?
+            .json()
+            .await
+            //"Failed to read the runtime json file.".to_string()
+            .map_err(|_x| download_error())?;
 
         let files = &runtime_manifest["files"];
         for (k, v) in files.as_object().unwrap() {
@@ -56,15 +67,19 @@ pub async fn download_java(java: &String, version: &String,logger: &UnboundedSen
                 info!("Downloading {} ({} bytes)", url, size);
                 download_file_if_not_exists(&runtime_dir.join(k), url.to_string(), size).await?;
             } else {
-                create_dir_all(runtime_dir.join(k)).expect(format!("error on {}",  runtime_dir.display()).as_str());
+                create_dir_all(runtime_dir.join(k))
+                    .expect(format!("error on {}", runtime_dir.display()).as_str());
             }
         }
-    }
-    else {
+    } else {
         return Err(todo_err("Mirror is not connected to download"));
     }
     if !runtime_dir.join("release").exists() {
-        fs::write(runtime_dir.join("release"),format!("JAVA_VERSION=\"{}\"", version)).map_err(|x| io_err_create_file("release".to_string(),x))?;
+        fs::write(
+            runtime_dir.join("release"),
+            format!("JAVA_VERSION=\"{}\"", version),
+        )
+        .map_err(|x| io_err_create_file("release".to_string(), x))?;
     }
     Ok(())
 }

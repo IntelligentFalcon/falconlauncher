@@ -7,7 +7,8 @@ use tauri::{command, AppHandle, State};
 
 #[command]
 pub async fn get_available_mirrors() -> Returns<Vec<Mirror>> {
-    list_mirrors()
+    Err(todo_err("testttttttes tgasrgsdag"))
+    // list_mirrors()
 }
 
 #[command]
