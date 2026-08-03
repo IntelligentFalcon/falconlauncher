@@ -171,6 +171,7 @@ pub fn run() {
             commands::downloader::get_non_installed_versions,
             commands::downloader::get_forge_versions,
             commands::downloader::get_fabric_versions,
+            commands::downloader::get_vanilla_versions,
             commands::profiles::get_profiles,
             commands::profiles::create_offline_profile,
             commands::logger::get_log_history,
