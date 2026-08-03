@@ -3,8 +3,7 @@ import { app } from '@tauri-apps/api';
 type AppHandle = typeof app;
 
 type InvokeError<T = unknown> = {
-  code: number;
-  message: string;
+  code: string;
   data?: T;
 };
 
