@@ -19,6 +19,7 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import { BookXIcon, XslFreeIcons } from '@hugeicons/core-free-icons';
 import { Outlet } from 'react-router';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { Toaster } from './components/ui/sonner';
 
 export default function Layout() {
   const window = getCurrentWindow();
@@ -32,7 +33,7 @@ export default function Layout() {
             <div className="pl-4 pr-1 flex items-center justify-between">
               <Menubar
                 className="border-0 rounded-none flex-1"
-                onMouseDown={() => window.startDragging()}
+                data-tauri-drag-region
               >
                 {/* <MenubarMenu>
                   <MenubarTrigger>File</MenubarTrigger>
@@ -73,6 +74,7 @@ export default function Layout() {
             </div>
           </div>
         </SidebarProvider>
+        <Toaster />
       </QueryClientProvider>
     </ThemeProvider>
   );

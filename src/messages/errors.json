@@ -58,5 +58,9 @@
   "ERROR_NOT_IMPLEMENTED": {
     "title": "Not Implemented",
     "description": "An internal feature is not yet implemented."
+  },
+  "ERROR_UNKNOWN": {
+    "title": "Unknown",
+    "description": "Fuck you~"
   }
 }

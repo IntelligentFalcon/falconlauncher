@@ -26,12 +26,14 @@
           "windows": ["main"],
           "identifier": "titlebar",
           "permissions": [
-            "core:window:allow-start-dragging",
-            "core:window:allow-destroy",
+            "core:window:default",
+            "core:window:allow-close",
             "core:window:allow-minimize",
+            "core:window:allow-toggle-maximize",
+            "core:window:allow-start-dragging",
             "core:event:allow-listen",
-            "core:event:default"
-
+            "core:event:default",
+            "notification:default"
           ]
         }
       ]
