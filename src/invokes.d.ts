@@ -8,14 +8,14 @@ type InvokeError<T = unknown> = {
 };
 
 type WithDefaultError<T> = T &
-  Record<
-    keyof T,
-    {
-      custom_error: T extends { custom_error: infer E } ? E : {};
-    }
-  >;
+    Record<
+        keyof T,
+        {
+          custom_error: T extends { custom_error: infer E } ? E : {};
+        }
+    >;
 
-type Invokes = WithDefaultError<{
+export type Invokes = WithDefaultError<{
   get_fabric_versions: {
     args: {};
     returns: VersionCategory[];
@@ -28,7 +28,6 @@ type Invokes = WithDefaultError<{
     args: {};
     returns: VersionCategory[];
   };
-
   get_versions: {
     args: undefined;
     returns: string[];
@@ -129,10 +128,6 @@ type Invokes = WithDefaultError<{
     args: { mod_info: ModInfo };
     returns: void;
   };
-  get_mods: {
-    args: undefined;
-    returns: ModInfo[];
-  };
   play: {
     args: {
       // app: AppHandle;
@@ -140,9 +135,68 @@ type Invokes = WithDefaultError<{
     };
     returns: void;
   };
+
+  // --- NEW COMMANDS ADDED BELOW ---
+
+  get_minimum_ram_usage: {
+    args: undefined;
+    returns: number;
+  };
+  get_maximum_ram_usage: {
+    args: undefined;
+    returns: number;
+  };
+  set_minimum_ram_usage: {
+    args: {
+      ramUsage: number; // Verify if your Rust backend expects ramUsage or ram_usage
+    };
+    returns: void;
+  };
+  set_maximum_ram_usage: {
+    args: {
+      ramUsage: number;
+    };
+    returns: void;
+  };
+  should_exit_on_launch: {
+    args: undefined;
+    returns: boolean;
+  };
+  set_exit_on_launch: {
+    args: {
+      toggle: boolean;
+    };
+    returns: void;
+  };
+  get_available_mirrors: {
+    args: undefined;
+    returns: Mirror[];
+  };
+  get_mirror: {
+    args: undefined;
+    returns: Mirror | null;
+  };
+  set_mirror: {
+    args: {
+      mirror: Mirror;
+    };
+    returns: void;
+  };
+  import_mirror: {
+    args: {
+      json: string;
+    };
+    returns: Mirror[];
+  };
 }>;
 
-interface MinecraftVersion {
+export interface Mirror {
+  name: string;
+  url: string;
+  description: string;
+}
+
+export interface MinecraftVersion {
   id: string;
   isInstalled: boolean;
   base: 'FABRIC' | 'FORGE' | 'NEO_FORGE' | 'LITE_LOADER' | 'VANILLA';
@@ -150,7 +204,8 @@ interface MinecraftVersion {
   date: string;
   // Add other relevant fields like type, release time, etc.
 }
-enum VersionBase {
+
+export enum VersionBase {
   VANILLA,
   FORGE,
   NEOFORGE,
@@ -158,37 +213,43 @@ enum VersionBase {
   LITELOADER,
 }
 
-interface Profile {
+export interface Profile {
   username: string;
   uuid: string;
   online: boolean;
 }
-interface VersionLoader {
+
+export interface VersionLoader {
   id: string;
   base: VersionBase;
   date: string;
 }
-interface VersionCategory {
+
+export interface VersionCategory {
   name: string; // e.g., "Fabric", "Forge"
   versions: VersionLoader[];
 }
 
-interface Config {
+export interface Config {
   launchoptions: LaunchOptions;
   launchersettings: LauncherSettings;
   downloadsettings: DownloadSettings;
 }
-interface DownloadSettings {
+
+export interface DownloadSettings {
   mirror: string;
 }
-interface LauncherSettings {
+
+export interface LauncherSettings {
   language: string;
 }
-interface LaunchOptions {
+
+export interface LaunchOptions {
   username: string;
   ramusage: u64;
 }
-interface ModInfo {
+
+export interface ModInfo {
   path: string;
   modid: string;
   name: string;

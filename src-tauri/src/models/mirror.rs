@@ -66,7 +66,7 @@ impl Mirror {
             get_mirrors_dir().join(format!("{}.json", self.name.to_lowercase())),
             content,
         )
-        .map_err(|x| AppError::NotImplemented("file write filed".to_string()))
+        .map_err(|x| AppError::FileWriteFailed("file write filed".to_string()))
     }
 }
 pub fn mirror(

@@ -2,6 +2,7 @@ use tauri::{command, State};
 use crate::AppState;
 use crate::models::config::{Bool, Config};
 use crate::models::error::AppError;
+use crate::models::error::AppError::NotImplemented;
 
 #[command]
 pub async fn set_maximum_ram_usage(state: State<'_, AppState>, ram_usage: u64) -> Result<(), AppError> {
@@ -55,7 +56,7 @@ pub async fn set_exit_on_launch(state: State<'_, AppState>, toggle: bool) -> Res
 pub async fn save(state: State<'_, AppState>) -> Result<(), AppError> {
     let cfg = state.config.write().await;
     cfg.write_to_file()?;
-    Ok(())
+    Err(NotImplemented("Test".to_string()))
 }
 
 #[command]

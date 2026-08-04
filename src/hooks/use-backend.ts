@@ -9,6 +9,7 @@ import {
   UseQueryOptions,
 } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import {sendNotification} from "@tauri-apps/plugin-notification";
 
 export function useBackend<
   Invoke extends keyof Invokes,
@@ -70,8 +71,10 @@ export function useBackendMutation<
     onError: (error, vars, res, context) => {
       if (onError) {
         onError(error, vars, res, context);
+          console.log('trst');
       } else {
         const displayError = errorText(error.code);
+
         toast.error(displayError.title, {
           description: displayError.description,
         });

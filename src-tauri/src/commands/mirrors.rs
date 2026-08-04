@@ -7,14 +7,14 @@ use tauri::{command, AppHandle, State};
 
 #[command]
 pub async fn get_available_mirrors() -> Result<Vec<Mirror>, AppError> {
-    Err(AppError::NotImplemented("testttttttes tgasrgsdag".to_string()))
-    // list_mirrors()
+    list_mirrors()
 }
 
 #[command]
 pub async fn set_mirror(app_handle: AppHandle, state: State<'_, AppState>, mirror: Mirror) -> Result<(), AppError> {
     state.config.write().await.download_settings.mirror = mirror;
-    Ok(())
+    println!("test");
+    Err(AppError::UnknownError("testttttttes tgasrgsdag".to_string()))
 }
 
 #[command]
@@ -25,9 +25,9 @@ pub async fn get_mirror(app_handle: AppHandle, state: State<'_, AppState>) -> Re
 #[command]
 pub async fn import_mirror(json: String) -> Result<(), AppError> {
     if let Ok(value) = serde_json::from_str::<Mirror>(json.as_str()) {
-        fs::write(get_mirrors_dir().join(format!("{}.json", value.name.to_lowercase())), json).map_err(|x| AppError::NotImplemented("Write failed".to_string()))
+        fs::write(get_mirrors_dir().join(format!("{}.json", value.name.to_lowercase())), json).map_err(|x| AppError::FileWriteFailed("Write failed".to_string()))
 
     } else {
-        Err(AppError::NotImplemented("Invalid json format".to_string()))
+        Err(AppError::JsonParseFailed("Invalid json format".to_string()))
     }
 }

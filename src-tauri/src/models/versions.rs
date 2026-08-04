@@ -60,10 +60,10 @@ impl MinecraftVersion {
                 x.is_file() && (x.extension().unwrap() == "json") &&
                     serde_json::from_str::<MinecraftManifestVersion>(fs::read_to_string(x).unwrap().as_str()).is_ok()
             })
-            .ok_or(AppError::NotImplemented("Directory not found".to_string()))?;
+            .ok_or(AppError::DirNotFound("Directory not found".to_string()))?;
         let json: MinecraftManifestVersion = serde_json::from_str(fs::read_to_string(file)
-            .map_err(|x| AppError::NotImplemented("some unknown error to be fixed later".to_string()))?.as_str())
-            .map_err(|x| AppError::NotImplemented("Parsing json failed".to_string()))?;
+            .map_err(|x| AppError::UnknownError("some unknown error to be fixed later".to_string()))?.as_str())
+            .map_err(|x| AppError::JsonParseFailed("Parsing json failed".to_string()))?;
         let name = json.id;
         Ok(Self {
             id: name,

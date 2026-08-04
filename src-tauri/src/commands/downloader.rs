@@ -20,7 +20,7 @@ pub async fn get_vanilla_versions(
     state: State<'_, AppState>)
     -> Result<Vec<VersionCategory>, AppError> {
     let manifest = version_manager::load_version_manifest_local()
-        .map_err(|x| AppError::NotImplemented("Failed to parse version manifest".to_string()))?;
+        .map_err(|x| AppError::ManifestParseFailed("Failed to parse version manifest".to_string()))?;
     let cfg = state.config.read().await;
     let mirror = &cfg.download_settings.mirror;
     let mut result: Vec<VersionCategory> = Vec::new();
@@ -98,7 +98,7 @@ pub async fn get_forge_versions(
     state: State<'_, AppState>,
 ) -> Result<Vec<VersionCategory>, AppError> {
     let manifest = version_manager::load_version_manifest_local()
-        .map_err(|x| AppError::NotImplemented("Failed to parse version manifest".to_string()))?;
+        .map_err(|x| AppError::ManifestParseFailed("Failed to parse version manifest".to_string()))?;
     let cfg = state.config.read().await;
     let mirror = &cfg.download_settings.mirror;
     let mut result: Vec<VersionCategory> = Vec::new();
@@ -143,7 +143,7 @@ pub async fn get_fabric_versions(
     state: State<'_, AppState>,
 ) -> Result<Vec<VersionCategory>, AppError> {
     let manifest = version_manager::load_version_manifest_local()
-        .map_err(|x| AppError::NotImplemented("Failed to parse version manifest".to_string()))?;
+        .map_err(|x| AppError::ManifestParseFailed("Failed to parse version manifest".to_string()))?;
     let cfg = state.config.read().await;
     let mirror = &cfg.download_settings.mirror;
     let mut result: Vec<VersionCategory> = Vec::new();

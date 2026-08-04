@@ -170,7 +170,7 @@ async fn download_from_manifest(id: &String, manifest: &Manifest, mir: &Mirror) 
         .versions
         .iter()
         .find(|v| &v.id == id)
-        .ok_or(AppError::NotImplemented(
+        .ok_or(AppError::ManifestParseFailed(
             format!("Couldn't find version in manifest. {id}")
         ))?;
     let version_url = mir.parse_url(&version.url);
@@ -250,7 +250,7 @@ async fn download_libraries(
             .downloads
             .as_ref()
             .and_then(|d| d.artifact.as_ref())
-            .ok_or(AppError::NotImplemented("Parsing library downloads failed".to_string()))?;
+            .ok_or(AppError::ManifestParseFailed("Parsing library downloads failed".to_string()))?;
 
         let library_path = if library_artifact.path.is_none() {
             let args = library.name.split(":").collect::<Vec<&str>>();
@@ -327,7 +327,7 @@ async fn download_classifiers(
             }
             // TODO: changing natives folder to a better place
             extract(file.unwrap(), &natives_path, false)
-                .map_err(|x| AppError::NotImplemented("Zip extraction of classifier failed".to_string()))?;
+                .map_err(|x| AppError::ZipExtractionFailed("Zip extraction of classifier failed".to_string()))?;
         }
     }
     Ok(())
@@ -472,7 +472,7 @@ pub async fn download_forge_version(
     let mut zip = ZipArchive::new(installer_file).unwrap();
     let install_profile_file = zip
         .by_name("install_profile.json")
-        .map_err(|x| AppError::NotImplemented("Failed to find install_profile.json".to_string()))?;
+        .map_err(|x| AppError::ProfileNotFound("Failed to find install_profile.json".to_string()))?;
 
     let install_profile_json: ForgeInstallProfile =
         serde_json::from_reader(install_profile_file).unwrap();
@@ -497,10 +497,10 @@ pub async fn download_forge_version(
             }
         }
         create_dir_all(&full_path.parent().unwrap())
-            .map_err(|x| AppError::NotImplemented("Failed to create the path".to_string()))?;
+            .map_err(|x| AppError::DirCreateFailed("Failed to create the path".to_string()))?;
 
         let mut file = File::create(full_path).unwrap();
-        std::io::copy(&mut forge, &mut file).map_err(|x| AppError::NotImplemented("Failed to copy files".to_string()))?;
+        std::io::copy(&mut forge, &mut file).map_err(|x| AppError::FileCopyFailed("Failed to copy files".to_string()))?;
     }
 
     let version_json: ForgeVersionJsonInfo = if install_profile_json.version_info.is_none() {
@@ -524,7 +524,7 @@ pub async fn download_forge_version(
         version_json_path,
         serde_json::to_string(&version_json).unwrap(),
     )
-        .map_err(|x| AppError::NotImplemented("Failed to write to the forge json file.".to_string()))?;
+        .map_err(|x| AppError::FileWriteFailed("Failed to write to the forge json file.".to_string()))?;
 
     if let Some(profile_libraries) = &install_profile_json.libraries {
         for library in profile_libraries {
@@ -536,17 +536,17 @@ pub async fn download_forge_version(
                             let zip_path = format!("maven/{}", path);
                             let mut f = zip
                                 .by_name(&zip_path)
-                                .map_err(|x| AppError::NotImplemented("Parsing zip file failed.".to_string()))?;
+                                .map_err(|x| AppError::ZipParseFailed("Parsing zip file failed.".to_string()))?;
                             create_dir_all(
                                 PathBuf::from(get_libraries_directory().join(path))
                                     .parent()
                                     .unwrap(),
                             )
-                                .map_err(|x| AppError::NotImplemented("Failed to create the directory".to_string()))?;
+                                .map_err(|x| AppError::DirCreateFailed("Failed to create the directory".to_string()))?;
                             let mut file =
                                 File::create(get_libraries_directory().join(path)).unwrap();
                             std::io::copy(&mut f, &mut file)
-                                .map_err(|x| AppError::NotImplemented("Failed to copy files".to_string()))?;
+                                .map_err(|x| AppError::FileCopyFailed("Failed to copy files".to_string()))?;
                         }
                         continue;
                     }

@@ -62,6 +62,36 @@ pub enum AppError {
 
     #[error(transparent)]
     SerdeIni(#[from] serde_ini::ser::Error),
+
+    #[error("Manifest Parse Failed: {0}")]
+    ManifestParseFailed(String),
+
+    #[error("Zip Extraction Failed: {0}")]
+    ZipExtractionFailed(String),
+
+    #[error("Profile Not Found: {0}")]
+    ProfileNotFound(String),
+
+    #[error("File Copy Failed: {0}")]
+    FileCopyFailed(String),
+
+    #[error("File Write Failed: {0}")]
+    FileWriteFailed(String),
+
+    #[error("Zip Parse Failed: {0}")]
+    ZipParseFailed(String),
+
+    #[error("Directory Create Failed: {0}")]
+    DirCreateFailed(String),
+
+    #[error("Mirror Connection Failed: {0}")]
+    MirrorConnectionFailed(String),
+
+    #[error("Directory Not Found: {0}")]
+    DirNotFound(String),
+
+    #[error("Unknown Error: {0}")]
+    UnknownError(String),
 }
 
 // Since frontend expects `{ "code": "...", "data": "..." }`:
@@ -95,6 +125,16 @@ impl Serialize for AppError {
             AppError::Reqwest(e) => ("ERROR_NETWORK_REQUEST_FAILED", Some(e.to_string())),
             AppError::SerdeJson(e) => ("ERROR_JSON_PARSE_FAILED", Some(e.to_string())),
             AppError::SerdeIni(e) => ("ERROR_INI_PARSE_FAILED", Some(e.to_string())),
+            AppError::ManifestParseFailed(e) => ("ERROR_MANIFEST_PARSE_FAILED", Some(e.to_string())),
+            AppError::ZipExtractionFailed(e) => ("ERROR_ZIP_EXTRACTION_FAILED", Some(e.to_string())),
+            AppError::ProfileNotFound(e) => ("ERROR_PROFILE_NOT_FOUND", Some(e.to_string())),
+            AppError::FileCopyFailed(e) => ("ERROR_FILE_COPY_FAILED", Some(e.to_string())),
+            AppError::FileWriteFailed(e) => ("ERROR_FILE_WRITE_FAILED", Some(e.to_string())),
+            AppError::ZipParseFailed(e) => ("ERROR_ZIP_PARSE_FAILED", Some(e.to_string())),
+            AppError::DirCreateFailed(e) => ("ERROR_DIR_CREATE_FAILED", Some(e.to_string())),
+            AppError::MirrorConnectionFailed(e) => ("ERROR_MIRROR_CONNECTION_FAILED", Some(e.to_string())),
+            AppError::DirNotFound(e) => ("ERROR_DIR_NOT_FOUND", Some(e.to_string())),
+            AppError::UnknownError(e) => ("ERROR_UNKNOWN", Some(e.to_string())),
         };
 
         state.serialize_field("code", code)?;

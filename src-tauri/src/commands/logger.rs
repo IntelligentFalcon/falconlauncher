@@ -34,7 +34,7 @@ pub async fn clear_log_history_channel(state: State<'_, AppState>, channel: Stri
         }
     }
     //
-    Err(AppError::NotImplemented("Failed to read log history buffer".to_string()))
+    Err(AppError::BufferReadFailed("Failed to read log history buffer".to_string()))
 }
 
 /// LINUX Debugger for the js side. use the developer console if you are on Windows build to check logs

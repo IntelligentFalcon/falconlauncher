@@ -72,7 +72,7 @@ pub async fn download_java(
             }
         }
     } else {
-        return Err(AppError::NotImplemented("Mirror is not connected to download".to_string()));
+        return Err(AppError::MirrorConnectionFailed("Mirror is not connected to download".to_string()));
     }
     if !runtime_dir.join("release").exists() {
         fs::write(
