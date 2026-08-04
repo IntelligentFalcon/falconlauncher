@@ -462,7 +462,7 @@ pub async fn download_forge_version(
 
         generate_stdout(&mut child, logger);
         let _ = child.wait_with_output(); // Ensuring that the forge installer.jar job is done.
-        // fs::remove_dir_all(launcher_dir.join("temp")).unwrap();
+        fs::remove_dir_all(launcher_dir.join("temp")).unwrap();
 
         return Ok(());
     }
@@ -584,7 +584,7 @@ pub async fn download_forge_version(
         }
     }
 
-    // fs::remove_dir_all(launcher_dir.join("temp")).unwrap();
+    fs::remove_dir_all(launcher_dir.join("temp")).unwrap();
     Ok(())
 }
 
