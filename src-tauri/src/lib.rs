@@ -3,10 +3,11 @@ pub mod models;
 pub mod services;
 
 use crate::models::config::Config;
+use crate::models::error::AppError;
 use crate::models::fabric::{FabricInstaller, FabricLoader, FabricMinecraftVersion};
 use crate::models::logger::{init_log_bridge, LogLine};
 use crate::services::config::load;
-use crate::models::error::AppError;
+use log::info;
 use models::mirror::mojang_mirror;
 use models::mods::ModInfo;
 use models::versions::MinecraftVersion;
@@ -21,7 +22,6 @@ use std::collections::{HashMap, VecDeque};
 use std::env;
 use std::string::ToString;
 use std::sync::{Arc, LazyLock, Mutex};
-use log::info;
 use tauri::async_runtime::{block_on, spawn};
 use tauri::{command, AppHandle, Manager, State};
 use tauri_plugin_deep_link::DeepLinkExt;
@@ -162,10 +162,10 @@ pub fn run() {
             commands::settings::get_username,
             commands::settings::set_username,
             commands::settings::get_total_ram,
-            toggle_mod,
-            delete_mod,
-            get_mods,
-            install_mod_from_local,
+            commands::mods::toggle_mod,
+            commands::mods::delete_mod,
+            commands::mods::get_mods,
+            commands::mods::import_mod_from_local,
             commands::downloader::download_version,
             commands::downloader::get_installed_versions,
             commands::downloader::get_non_installed_versions,
@@ -187,38 +187,7 @@ pub fn run() {
         .expect("error while running tauri application");
 }
 #[command]
-async fn toggle_mod(mod_info: ModInfo, toggle: bool) -> Result<(), AppError> {
-    set_mod_enabled(mod_info, toggle)
-}
-#[command]
 async fn play(app: AppHandle, state: State<'_, AppState>, selected_version: String) -> Result<(), AppError> {
     launch_game(app, selected_version, &*GLOBAL_CACHE.lock().await).await
-}
-
-#[command]
-async fn get_mods() -> Result<Vec<ModInfo>, AppError> {
-    Ok(load_mods())
-}
-
-#[command]
-async fn install_mod_from_local(app: AppHandle) -> Result<(), AppError> {
-    let paths = app
-        .dialog()
-        .file()
-        .add_filter("Minecraft mods".to_string(), &[&"jar", &"disabled"])
-        .blocking_pick_files()
-        .unwrap();
-    for path in paths {
-        let p = path.as_path().unwrap();
-        let file_name = p.file_name().unwrap().to_str().unwrap();
-        let new_path = get_mods_folder().join(file_name);
-        copy(p, new_path).await.unwrap();
-    }
-    Ok(())
-}
-#[command]
-async fn delete_mod(mod_info: ModInfo) -> Result<(), AppError> {
-    mod_manager::delete_mod(&mod_info);
-    Ok(())
 }
 

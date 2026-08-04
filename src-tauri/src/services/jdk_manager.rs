@@ -2,7 +2,7 @@ use crate::models::error::AppError;
 use crate::models::java::Java;
 use crate::models::logger::LogLine;
 use crate::models::mirror::Mirror;
-use crate::models::platform::{get_current_os, get_current_os_with_architecture};
+use crate::models::platform::{get_current_os_with_architecture};
 use crate::services::directory_manager::get_java_dir;
 use crate::services::game_downloader::download_file_if_not_exists;
 use crate::services::utils::load_json_url;

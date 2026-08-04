@@ -44,7 +44,7 @@ export type Invokes = WithDefaultError<{
   };
   get_total_ram: {
     args: undefined;
-    returns: int;
+    returns: number; // Note: Changed 'int' to 'number' (TypeScript doesn't have 'int')
   };
   set_username: {
     args: {
@@ -64,13 +64,13 @@ export type Invokes = WithDefaultError<{
   };
   set_ram_usage: {
     args: {
-      ram_usage: int;
+      ram_usage: number; // Changed 'int' to 'number'
     };
     returns: void;
   };
   get_ram_usage: {
     args: undefined;
-    returns: int;
+    returns: number; // Changed 'int' to 'number'
   };
   get_username: {
     args: undefined;
@@ -104,16 +104,14 @@ export type Invokes = WithDefaultError<{
     args: undefined;
     returns: string;
   };
-  install_mod_from_local: {
-    args: {
-      app: AppHandle;
-    };
+  import_mod_from_local: {
+    args: undefined; // AppHandle is injected by Tauri Rust, no frontend arg needed
     returns: void;
   };
   download_version: {
     args: {
-      appHandle: AppHandle;
       versionLoader: VersionLoader;
+      // Removed appHandle: AppHandle as Tauri injects it backend-side
     };
     returns: void;
   };
@@ -125,19 +123,17 @@ export type Invokes = WithDefaultError<{
     returns: void;
   };
   delete_mod: {
-    args: { mod_info: ModInfo };
+    args: {
+      mod_info: ModInfo
+    };
     returns: void;
   };
   play: {
     args: {
-      // app: AppHandle;
       selectedVersion: string;
     };
     returns: void;
   };
-
-  // --- NEW COMMANDS ADDED BELOW ---
-
   get_minimum_ram_usage: {
     args: undefined;
     returns: number;
@@ -148,7 +144,7 @@ export type Invokes = WithDefaultError<{
   };
   set_minimum_ram_usage: {
     args: {
-      ramUsage: number; // Verify if your Rust backend expects ramUsage or ram_usage
+      ramUsage: number;
     };
     returns: void;
   };
@@ -202,7 +198,6 @@ export interface MinecraftVersion {
   base: 'FABRIC' | 'FORGE' | 'NEO_FORGE' | 'LITE_LOADER' | 'VANILLA';
   inheritedVersion?: string;
   date: string;
-  // Add other relevant fields like type, release time, etc.
 }
 
 export enum VersionBase {
@@ -226,7 +221,7 @@ export interface VersionLoader {
 }
 
 export interface VersionCategory {
-  name: string; // e.g., "Fabric", "Forge"
+  name: string;
   versions: VersionLoader[];
 }
 
@@ -246,7 +241,7 @@ export interface LauncherSettings {
 
 export interface LaunchOptions {
   username: string;
-  ramusage: u64;
+  ramusage: number; // Changed 'u64' to 'number' (TypeScript relies on number or BigInt)
 }
 
 export interface ModInfo {
