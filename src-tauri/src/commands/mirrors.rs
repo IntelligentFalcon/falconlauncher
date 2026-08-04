@@ -14,7 +14,7 @@ pub async fn get_available_mirrors() -> Result<Vec<Mirror>, AppError> {
 pub async fn set_mirror(app_handle: AppHandle, state: State<'_, AppState>, mirror: Mirror) -> Result<(), AppError> {
     state.config.write().await.download_settings.mirror = mirror;
     println!("test");
-    Err(AppError::UnknownError("testttttttes tgasrgsdag".to_string()))
+    Ok(())
 }
 
 #[command]

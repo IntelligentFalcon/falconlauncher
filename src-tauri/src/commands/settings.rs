@@ -56,7 +56,7 @@ pub async fn set_exit_on_launch(state: State<'_, AppState>, toggle: bool) -> Res
 pub async fn save(state: State<'_, AppState>) -> Result<(), AppError> {
     let cfg = state.config.write().await;
     cfg.write_to_file()?;
-    Err(NotImplemented("Test".to_string()))
+    Ok(())
 }
 
 #[command]

@@ -10,7 +10,7 @@ use serde_json::Value;
 use std::fs;
 use std::fs::create_dir_all;
 use tokio::sync::mpsc::UnboundedSender;
-use tracing::info;
+use log::info;
 
 pub fn get_java(java: String) -> Result<Java, AppError> {
     let runtime_dir = get_java_dir().join(&java);
