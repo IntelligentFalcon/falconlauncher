@@ -59,8 +59,48 @@
     "title": "Not Implemented",
     "description": "An internal feature is not yet implemented."
   },
+  "ERROR_INTERNAL": {
+    "title": "Internal Error",
+    "description": "An unexpected internal error has occurred."
+  },
+  "ERROR_MANIFEST_PARSE_FAILED": {
+    "title": "Manifest Parse Error",
+    "description": "Failed to parse the manifest file."
+  },
+  "ERROR_ZIP_EXTRACTION_FAILED": {
+    "title": "Extraction Failed",
+    "description": "Failed to extract the zip archive."
+  },
+  "ERROR_PROFILE_NOT_FOUND": {
+    "title": "Profile Not Found",
+    "description": "The requested profile could not be found."
+  },
+  "ERROR_FILE_COPY_FAILED": {
+    "title": "Copy Failed",
+    "description": "Failed to copy a file."
+  },
+  "ERROR_FILE_WRITE_FAILED": {
+    "title": "Write Failed",
+    "description": "Failed to write data to a file."
+  },
+  "ERROR_ZIP_PARSE_FAILED": {
+    "title": "Invalid Zip",
+    "description": "Failed to read the zip archive."
+  },
+  "ERROR_DIR_CREATE_FAILED": {
+    "title": "Directory Creation Failed",
+    "description": "Failed to create a directory."
+  },
+  "ERROR_MIRROR_CONNECTION_FAILED": {
+    "title": "Mirror Connection Failed",
+    "description": "Failed to connect to the mirror server."
+  },
+  "ERROR_DIR_NOT_FOUND": {
+    "title": "Directory Not Found",
+    "description": "The specified directory could not be found."
+  },
   "ERROR_UNKNOWN": {
     "title": "Unknown",
-    "description": "Fuck you~"
+    "description": "Unknown error has occurred!~"
   }
 }
