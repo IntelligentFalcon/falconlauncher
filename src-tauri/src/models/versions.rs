@@ -29,7 +29,6 @@ pub enum VersionType {
 
 impl MinecraftVersion {
     pub fn is_installed(&self) -> bool {
-        println!("{}", self.get_json());
         PathBuf::from(self.get_json()).exists()
     }
 

@@ -5,7 +5,6 @@ use std::env::{home_dir, var_os};
 use std::path::PathBuf;
 use tokio::fs::create_dir_all;
 use crate::models::mirror::{mojang_mirror, ninecraft_mirror};
-
 pub fn get_minecraft_directory() -> PathBuf {
     let os = get_current_os();
     match os.as_str() {
@@ -53,6 +52,7 @@ pub fn get_profiles_file() -> PathBuf {
 pub fn get_temp_directory() -> PathBuf {
     get_falcon_launcher_directory().join("temp")
 }
+
 
 pub async fn create_necessary_dirs() {
     create_dir_all(get_versions_directory()).await.unwrap();

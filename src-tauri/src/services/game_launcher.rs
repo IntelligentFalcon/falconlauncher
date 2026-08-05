@@ -17,7 +17,7 @@ use std::process::{Command, Stdio};
 use tauri::{AppHandle, Manager};
 
 pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &Global) -> Result<(), AppError> {
-    info!("DEBUG: Starting game in {version} ");
+    info!("Launching minecraft {version} ");
     let state = &app_handle.state::<AppState>();
     let tx_err = state.log_tx.clone();
     let tx_out = state.log_tx.clone();
@@ -188,7 +188,6 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
         format!("Environments: {envs}"),
         version_id_out_clone.clone(),
     ));
-    println!("{}", child_cmd.get_program().to_str().unwrap());
     let mut child = child_cmd.spawn().expect("Failed to spawn java process");
     let stdout = child.stdout.take().expect("Failed to open stdout");
     let stderr = child.stderr.take().unwrap();

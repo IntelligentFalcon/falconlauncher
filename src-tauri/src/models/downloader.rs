@@ -170,7 +170,6 @@ impl VersionLoader {
         match self.base {
             VersionBase::VANILLA => self.id.clone(),
             FORGE => {
-                println!("{}", self.id);
                 let id_clone = self.id.clone();
                 let args = id_clone.split("-").collect::<Vec<_>>();
                 let vanilla_id = args[0];

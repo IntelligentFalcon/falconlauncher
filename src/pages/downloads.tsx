@@ -10,7 +10,6 @@ import {
 } from '@/components/ui/combobox';
 import { useBackend, useBackendMutation } from '@/hooks/use-backend';
 import { VersionLoader, VersionCategory } from '@/invokes';
-import { app } from '@tauri-apps/api';
 import { listen } from '@tauri-apps/api/event';
 import { useEffect, useState } from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
@@ -146,7 +145,7 @@ export default function InstallerWizard() {
     setStatusText('Initializing download...');
 
     await downloadVersion({
-      appHandle: app,
+      name: instanceName,
       versionLoader: activeVersion,
       // name: instanceName || activeVersion.id
     });

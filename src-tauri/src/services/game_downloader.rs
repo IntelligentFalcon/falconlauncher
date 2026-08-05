@@ -44,12 +44,20 @@ use zip_extract::extract;
 
 pub async fn download_version(
     version: &MinecraftVersion,
+    name: &String,
     app_handle: &AppHandle,
     logger: &UnboundedSender<LogLine>,
     cfg: &Config,
 ) -> Result<(), AppError> {
     let id = &version.id;
     let mirror = &cfg.download_settings.mirror;
+    let name = if name == "" {
+        &version.id
+    } else {
+        name
+    };
+
+    info!("Downloading version {} with name of {name}", &version.id);
 
     let manifest = load_version_manifest(&mirror).await?;
     download_from_manifest(id, &manifest, &mirror)
@@ -209,7 +217,6 @@ async fn download_libraries(
     let libraries_path = get_libraries_directory();
 
     for (library_index, library) in libraries.iter().enumerate() {
-        println!("{}", library.name);
         if library.downloads.is_none() {
             let name = library.name.replace(":", "/");
             let path = fetch_library_path(&name);

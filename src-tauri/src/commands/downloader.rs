@@ -1,3 +1,4 @@
+use log::info;
 use crate::models::downloader::{VersionInfo, VersionLoader};
 use crate::models::error::AppError;
 use crate::models::logger::info_launcher;
@@ -17,10 +18,11 @@ use tauri_plugin_dialog::DialogExt;
 #[command]
 pub async fn get_vanilla_versions(
     app_handle: AppHandle,
-    state: State<'_, AppState>)
-    -> Result<Vec<VersionCategory>, AppError> {
-    let manifest = version_manager::load_version_manifest_local()
-        .map_err(|x| AppError::ManifestParseFailed("Failed to parse version manifest".to_string()))?;
+    state: State<'_, AppState>,
+) -> Result<Vec<VersionCategory>, AppError> {
+    let manifest = version_manager::load_version_manifest_local().map_err(|x| {
+        AppError::ManifestParseFailed("Failed to parse version manifest".to_string())
+    })?;
     let cfg = state.config.read().await;
     let mirror = &cfg.download_settings.mirror;
     let mut result: Vec<VersionCategory> = Vec::new();
@@ -97,8 +99,9 @@ pub async fn get_forge_versions(
     app_handle: AppHandle,
     state: State<'_, AppState>,
 ) -> Result<Vec<VersionCategory>, AppError> {
-    let manifest = version_manager::load_version_manifest_local()
-        .map_err(|x| AppError::ManifestParseFailed("Failed to parse version manifest".to_string()))?;
+    let manifest = version_manager::load_version_manifest_local().map_err(|x| {
+        AppError::ManifestParseFailed("Failed to parse version manifest".to_string())
+    })?;
     let cfg = state.config.read().await;
     let mirror = &cfg.download_settings.mirror;
     let mut result: Vec<VersionCategory> = Vec::new();
@@ -119,7 +122,7 @@ pub async fn get_forge_versions(
             };
             result.push(c);
             result.iter_mut().find(|x| x.name == category).unwrap()
-        }else {
+        } else {
             cat_opt.unwrap()
         };
         cat.versions.extend(
@@ -142,8 +145,9 @@ pub async fn get_fabric_versions(
     app_handle: AppHandle,
     state: State<'_, AppState>,
 ) -> Result<Vec<VersionCategory>, AppError> {
-    let manifest = version_manager::load_version_manifest_local()
-        .map_err(|x| AppError::ManifestParseFailed("Failed to parse version manifest".to_string()))?;
+    let manifest = version_manager::load_version_manifest_local().map_err(|x| {
+        AppError::ManifestParseFailed("Failed to parse version manifest".to_string())
+    })?;
     let cfg = state.config.read().await;
     let mirror = &cfg.download_settings.mirror;
     let mut result: Vec<VersionCategory> = Vec::new();
@@ -164,7 +168,7 @@ pub async fn get_fabric_versions(
             };
             result.push(c);
             result.iter_mut().find(|x| x.name == category).unwrap()
-        }else {
+        } else {
             cat_opt.unwrap()
         };
 
@@ -187,6 +191,7 @@ pub async fn download_version(
     app_handle: AppHandle,
     state: State<'_, AppState>,
     version_loader: VersionLoader,
+    name: String,
 ) -> Result<(), AppError> {
     let mut version_id = version_loader.get_installed_id();
     let cfg = &state.config.read().await;
@@ -210,7 +215,7 @@ pub async fn download_version(
         )
         .await;
         if let Err(e) = &t {
-            println!("{:?}", e);
+            info!("{:?}", e);
         }
     };
     if version_loader.base == FABRIC {
@@ -226,9 +231,10 @@ pub async fn download_version(
     let inherited_version = version.get_inherited();
     update_download_status("Downloading version...", &app_handle);
     let cfg = &state.config.read().await;
-    game_downloader::download_version(&version, &app_handle, logger, &*cfg).await?;
+    game_downloader::download_version(&version, &name, &app_handle, logger, &*cfg).await?;
     if inherited_version.id != version.id {
-        game_downloader::download_version(&inherited_version, &app_handle, logger, &*cfg).await?;
+        game_downloader::download_version(&inherited_version, &name, &app_handle, logger, &*cfg)
+            .await?;
     }
     update_download_status("", &app_handle);
     app_handle

@@ -111,7 +111,7 @@ export type Invokes = WithDefaultError<{
   download_version: {
     args: {
       versionLoader: VersionLoader;
-      // Removed appHandle: AppHandle as Tauri injects it backend-side
+      name: string
     };
     returns: void;
   };
