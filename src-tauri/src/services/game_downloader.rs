@@ -77,6 +77,7 @@ pub async fn download_version(
         &json.java_version.unwrap()
     } else {
         let dir = get_version_manifest(&json.inherits_from.unwrap().as_str().to_string());
+        println!("{}", dir.display());
         let content = fs::read_to_string(dir);
         let m: MinecraftManifestVersion = serde_json::from_str(&content.unwrap()).map_err(|x| AppError::JsonParseFailed(x.to_string()))?;
         &m.java_version.unwrap()

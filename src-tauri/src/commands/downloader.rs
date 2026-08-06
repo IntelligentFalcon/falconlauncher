@@ -231,11 +231,11 @@ pub async fn download_version(
     let inherited_version = version.get_inherited();
     update_download_status("Downloading version...", &app_handle);
     let cfg = &state.config.read().await;
-    game_downloader::download_version(&version, &name, &app_handle, logger, &*cfg).await?;
     if inherited_version.id != version.id {
         game_downloader::download_version(&inherited_version, &name, &app_handle, logger, &*cfg)
             .await?;
     }
+    game_downloader::download_version(&version, &name, &app_handle, logger, &*cfg).await?;
     update_download_status("", &app_handle);
     app_handle
         .dialog()
