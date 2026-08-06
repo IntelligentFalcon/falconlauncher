@@ -1,6 +1,7 @@
 use serde::{Serialize, Serializer};
 use thiserror::Error;
 
+pub type Void = Result<(), AppError>;
 #[derive(Debug, Error)]
 pub enum AppError {
     #[error("Manifest Missing")]

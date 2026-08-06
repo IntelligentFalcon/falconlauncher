@@ -1,4 +1,4 @@
-use crate::models::error::AppError;
+use crate::models::error::{AppError, Void};
 use crate::services::directory_manager::get_profiles_file;
 use crate::services::utils::uuid_from_username;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -42,10 +42,10 @@ pub fn get_profiles() -> Vec<Profile> {
     .unwrap_or(Vec::new())
 }
 
-pub fn get_profile(username: &String) -> Option<Profile> {
-    let un_clone = username.clone();
+pub fn get_profile(uuid: &Uuid) -> Option<Profile> {
+    let uid_clone = uuid.clone();
     let temp = get_profiles().clone();
-    let found = temp.iter().find(|x| x.username == un_clone).cloned();
+    let found = temp.iter().find(|x| x.uuid == uid_clone).cloned();
     found
 }
 
@@ -55,5 +55,14 @@ pub struct Profile {
     pub username: String,
     pub online: bool,
     pub uuid: Uuid,
+}
 
+impl Default for Profile {
+    fn default() -> Self {
+        Self{
+            username: "Player".to_string(),
+            online: false,
+            uuid: uuid_from_username("Player"),
+        }
+    }
 }

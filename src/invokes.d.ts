@@ -46,9 +46,9 @@ export type Invokes = WithDefaultError<{
     args: undefined;
     returns: number; // Note: Changed 'int' to 'number' (TypeScript doesn't have 'int')
   };
-  set_username: {
+  set_selected_profile: {
     args: {
-      username: string;
+      profile: Profile;
     };
     returns: void;
   };
@@ -72,9 +72,9 @@ export type Invokes = WithDefaultError<{
     args: undefined;
     returns: number; // Changed 'int' to 'number'
   };
-  get_username: {
+  get_selected_profile: {
     args: undefined;
-    returns: string;
+    returns: Profile;
   };
   get_profiles: {
     args: undefined;

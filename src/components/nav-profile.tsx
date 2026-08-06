@@ -56,12 +56,12 @@ export function NavProfile() {
   }, [profiles, profile]);
 
   const { mutate: setProfileMutation } = useBackendMutation({
-    name: 'set_username',
+    name: 'set_selected_profile',
   });
 
   useEffect(() => {
     if (profile) {
-      setProfileMutation({ username: profile.username });
+      setProfileMutation({ profile: profile });
     }
   }, [profile, setProfileMutation]);
 

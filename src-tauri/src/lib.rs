@@ -12,11 +12,9 @@ use models::mirror::mojang_mirror;
 use models::mods::ModInfo;
 use models::versions::MinecraftVersion;
 use services::directory_manager::{
-    create_necessary_dirs, get_falcon_launcher_directory, get_mods_folder,
+    create_necessary_dirs, get_falcon_launcher_directory,
 };
 use services::game_launcher::launch_game;
-use services::mod_manager;
-use services::mod_manager::{load_mods, set_mod_enabled};
 use services::version_manager::{download_version_manifest, reload_installed_versions};
 use std::collections::{HashMap, VecDeque};
 use std::env;
@@ -25,7 +23,6 @@ use std::sync::{Arc, LazyLock, Mutex};
 use tauri::async_runtime::{block_on, spawn};
 use tauri::{command, AppHandle, Manager, State};
 use tauri_plugin_deep_link::DeepLinkExt;
-use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_log::{Target, TargetKind, TimezoneStrategy};
 use tokio::fs::copy;
 use tokio::sync;
@@ -159,8 +156,8 @@ pub fn run() {
             commands::settings::should_exit_on_launch,
             commands::settings::save,
             commands::settings::set_config,
-            commands::settings::get_username,
-            commands::settings::set_username,
+            commands::settings::get_selected_profile,
+            commands::settings::set_selected_profile,
             commands::settings::get_total_ram,
             commands::mods::toggle_mod,
             commands::mods::delete_mod,
@@ -174,6 +171,7 @@ pub fn run() {
             commands::downloader::get_vanilla_versions,
             commands::profiles::get_profiles,
             commands::profiles::create_offline_profile,
+            commands::profiles::remove_profile,
             commands::logger::get_log_history,
             commands::logger::clear_log_history_channel,
             commands::logger::clear_log_history,

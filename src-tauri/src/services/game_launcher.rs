@@ -24,9 +24,9 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
 
     let config = state.config.read().await;
     let launch_options = &config.launch_options;
-    let username = &launch_options.username;
-    let profile = get_profile(username).unwrap();
-    let uid = profile.uuid;
+    let uid = &launch_options.selected_profile;
+    let profile = get_profile(uid).unwrap();
+    let username = profile.username;
     let xms = launch_options.ram_usage_min.to_string() + "M";
     let xmx = launch_options.ram_usage_max.to_string() + "M";
 
@@ -77,7 +77,7 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
     let mut run_args = run_args_iter_sum
         .iter()
         .map(|v| {
-            v.replace("${auth_player_name}", username)
+            v.replace("${auth_player_name}", username.as_str())
                 .replace("${version_name}", &version.id)
                 .replace("${game_directory}", &game_directory)
                 .replace("${assets_root}", &asset_directory)

@@ -2,6 +2,7 @@ use tauri::{command, State};
 use crate::AppState;
 use crate::models::config::{Bool, Config};
 use crate::models::error::AppError;
+use crate::models::profiles::{get_profile, Profile};
 
 #[command]
 pub async fn set_maximum_ram_usage(state: State<'_, AppState>, ram_usage: u64) -> Result<(), AppError> {
@@ -74,15 +75,15 @@ pub async fn set_config(state: State<'_, AppState>, config: Config) -> Result<()
 }
 
 #[command]
-pub async fn get_username(state: State<'_, AppState>) -> Result<String, AppError> {
+pub async fn get_selected_profile(state: State<'_, AppState>) -> Result<Profile, AppError> {
     let cfg = state.config.read().await;
-    Ok(cfg.launch_options.username.clone())
+    Ok(get_profile(&cfg.launch_options.selected_profile).unwrap_or_default())
 }
 
 #[command]
-pub async fn set_username(state: State<'_, AppState>, username: String) -> Result<(), AppError> {
+pub async fn set_selected_profile(state: State<'_, AppState>, profile: Profile) -> Result<(), AppError> {
     let mut cfg = state.config.write().await;
-    cfg.launch_options.username = username;
+    cfg.launch_options.selected_profile = profile.uuid;
 
     Ok(())
 }
