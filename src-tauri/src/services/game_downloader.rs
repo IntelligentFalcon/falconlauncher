@@ -34,7 +34,6 @@ use std::fs::{create_dir_all, exists, set_permissions, File};
 use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
 use std::process::{Child, ChildStderr, Command, Stdio};
-use std::rc::Rc;
 use std::time::Duration;
 use tauri::async_runtime::block_on;
 use tauri::AppHandle;
