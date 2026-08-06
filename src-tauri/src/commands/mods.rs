@@ -10,6 +10,7 @@ use tokio::fs::copy;
 #[command]
 pub async fn toggle_mod(mod_info: ModInfo, toggle: bool) -> Result<(), AppError> {
     set_mod_enabled(mod_info, toggle)
+    
 }
 
 #[command]

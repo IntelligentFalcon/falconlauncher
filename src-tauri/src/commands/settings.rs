@@ -2,7 +2,6 @@ use tauri::{command, State};
 use crate::AppState;
 use crate::models::config::{Bool, Config};
 use crate::models::error::AppError;
-use crate::models::error::AppError::NotImplemented;
 
 #[command]
 pub async fn set_maximum_ram_usage(state: State<'_, AppState>, ram_usage: u64) -> Result<(), AppError> {

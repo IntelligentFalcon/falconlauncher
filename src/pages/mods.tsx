@@ -22,7 +22,6 @@ import {
 } from '@/components/ui/empty';
 import { errorText } from '@/messages';
 
-// Adjust fields if your ModInfo type in @/invokes differs slightly
 export interface ModItem {
   id: string;
   name: string;
@@ -37,7 +36,7 @@ export default function Mods() {
   const [selectedVersion, setSelectedVersion] = useState<string>('');
   const [modsList, setModsList] = useState<ModItem[]>([]);
 
-  // Fetch Versions
+  // --- Fetch Versions ---
   const { data: installedVersions, isLoading: isLoadingVersions, error: versionsError } = useBackend({
     name: 'get_versions',
   });
@@ -45,11 +44,11 @@ export default function Mods() {
   useEffect(() => {
     if (installedVersions && installedVersions.length > 0 && !selectedVersion) {
       const firstItem = installedVersions[0];
-      setSelectedVersion(firstItem);
+      setSelectedVersion(typeof firstItem === 'string' ? firstItem : firstItem.id || firstItem.name || '');
     }
   }, [installedVersions, selectedVersion]);
 
-  // Fetch Mods
+  // --- Fetch Mods ---
   const {
     data: fetchedMods,
     isLoading: isLoadingMods,
@@ -57,6 +56,11 @@ export default function Mods() {
     error: modsError,
   } = useBackend({
     name: 'get_mods',
+    // ✅ Custom queryKey ensures React Query refetches when the selected version changes
+    queryKey: ['get_mods', selectedVersion],
+    // ✅ If your Rust invoke expects the version as an argument, uncomment the line below:
+    // args: { version: selectedVersion },
+    enabled: !!selectedVersion, // Don't run the query until we actually have a version selected
   });
 
   useEffect(() => {
@@ -73,10 +77,12 @@ export default function Mods() {
               }),
           ),
       );
+    } else {
+      setModsList([]);
     }
   }, [fetchedMods]);
 
-  // Mutations matching your registered backend command names
+  // --- Mutations ---
   const { mutateAsync: toggleModBackend } = useBackendMutation({
     name: 'toggle_mod',
   });
@@ -85,18 +91,40 @@ export default function Mods() {
     name: 'delete_mod',
   });
 
-  // ✅ Added import mutation
   const { mutateAsync: importModBackend, isPending: isImporting } = useBackendMutation({
     name: 'import_mod_from_local',
   });
 
-  // Handler: Toggle Enable/Disable
+  // --- Handlers ---
   const handleToggleMod = async (mod: ModItem) => {
-    // Optimistic UI update
+    const originalModInfo: ModInfo = {
+      modid: mod.id,
+      name: mod.name,
+      version: mod.version,
+      description: mod.description,
+      enabled: mod.enabled,
+      path: mod.fileName,
+    };
+
+    // Optimistic UI update (update immediately for snappy UX)
     setModsList((prev) =>
         prev.map((m) => (m.id === mod.id ? { ...m, enabled: !m.enabled } : m)),
     );
 
+    try {
+      await toggleModBackend({
+        mod_info: originalModInfo,
+        toggle: !mod.enabled,
+      });
+    } catch (error) {
+      // ✅ Revert optimistic update on failure (Error toast handled by hook)
+      setModsList((prev) =>
+          prev.map((m) => (m.id === mod.id ? { ...m, enabled: mod.enabled } : m)),
+      );
+    }
+  };
+
+  const handleDeleteMod = async (mod: ModItem) => {
     const originalModInfo: ModInfo = {
       modid: mod.id,
       name: mod.name,
@@ -106,55 +134,38 @@ export default function Mods() {
       path: mod.fileName,
     };
 
-    await toggleModBackend({
-      mod_info: originalModInfo,
-      toggle: !mod.enabled,
-    });
-  };
-
-  // Handler: Delete Mod
-  const handleDeleteMod = async (mod: ModItem) => {
     // Optimistic UI update
     setModsList((prev) => prev.filter((m) => m.id !== mod.id));
 
-    const originalModInfo: ModInfo = {
-      modid: mod.id,
-      name: mod.name,
-      version: mod.version,
-      description: mod.description,
-      enabled: mod.enabled,
-      path: mod.fileName,
-    };
-
-    await deleteModBackend({
-      mod_info: originalModInfo,
-    });
+    try {
+      await deleteModBackend({
+        mod_info: originalModInfo,
+      });
+    } catch (error) {
+      // ✅ Revert on failure by refreshing the clean list from the backend
+      refreshMods();
+    }
   };
 
-  // Handler: Open Mods Folder
-  const handleOpenFolder = async () => {
-    // Note: You haven't provided a Rust command for this yet.
-    // You can either create one, or use import { open } from '@tauri-apps/plugin-shell'
-    console.log('Opening mods directory...');
-  };
-
-  // Handler: Import local .jar file
   const handleImportMod = async () => {
     try {
-      // ✅ Call backend to open dialog and copy files
-      await importModBackend(undefined);
-      // ✅ Refresh the mod list to show newly imported mods
+      // ✅ `TVarsType` evaluates to `void`, so TypeScript expects exactly 0 arguments.
+      // Removed `undefined` to fix strict typing.
+      await importModBackend();
       refreshMods();
     } catch (error) {
-      console.error('Failed to import mod:', error);
+      // Catch prevents Unhandled Promise crash. Error toast handled globally.
     }
+  };
+
+  const handleOpenFolder = async () => {
+    console.log('Opening mods directory...');
   };
 
   const handleOpenDownloadModal = () => {
     console.log('Open download modal...');
   };
 
-  // Format combobox strings cleanly
   const versionItems =
       (
           installedVersions as
@@ -169,10 +180,12 @@ export default function Mods() {
           <div className="w-64">
             <LoadingSwap isLoading={isLoadingVersions}>
               {versionsError ? (
-                  <Empty className="p-2 border border-destructive/20 h-10 flex-row gap-2 rounded-xl bg-destructive/5 justify-start">
-                    <HugeiconsIcon icon={Alert01Icon} size={16} className="text-destructive" />
-                    <EmptyTitle className="text-xs text-destructive">{errorText(versionsError.code).title}</EmptyTitle>
-                  </Empty>
+                  <div className="flex items-center gap-2 h-10 px-3 border border-destructive/20 rounded-xl bg-destructive/5 text-destructive">
+                    <HugeiconsIcon icon={Alert01Icon} size={16} className="shrink-0" />
+                    <span className="text-xs font-medium truncate">
+                  {errorText(versionsError.code).title}
+                </span>
+                  </div>
               ) : (
                   <Combobox
                       items={versionItems}
@@ -235,9 +248,9 @@ export default function Mods() {
 
         {/* Main Mods List Area */}
         <div className="flex-1 bg-secondary/20 rounded-2xl border border-border/40 p-4 overflow-hidden flex flex-col">
-          <LoadingSwap isLoading={isLoadingMods} className="h-full">
+          <LoadingSwap isLoading={isLoadingMods} className="h-full flex flex-col">
             {modsError ? (
-                <div className="h-full flex flex-col items-center justify-center text-center text-muted-foreground space-y-2">
+                <div className="flex-1 flex items-center justify-center">
                   <Empty>
                     <EmptyMedia variant="icon">
                       <HugeiconsIcon icon={Alert01Icon} size={24} />
@@ -251,13 +264,15 @@ export default function Mods() {
                   </Empty>
                 </div>
             ) : modsList.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center text-center text-muted-foreground space-y-2">
-                  <p className="text-sm font-medium">
-                    No mods installed for {selectedVersion || 'this version'}.
-                  </p>
-                  <p className="text-xs text-muted-foreground/70">
-                    Click "Get Mods" or "Import Mod" to add some!
-                  </p>
+                <div className="flex-1 flex items-center justify-center">
+                  <Empty>
+                    <EmptyTitle>
+                      No mods installed
+                    </EmptyTitle>
+                    <EmptyDescription>
+                      No mods installed for {selectedVersion || 'this version'}. Click "Get Mods" or "Import Mod" to add some!
+                    </EmptyDescription>
+                  </Empty>
                 </div>
             ) : (
                 <div className="space-y-2.5 overflow-y-auto pr-1 h-full scrollbar-thin scrollbar-thumb-muted-foreground/20">
