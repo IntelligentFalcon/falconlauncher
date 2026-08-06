@@ -9,7 +9,7 @@ import {
   ComboboxList,
 } from '@/components/ui/combobox';
 import { useBackend, useBackendMutation } from '@/hooks/use-backend';
-import { ModInfo } from '@/invokes';
+import {ModInfo, VersionBase} from '@/invokes';
 import { Download, FolderOpen, PackagePlus, Power, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
@@ -43,8 +43,8 @@ export default function Mods() {
 
   useEffect(() => {
     if (installedVersions && installedVersions.length > 0 && !selectedVersion) {
-      const firstItem = installedVersions[0];
-      setSelectedVersion(typeof firstItem === 'string' ? firstItem : firstItem.id || firstItem.name || '');
+      const firstItem= installedVersions[0];
+      setSelectedVersion(firstItem);
     }
   }, [installedVersions, selectedVersion]);
 
