@@ -70,7 +70,7 @@ export type Invokes = WithDefaultError<{
   };
   get_ram_usage: {
     args: undefined;
-    returns: number; // Changed 'int' to 'number'
+      returns: number; // Changed 'int' to 'number'
   };
   get_selected_profile: {
     args: undefined;
@@ -85,6 +85,11 @@ export type Invokes = WithDefaultError<{
       username: string;
     };
     returns: void;
+  };
+  remove_profile: {
+    args: {
+      profile: Profile
+    }
   };
   get_installed_versions: {
     args: undefined;
@@ -117,14 +122,14 @@ export type Invokes = WithDefaultError<{
   };
   toggle_mod: {
     args: {
-      mod_info: ModInfo;
+      modInfo: ModInfo;
       toggle: boolean;
     };
     returns: void;
   };
   delete_mod: {
     args: {
-      mod_info: ModInfo
+      modInfo: ModInfo
     };
     returns: void;
   };
@@ -246,7 +251,7 @@ export interface LaunchOptions {
 
 export interface ModInfo {
   path: string;
-  modid: string;
+  modId: string;
   name: string;
   version: string;
   description: string;

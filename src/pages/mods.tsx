@@ -68,7 +68,7 @@ export default function Mods() {
       setModsList(
           fetchedMods.map(
               (mod): ModItem => ({
-                id: mod.modid,
+                id: mod.modId,
                 name: mod.name,
                 version: mod.version,
                 description: mod.description,
@@ -95,10 +95,9 @@ export default function Mods() {
     name: 'import_mod_from_local',
   });
 
-  // --- Handlers ---
   const handleToggleMod = async (mod: ModItem) => {
     const originalModInfo: ModInfo = {
-      modid: mod.id,
+      modId: mod.id,
       name: mod.name,
       version: mod.version,
       description: mod.description,
@@ -106,18 +105,16 @@ export default function Mods() {
       path: mod.fileName,
     };
 
-    // Optimistic UI update (update immediately for snappy UX)
     setModsList((prev) =>
         prev.map((m) => (m.id === mod.id ? { ...m, enabled: !m.enabled } : m)),
     );
 
     try {
       await toggleModBackend({
-        mod_info: originalModInfo,
+        modInfo: originalModInfo,
         toggle: !mod.enabled,
       });
     } catch (error) {
-      // ✅ Revert optimistic update on failure (Error toast handled by hook)
       setModsList((prev) =>
           prev.map((m) => (m.id === mod.id ? { ...m, enabled: mod.enabled } : m)),
       );
@@ -126,7 +123,7 @@ export default function Mods() {
 
   const handleDeleteMod = async (mod: ModItem) => {
     const originalModInfo: ModInfo = {
-      modid: mod.id,
+      modId: mod.id,
       name: mod.name,
       version: mod.version,
       description: mod.description,
@@ -139,7 +136,7 @@ export default function Mods() {
 
     try {
       await deleteModBackend({
-        mod_info: originalModInfo,
+        modInfo: originalModInfo,
       });
     } catch (error) {
       // ✅ Revert on failure by refreshing the clean list from the backend

@@ -50,7 +50,9 @@ pub struct FabricModInfoContact {
     pub discord: Option<String>,
 }
 
-#[derive(Deserialize, Serialize)]
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct ModInfo {
     pub path: String,
     pub mod_id: String,
@@ -60,7 +62,6 @@ pub struct ModInfo {
     #[serde(default = "default_true")]
     pub enabled: bool,
 }
-
 impl ModInfo {
     pub fn new(
         path: String,

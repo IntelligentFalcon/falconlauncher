@@ -19,6 +19,7 @@ import {
   PlusSignIcon,
   MicrosoftIcon,
   UserIcon,
+  Delete01Icon, // Added for the remove button
 } from '@hugeicons/core-free-icons';
 import {
   Dialog,
@@ -74,12 +75,34 @@ export function NavProfile() {
     },
   });
 
+  // ADDED: Remove profile mutation
+  const { mutate: removeProfileMutation } = useBackendMutation({
+    name: 'remove_profile',
+    onSuccess: () => {
+      refetchProfiles();
+    },
+  });
+
   const handleCreateProfile = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = newUsername.trim();
     if (!trimmed) return;
 
     createOfflineProfile({ username: trimmed });
+  };
+
+  // ADDED: Handler for removing a profile
+  const handleRemoveProfile = (p: Profile, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent dropdown from selecting the profile when clicking delete
+
+    // Pass whatever payload structure your backend expects (e.g., uuid)
+    removeProfileMutation({ profile: p });
+
+    // If the removed profile is the currently selected one, clear it
+    // so the useEffect can auto-select the next available one
+    if (profile?.uuid === p.uuid) {
+      setProfile(null);
+    }
   };
 
   return (
@@ -125,21 +148,33 @@ export function NavProfile() {
                       <DropdownMenuItem
                           key={p.uuid}
                           onClick={() => setProfile(p)}
-                          className="gap-2 p-2"
+                          className="gap-2 p-2 flex items-center justify-between group cursor-pointer"
                       >
-                        <div className="flex size-6 items-center justify-center rounded-md border">
-                          <HugeiconsIcon
-                              icon={p?.online ? MicrosoftIcon : UserIcon}
-                          />
+                        <div className="flex items-center gap-2">
+                          <div className="flex size-6 items-center justify-center rounded-md border">
+                            <HugeiconsIcon
+                                icon={p?.online ? MicrosoftIcon : UserIcon}
+                            />
+                          </div>
+                          <span>{p.username}</span>
                         </div>
-                        {p.username}
+
+                        {/* ADDED: Delete button mapped to handleRemoveProfile */}
+                        <div
+                            role="button"
+                            className="hidden group-hover:flex items-center justify-center p-1 rounded hover:bg-destructive/10 hover:text-destructive transition-colors"
+                            onClick={(e) => handleRemoveProfile(p, e)}
+                            title="Remove profile"
+                        >
+                          <HugeiconsIcon icon={Delete01Icon} className="size-4" />
+                        </div>
                       </DropdownMenuItem>
                   ))}
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
                 <DropdownMenuGroup>
                   <DropdownMenuItem
-                      className="gap-2 p-2"
+                      className="gap-2 p-2 cursor-pointer"
                       onClick={() => setOpenCreateDialog(true)}
                   >
                     <div className="flex size-6 items-center justify-center rounded-md border bg-transparent">

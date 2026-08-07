@@ -1,3 +1,4 @@
+use log::info;
 use crate::models::error::AppError;
 use crate::models::mods::ModInfo;
 use crate::services::directory_manager::get_mods_folder;
@@ -9,6 +10,7 @@ use tokio::fs::copy;
 
 #[command]
 pub async fn toggle_mod(mod_info: ModInfo, toggle: bool) -> Result<(), AppError> {
+    info!("Check if this command is working");
     set_mod_enabled(mod_info, toggle)
     
 }
