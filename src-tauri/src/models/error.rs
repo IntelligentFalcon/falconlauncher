@@ -94,6 +94,9 @@ pub enum AppError {
     #[error("Directory Not Found: {0}")]
     DirNotFound(String),
 
+    #[error("Failed to load a mod")]
+    ModLoadingFailed,
+
     #[error("Unknown Error: {0}")]
     UnknownError(String),
 }
@@ -139,6 +142,7 @@ impl Serialize for AppError {
             AppError::DirCreateFailed(e) => ("ERROR_DIR_CREATE_FAILED", Some(e.to_string())),
             AppError::MirrorConnectionFailed(e) => ("ERROR_MIRROR_CONNECTION_FAILED", Some(e.to_string())),
             AppError::DirNotFound(e) => ("ERROR_DIR_NOT_FOUND", Some(e.to_string())),
+            AppError::ModLoadingFailed => ("ERROR_MOD_LOAD_FAILED", None),
             AppError::UnknownError(e) => ("ERROR_UNKNOWN", Some(e.to_string())),
         };
 

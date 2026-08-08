@@ -27,7 +27,7 @@ pub fn set_mod_enabled(m: ModInfo, toggle: bool) -> Result<(), AppError> {
     fs::rename(&path, &new_path).map_err(|x| AppError::FileRenameFailed(x.to_string()))
 
 }
-pub fn load_mod(zip: Mutex<ZipArchive<File>>, path: String) -> ModInfo {
+pub fn load_mod(zip: Mutex<ZipArchive<File>>, path: String) -> Result<ModInfo, AppError> {
     let enabled = path.to_lowercase().ends_with("jar");
     let mut zip_guard = zip.lock().unwrap();
 
@@ -42,14 +42,14 @@ pub fn load_mod(zip: Mutex<ZipArchive<File>>, path: String) -> ModInfo {
         let mcmods: Vec<McModInfo> = serde_json::from_str(&content).unwrap();
         let mcmod_info = &mcmods[0];
 
-        return ModInfo {
+        return Ok(ModInfo {
             path,
             mod_id: mcmod_info.mod_id.clone(),
             name: mcmod_info.name.clone(),
             version: mcmod_info.version.clone(),
             description: mcmod_info.description.clone(),
             enabled,
-        };
+        });
     }
 
     // Forge new versions
@@ -57,7 +57,7 @@ pub fn load_mod(zip: Mutex<ZipArchive<File>>, path: String) -> ModInfo {
         let mut content = String::new();
         file.read_to_string(&mut content).unwrap();
         let toml: Value = toml::from_str(content.as_str()).unwrap();
-        return load_from_toml(&toml, path);
+        return Ok(load_from_toml(&toml, path));
     }
 
     // Neoforge
@@ -65,7 +65,7 @@ pub fn load_mod(zip: Mutex<ZipArchive<File>>, path: String) -> ModInfo {
         let mut content = String::new();
         file.read_to_string(&mut content).unwrap();
         let toml: Value = toml::from_str(content.as_str()).unwrap();
-        return load_from_toml(&toml, path);
+        return Ok(load_from_toml(&toml, path));
     }
 
     // Fabric
@@ -73,43 +73,16 @@ pub fn load_mod(zip: Mutex<ZipArchive<File>>, path: String) -> ModInfo {
         let mut content = String::new();
         file.read_to_string(&mut content).unwrap();
         let info: FabricModInfo = serde_json::from_str(content.as_str()).unwrap();
-        return ModInfo {
+        return Ok(ModInfo {
             path,
             mod_id: info.mod_id.clone(),
             name: info.name.clone(),
             version: info.version.clone(),
             description: info.description.clone(),
             enabled,
-        };
+        });
     }
-    ModInfo {
-        path: "".to_string(),
-        mod_id: "".to_string(),
-        name: "".to_string(),
-        version: "".to_string(),
-        description: "".to_string(),
-        enabled,
-    }
-}
-pub fn load_mods() -> Vec<ModInfo> {
-    let mut mods_vec: Vec<ModInfo> = Vec::new();
-    let mods_directory = get_mods_folder();
-    let allowed_ext = vec!["jar", "jar.disabled", "disabled"];
-    let mod_list = mods_directory
-        .read_dir()
-        .unwrap()
-        .map(|x| x.unwrap().path())
-        .filter(|x| {
-            x.as_path().is_file()
-                && allowed_ext.contains(&x.as_path().extension().unwrap().to_str().unwrap())
-        })
-        .collect::<Vec<PathBuf>>();
-    for jar_file in mod_list {
-        let mut zip = ZipArchive::new(File::open(jar_file.clone()).unwrap()).unwrap();
-        let loaded = load_mod(Mutex::new(zip), jar_file.to_str().unwrap().to_string());
-        mods_vec.push(loaded);
-    }
-    mods_vec
+    Err(AppError::ModLoadingFailed)
 }
 fn load_from_toml(toml: &Value, path: String) -> ModInfo {
     let mod_array = toml["mods"].as_array().unwrap();

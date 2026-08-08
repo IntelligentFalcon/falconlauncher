@@ -3,7 +3,7 @@ use crate::models::logger::{error, info};
 use crate::models::platform::get_current_os;
 use crate::models::profiles::get_profile;
 use crate::services::directory_manager::*;
-use crate::services::jdk_manager::get_java;
+use crate::services::jdk_manager::{download_java, get_java};
 use crate::services::utils;
 use crate::services::utils::{extend_once, linux_java_permission_fix, vec_to_string};
 pub use crate::AppState;
@@ -15,9 +15,13 @@ use std::io::{BufRead, BufReader};
 use std::path::{PathBuf, MAIN_SEPARATOR_STR};
 use std::process::{Command, Stdio};
 use tauri::{AppHandle, Manager};
+use crate::services::game_downloader::download_version;
 
 pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &Global) -> Result<(), AppError> {
     info!("Launching minecraft {version} ");
+    let repair_if_required = true; // TODO: Add this as an argument and adding a toggle button for this that has a default value of true
+
+
     let state = &app_handle.state::<AppState>();
     let tx_err = state.log_tx.clone();
     let tx_out = state.log_tx.clone();
@@ -36,12 +40,21 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
     let version_id = &version.id;
     let version_id_err_clone = version_id.clone();
     let version_id_out_clone = version_id.clone();
+
     let json: Value = version.load_json();
 
     let inherited_version = version.get_inherited();
     let inherited_json = inherited_version.load_json();
     let inherited_id = &inherited_version.id;
+
+
+    /// TODO: better java handling system is required for future release builds
+    info!("{}", inherited_json);
     let java_component = inherited_json["javaVersion"]["component"].as_str().unwrap();
+    if repair_if_required {
+        download_version(&version, &"".to_string(), &app_handle, &state.log_tx, &config).await?;
+        download_version(&inherited_version, &"".to_string(), &app_handle, &state.log_tx, &config).await?;
+    }
     let java = get_java(java_component.to_string())?;
 
     let version_directory = PathBuf::from(&inherited_version.version_path);
@@ -117,7 +130,7 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
     linux_java_permission_fix(&java);
 
     let mut child_cmd = &mut Command::new(java.get_bin_file());
-    child_cmd
+    child_cmd.current_dir(&game_directory)
         .arg(format!("-Xms{xms}"))
         .arg(format!("-Xmx{xmx}"));
 
@@ -148,7 +161,6 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
     } else {
         child_cmd
             .arg(format!("-Djava.library.path={}", natives))
-            .current_dir(&game_directory)
             .arg("-cp")
             .arg(format!("{}{}{}", class_path, separator, libraries_str));
     };

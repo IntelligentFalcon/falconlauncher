@@ -110,6 +110,9 @@ impl MinecraftVersion {
                 let library_path_str = parse_library_name_to_path(library_name.to_string())
                     .replace("/", MAIN_SEPARATOR_STR);
                 let library_path = PathBuf::from(&library_path_str);
+                if !library_path.exists() {
+
+                }
                 if library_path.exists() && !libraries.contains(&library_path_str) {
                     libraries.push(library_path_str);
                 }

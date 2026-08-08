@@ -19,7 +19,7 @@ import {
   PlusSignIcon,
   MicrosoftIcon,
   UserIcon,
-  Delete01Icon, // Added for the remove button
+  Delete01Icon,
 } from '@hugeicons/core-free-icons';
 import {
   Dialog,
@@ -50,14 +50,34 @@ export function NavProfile() {
     queryKey: ['profiles'],
   });
 
-  useEffect(() => {
-    if (profiles && profiles.length > 0 && !profile) {
-      setProfile(profiles[0]);
-    }
-  }, [profiles, profile]);
+  const { data: selectedProfile } = useBackend({
+    name: 'get_selected_profile',
+    queryKey: ['selected_profile'],
+  });
 
+  useEffect(() => {
+    if (!profile) {
+      if (selectedProfile && selectedProfile.uuid) {
+        const matchedProfile = profiles?.find((p) => p.uuid === selectedProfile.uuid);
+        setProfile(matchedProfile || selectedProfile);
+      } else if (profiles && profiles.length > 0) {
+        setProfile(profiles[0]);
+      }
+    }
+  }, [profiles, selectedProfile, profile]);
+
+  // ADDED: Mutation to save the configuration/profile state
+  // Replace 'save_config' with the exact name of your backend save command
+  const { mutate: saveConfigMutation } = useBackendMutation({
+    name: 'save',
+  });
+
+  // UPDATED: Added onSuccess to trigger the save command after the profile is set
   const { mutate: setProfileMutation } = useBackendMutation({
     name: 'set_selected_profile',
+    onSuccess: () => {
+      saveConfigMutation();
+    },
   });
 
   useEffect(() => {
@@ -75,7 +95,6 @@ export function NavProfile() {
     },
   });
 
-  // ADDED: Remove profile mutation
   const { mutate: removeProfileMutation } = useBackendMutation({
     name: 'remove_profile',
     onSuccess: () => {
@@ -91,15 +110,11 @@ export function NavProfile() {
     createOfflineProfile({ username: trimmed });
   };
 
-  // ADDED: Handler for removing a profile
   const handleRemoveProfile = (p: Profile, e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent dropdown from selecting the profile when clicking delete
+    e.stopPropagation();
 
-    // Pass whatever payload structure your backend expects (e.g., uuid)
     removeProfileMutation({ profile: p });
 
-    // If the removed profile is the currently selected one, clear it
-    // so the useEffect can auto-select the next available one
     if (profile?.uuid === p.uuid) {
       setProfile(null);
     }
@@ -159,7 +174,6 @@ export function NavProfile() {
                           <span>{p.username}</span>
                         </div>
 
-                        {/* ADDED: Delete button mapped to handleRemoveProfile */}
                         <div
                             role="button"
                             className="hidden group-hover:flex items-center justify-center p-1 rounded hover:bg-destructive/10 hover:text-destructive transition-colors"

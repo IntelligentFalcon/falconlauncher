@@ -5,9 +5,10 @@ use crate::services::directory_manager::get_launcher_java_directory;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Java {
-    pub(crate) path: PathBuf,
-    version: String,
+    pub path: PathBuf,
+    pub version: String,
 }
+
 impl Java {
     pub fn new(path: PathBuf) -> Java {
         let release = path.join("release");

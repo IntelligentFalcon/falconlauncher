@@ -103,6 +103,10 @@
     "title": "Directory Not Found",
     "description": "The specified directory could not be found."
   },
+  "ERROR_MOD_LOAD_FAILED": {
+    "title": "Mod loading failed",
+    "description": "Failed to load a mod"
+  },
   "ERROR_UNKNOWN": {
     "title": "Unknown",
     "description": "Unknown error has occurred!~"
