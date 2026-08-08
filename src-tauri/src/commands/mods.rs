@@ -1,3 +1,5 @@
+use std::fs;
+use std::path::PathBuf;
 use log::info;
 use crate::models::error::AppError;
 use crate::models::mods::ModInfo;
@@ -10,7 +12,6 @@ use tokio::fs::copy;
 
 #[command]
 pub async fn toggle_mod(mod_info: ModInfo, toggle: bool) -> Result<(), AppError> {
-    info!("Check if this command is working");
     set_mod_enabled(mod_info, toggle)
     
 }
@@ -26,19 +27,19 @@ pub async fn import_mod_from_local(app: AppHandle) -> Result<(), AppError> {
         .dialog()
         .file()
         .add_filter("Minecraft mods".to_string(), &[&"jar", &"disabled"])
-        .blocking_pick_files()
-        .unwrap();
-    for path in paths {
-        let p = path.as_path().unwrap();
-        let file_name = p.file_name().unwrap().to_str().unwrap();
+        .blocking_pick_files().unwrap_or_default();
+    for path in paths.iter().filter_map(|x| x.as_path()) {
+        let Some(file_name) = path.file_name() else {
+            continue;
+        };
         let new_path = get_mods_folder().join(file_name);
-        copy(p, new_path).await.unwrap();
+        copy(path, new_path).await.map_err(|x| AppError::FileCopyFailed(x.to_string()))?;
     }
     Ok(())
 }
 
 #[command]
-pub async fn delete_mod(mod_info: ModInfo) -> Result<(), AppError> {
-    mod_manager::delete_mod(&mod_info);
-    Ok(())
+pub async  fn delete_mod(mod_info: ModInfo) -> Result<(), AppError> {
+    let path = PathBuf::from(&mod_info.path);
+    fs::remove_file(&path).map_err(|x| AppError::FileDeleteFailed(x.to_string()))
 }

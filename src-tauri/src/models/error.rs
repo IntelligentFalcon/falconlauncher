@@ -10,12 +10,6 @@ pub enum AppError {
     #[error("File Not Found: {0}")]
     FileNotFound(String),
 
-    #[error("Version Not Found")]
-    VersionNotFound,
-
-    #[error("Launch Arguments Missing")]
-    LaunchArgsNotFound,
-
     #[error("Creation Failed: {0}")]
     FileCreateFailed(String),
 
@@ -24,6 +18,21 @@ pub enum AppError {
 
     #[error("Read Error: {0}")]
     FileReadFailed(String),
+
+    #[error("File Copy Failed: {0}")]
+    FileCopyFailed(String),
+
+    #[error("File Write Failed: {0}")]
+    FileWriteFailed(String),
+
+    #[error("Delete Error: {0}")]
+    FileDeleteFailed(String),
+
+    #[error("Version Not Found")]
+    VersionNotFound,
+
+    #[error("Launch Arguments Missing")]
+    LaunchArgsNotFound,
 
     #[error("Buffer Error: {0}")]
     BufferReadFailed(String),
@@ -73,12 +82,6 @@ pub enum AppError {
     #[error("Profile Not Found: {0}")]
     ProfileNotFound(String),
 
-    #[error("File Copy Failed: {0}")]
-    FileCopyFailed(String),
-
-    #[error("File Write Failed: {0}")]
-    FileWriteFailed(String),
-
     #[error("Zip Parse Failed: {0}")]
     ZipParseFailed(String),
 
@@ -106,12 +109,15 @@ impl Serialize for AppError {
         
         let (code, data) = match self {
             AppError::ManifestNotFound => ("ERROR_MANIFEST_NOT_FOUND", None),
-            AppError::FileNotFound(_) => ("ERROR_FILE_NOT_FOUND", None),
             AppError::VersionNotFound => ("ERROR_VERSION_NOT_FOUND", None),
             AppError::LaunchArgsNotFound => ("ERROR_LAUNCH_ARGS_NOT_FOUND", None),
+            AppError::FileNotFound(_) => ("ERROR_FILE_NOT_FOUND", None),
             AppError::FileCreateFailed(e) => ("ERROR_FILE_CREATE_FAILED", Some(e.to_string())),
             AppError::FileRenameFailed(e) => ("ERROR_FILE_RENAME_FAILED", Some(e.to_string())),
             AppError::FileReadFailed(e) => ("ERROR_FILE_READ_FAILED", Some(e.to_string())),
+            AppError::FileCopyFailed(e) => ("ERROR_FILE_COPY_FAILED", Some(e.to_string())),
+            AppError::FileWriteFailed(e) => ("ERROR_FILE_WRITE_FAILED", Some(e.to_string())),
+            AppError::FileDeleteFailed(e) => ("ERROR_FILE_DELETE_FAILED", Some(e.to_string())),
             AppError::BufferReadFailed(e) => ("ERROR_BUFFER_READ_FAILED", Some(e.to_string())),
             AppError::JsonParseFailed(e) => ("ERROR_JSON_PARSE_FAILED", Some(e.to_string())),
             AppError::IniParseFailed(e) => ("ERROR_INI_PARSE_FAILED", Some(e.to_string())),
@@ -129,8 +135,6 @@ impl Serialize for AppError {
             AppError::ManifestParseFailed(e) => ("ERROR_MANIFEST_PARSE_FAILED", Some(e.to_string())),
             AppError::ZipExtractionFailed(e) => ("ERROR_ZIP_EXTRACTION_FAILED", Some(e.to_string())),
             AppError::ProfileNotFound(e) => ("ERROR_PROFILE_NOT_FOUND", Some(e.to_string())),
-            AppError::FileCopyFailed(e) => ("ERROR_FILE_COPY_FAILED", Some(e.to_string())),
-            AppError::FileWriteFailed(e) => ("ERROR_FILE_WRITE_FAILED", Some(e.to_string())),
             AppError::ZipParseFailed(e) => ("ERROR_ZIP_PARSE_FAILED", Some(e.to_string())),
             AppError::DirCreateFailed(e) => ("ERROR_DIR_CREATE_FAILED", Some(e.to_string())),
             AppError::MirrorConnectionFailed(e) => ("ERROR_MIRROR_CONNECTION_FAILED", Some(e.to_string())),

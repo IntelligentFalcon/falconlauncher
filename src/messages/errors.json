@@ -3,10 +3,6 @@
     "title": "Manifest Missing",
     "description": "The launcher manifest file could not be found."
   },
-  "ERROR_FILE_NOT_FOUND": {
-    "title": "File Not Found",
-    "description": "Failed to load the requested file. Make sure you are connected to the internet."
-  },
   "ERROR_VERSION_NOT_FOUND": {
     "title": "Version Not Found",
     "description": "Couldn't find the selected version. Try selecting a version before launching the game."
@@ -15,9 +11,17 @@
     "title": "Launch Arguments Missing",
     "description": "Could not determine the launch arguments for this instance."
   },
+  "ERROR_FILE_NOT_FOUND": {
+    "title": "File Not Found",
+    "description": "Failed to load the requested file. Make sure you are connected to the internet."
+  },
   "ERROR_FILE_CREATE_FAILED": {
     "title": "Creation Failed",
     "description": "The system failed to create a necessary file."
+  },
+  "ERROR_FILE_DELETE_FAILED": {
+    "title": "Deleting Failed",
+    "description": "The system failed to remove a file"
   },
   "ERROR_FILE_RENAME_FAILED": {
     "title": "Rename Failed",
@@ -26,6 +30,14 @@
   "ERROR_FILE_READ_FAILED": {
     "title": "Read Error",
     "description": "Failed to read data from a file on the disk."
+  },
+  "ERROR_FILE_COPY_FAILED": {
+    "title": "Copy Failed",
+    "description": "Failed to copy a file."
+  },
+  "ERROR_FILE_WRITE_FAILED": {
+    "title": "Write Failed",
+    "description": "Failed to write data to a file."
   },
   "ERROR_BUFFER_READ_FAILED": {
     "title": "Buffer Error",
@@ -74,14 +86,6 @@
   "ERROR_PROFILE_NOT_FOUND": {
     "title": "Profile Not Found",
     "description": "The requested profile could not be found."
-  },
-  "ERROR_FILE_COPY_FAILED": {
-    "title": "Copy Failed",
-    "description": "Failed to copy a file."
-  },
-  "ERROR_FILE_WRITE_FAILED": {
-    "title": "Write Failed",
-    "description": "Failed to write data to a file."
   },
   "ERROR_ZIP_PARSE_FAILED": {
     "title": "Invalid Zip",
