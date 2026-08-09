@@ -5,17 +5,18 @@ use crate::services::directory_manager::{get_versions_directory, version_manifes
 use crate::services::game_downloader::download_file;
 use crate::models::mirror::Mirror;
 use crate::models::error::AppError;
+use crate::models::error::AppError::FileReadFailed;
 use crate::models::versions::MinecraftVersion;
 
 pub async fn load_version_manifest(mirror: &Mirror) -> Result<Manifest, AppError> {
-    download_version_manifest(mirror).await;
+    let _ = download_version_manifest(mirror).await;
     load_version_manifest_local()
 }
 
 pub fn load_version_manifest_local() -> Result<Manifest, AppError> {
     let path = version_manifest_directory();
-    let text = std::fs::read_to_string(&path);
-    serde_json::from_str(text.unwrap().as_str()).map_err(|x| AppError::JsonParseFailed(x.to_string()))
+    let text= std::fs::read_to_string(&path).map_err(|x| FileReadFailed(x.to_string()))?;
+    serde_json::from_str(text.as_str()).map_err(|x| AppError::JsonParseFailed(x.to_string()))
 }
 pub async fn reload_installed_versions() {
     let versions_dir = get_versions_directory().read_dir().unwrap();

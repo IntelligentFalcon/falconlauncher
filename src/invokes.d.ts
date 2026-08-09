@@ -90,6 +90,7 @@ export type Invokes = WithDefaultError<{
     args: {
       profile: Profile
     }
+    returns: void;
   };
   get_installed_versions: {
     args: undefined;

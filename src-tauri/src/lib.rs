@@ -27,6 +27,7 @@ use tauri_plugin_log::{Target, TargetKind, TimezoneStrategy};
 use tokio::fs::copy;
 use tokio::sync;
 use tokio::sync::{mpsc, RwLock};
+use crate::models::error::AppError::FileReadFailed;
 
 pub struct FalconLauncher {
     pub name: String,
@@ -186,6 +187,7 @@ pub fn run() {
 }
 #[command]
 async fn play(app: AppHandle, state: State<'_, AppState>, selected_version: String) -> Result<(), AppError> {
-    launch_game(app, selected_version, &*GLOBAL_CACHE.lock().await).await
+    launch_game(app, selected_version, &*GLOBAL_CACHE.lock().await).await;
+    Err(FileReadFailed("Tesat".to_string()))
 }
 

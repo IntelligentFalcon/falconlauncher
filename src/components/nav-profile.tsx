@@ -36,7 +36,7 @@ import { Label } from './ui/label';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { Profile } from '@/invokes';
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 export function NavProfile() {
   const { isMobile } = useSidebar();
@@ -66,13 +66,10 @@ export function NavProfile() {
     }
   }, [profiles, selectedProfile, profile]);
 
-  // ADDED: Mutation to save the configuration/profile state
-  // Replace 'save_config' with the exact name of your backend save command
-  const { mutate: saveConfigMutation } = useBackendMutation({
+  const { mutateAsync: saveConfigMutation } = useBackendMutation({
     name: 'save',
   });
 
-  // UPDATED: Added onSuccess to trigger the save command after the profile is set
   const { mutate: setProfileMutation } = useBackendMutation({
     name: 'set_selected_profile',
     onSuccess: () => {
