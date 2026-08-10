@@ -1,8 +1,6 @@
 use log::info;
 use crate::models::downloader::{VersionInfo, VersionLoader};
 use crate::models::error::AppError;
-use crate::models::logger::info_launcher;
-use crate::models::mirror::{mirror_from, Mirror};
 use crate::models::versions::VersionBase::{FABRIC, FORGE};
 use crate::models::versions::{MinecraftVersion, VersionBase, VersionCategory, VersionType};
 use crate::services::game_downloader::{
@@ -198,16 +196,16 @@ pub async fn download_version(
     let cfg = &state.config.read().await;
     let mir = &cfg.download_settings.mirror;
     let logger = &state.log_tx;
-    logger.send(info_launcher(format!(
+    info!(
         "DEBUG: Downloading version {} from {} mirror",
         version_loader.id,
         mir.name
-    )));
+    );
     if version_loader.base == FORGE {
-        logger.send(info_launcher(format!(
+        info!(
             "DEBUG: Forge version detected! {} installing it rn!",
             version_loader.id
-        )));
+        );
         let t = download_forge_version(
             &version_loader.id,
             &app_handle,
@@ -221,10 +219,10 @@ pub async fn download_version(
         }
     };
     if version_loader.base == FABRIC {
-        logger.send(info_launcher(format!(
+    info!(
             "DEBUG: Fabric version detected! {} installing it rn!",
             version_loader.id
-        )));
+        );
         download_fabric(&version_loader, logger, &mir).await?;
     }
 
