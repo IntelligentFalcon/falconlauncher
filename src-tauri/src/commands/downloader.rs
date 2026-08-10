@@ -14,6 +14,7 @@ use crate::services::{game_downloader, version_manager};
 use crate::{AppState, GLOBAL_CACHE};
 use tauri::{command, AppHandle, State};
 use tauri_plugin_dialog::DialogExt;
+use crate::services::version_manager::load_version_manifest;
 
 #[command]
 pub async fn get_vanilla_versions(
@@ -198,8 +199,9 @@ pub async fn download_version(
     let mir = &cfg.download_settings.mirror;
     let logger = &state.log_tx;
     logger.send(info_launcher(format!(
-        "DEBUG: Downloading version {} from 9craft mirror",
-        version_loader.id
+        "DEBUG: Downloading version {} from {} mirror",
+        version_loader.id,
+        mir.name
     )));
     if version_loader.base == FORGE {
         logger.send(info_launcher(format!(
@@ -226,8 +228,13 @@ pub async fn download_version(
         download_fabric(&version_loader, logger, &mir).await?;
     }
 
-    println!("{}", version_id);
+    info!("Downloading {version_id}.json");
+
+    let manifest = load_version_manifest(mir).await?;
+    game_downloader::download_from_manifest(&version_id, &manifest, mir)
+        .await?;
     let version = MinecraftVersion::from_id(version_id);
+
     let inherited_version = version.get_inherited();
     update_download_status("Downloading version...", &app_handle);
     let cfg = &state.config.read().await;
