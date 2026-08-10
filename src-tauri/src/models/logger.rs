@@ -72,6 +72,3 @@ pub fn warning(message: String, channel: String) -> LogLine {
 pub fn info(message: String, channel: String) -> LogLine {
     log(message, "info".to_string(), channel)
 }
-pub fn info_launcher(message: String) -> LogLine {
-    log(message, "info".to_string(), "Launcher".to_string())
-}

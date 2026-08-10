@@ -20,7 +20,7 @@ use crate::models::downloader::{
 };
 use crate::models::error::AppError;
 use crate::models::fabric::{FabricInstaller, FabricLoader, FabricMinecraftVersion};
-use crate::models::logger::{info_launcher, LogLine};
+use crate::models::logger::{LogLine};
 use crate::models::mirror::Mirror;
 use crate::models::platform::get_current_os;
 use crate::models::utils::{LowerCaseStartsWith, ParseWithMirror};
@@ -93,19 +93,19 @@ pub async fn download_version(
 
     if let Some(downloads) = &json.downloads {
         if let Some(client_download) = downloads.get("client") {
-            logger.send(info_launcher("downloading client".to_string()));
+            info!("Downloading client's process has started.");
             update_download_status("Downloading version...", &app_handle);
             download_client(client_download, &id, logger, &mirror).await?;
         }
     }
 
     if let Some(asset_index) = &json.asset_index {
-        logger.send(info_launcher("downloading assets".to_string()));
+        info!("Downloading assets process has started.");
         update_download_status("Downloading assets...", &app_handle);
         download_assets(asset_index, logger, &mirror, app_handle).await?;
     }
     if let Some(logging) = &json.logging {
-        logger.send(info_launcher("downloading logging files".to_string()));
+        info!("Downloading logger files process has started.");
         download_file_if_not_exists(
             &get_version_directory(id).join(&logging.client.file.url.split("/").last().unwrap()),
             logging.client.file.url.clone(),
@@ -445,11 +445,9 @@ pub async fn download_forge_version(
     let mc_version = version_args[0];
     let mc_args = mc_version.split(".").collect::<Vec<&str>>();
     if !is_legacy(&version) {
-        logger
-            .send(info_launcher(
-                "DEBUG: Non legacy version detected!".to_string(),
-            ))
-            .unwrap();
+            info!(
+                "DEBUG: Non legacy version detected!",
+            );
         download_java(&"jre-legacy".to_string(), &"8".to_string(), logger, mirror).await?;
         let jdk_8 = get_java("jre-legacy".to_string())?;
         let mut child = Command::new(jdk_8.get_bin_file().display().to_string())
@@ -465,15 +463,15 @@ pub async fn download_forge_version(
         let stderr = child.stderr.take().unwrap();
         let logger_clone = logger.clone();
 
-        spawn_thread(stderr, logger_clone);
+        spawn_thread(stderr, format!("forge_installer_{version}"));
 
-        generate_stdout(&mut child, logger);
+        generate_stdout(&mut child, format!("forge_installer_{version}"));
         let _ = child.wait_with_output(); // Ensuring that the forge installer.jar job is done.
         fs::remove_dir_all(launcher_dir.join("temp")).unwrap();
 
         return Ok(());
     }
-    logger.send(info_launcher("DEBUG: Legacy version detected!".to_string()));
+    info!("DEBUG: Legacy version detected!");
     let installer_file = File::open(path_str).unwrap();
 
     let mut zip = ZipArchive::new(installer_file).unwrap();
@@ -595,11 +593,11 @@ pub async fn download_forge_version(
     Ok(())
 }
 
-fn spawn_thread(stderr: ChildStderr, logger_clone: UnboundedSender<LogLine>) {
+fn spawn_thread(stderr: ChildStderr,task_name: String) {
     std::thread::spawn(move || {
         let reader = BufReader::new(stderr);
         for line in reader.lines().flatten() {
-            logger_clone.send(info_launcher(format!("[stderr] {}", line)));
+            info!("[{task_name}][stderr] {}", line);
         }
     });
 }
@@ -665,20 +663,19 @@ pub async fn download_fabric(
         .expect("Failed to spawn child process");
     let stderr = child.stderr.take().unwrap();
     let logger_clone = logger.clone();
-    spawn_thread(stderr, logger_clone);
+    spawn_thread(stderr, format!("fabric_installer_{}",version_loader.id));
 
-    generate_stdout(&mut child, logger);
+    generate_stdout(&mut child, format!("fabric_installer_{}",version_loader.id));
     Ok(())
 }
 
-pub fn generate_stdout(child: &mut Child, logger: &UnboundedSender<LogLine>) {
+pub fn generate_stdout(child: &mut Child, task_name: String) {
     let stdout = child.stdout.take().expect("Failed to open stdout");
-    let logger_clone = logger.clone();
     std::thread::spawn(move || {
         let reader = BufReader::new(stdout);
         for line in reader.lines() {
             if let Ok(line) = line {
-                logger_clone.send(info_launcher(format!("[stdout] {}", line)));
+                info!("[{task_name}][stdout] {}", line);
             }
         }
     });
