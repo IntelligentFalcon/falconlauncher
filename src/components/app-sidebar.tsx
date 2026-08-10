@@ -26,8 +26,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarHeader>
         <div className="flex items-center justify-center gap-2 group-data-[state=collapsed]:gap-0">
           <img
+            alt="Falcon Launcher"
             className="size-8 dark:brightness-100 dark:-hue-rotate-60"
+            height={32}
             src="/icon.png"
+            width={32}
           />
           <h2 className="mt-1 line-clamp-1 w-46 overflow-hidden font-bold text-2xl transition-[width] group-data-[state=collapsed]:w-0">
             Falcon Launcher

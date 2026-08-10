@@ -64,6 +64,7 @@ export function ActionButton({
             <AlertDialogAction
               disabled={isLoading || disabled}
               onClick={performAction}
+              type="button"
             >
               <LoadingSwap isLoading={isLoading}>
                 {areYouSureButton}

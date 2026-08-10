@@ -44,6 +44,7 @@ type TVarsType<
 
 export function useBackendMutation<
   Invoke extends keyof Invokes,
+  // biome-ignore lint/complexity/noBannedTypes: with {} evey magical type works fine
   TArgs extends Partial<Invokes[Invoke]["args"]> = {},
 >({
   name,

@@ -1,6 +1,5 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/inter";
 
@@ -19,7 +18,7 @@
   }
 
   body {
-    font-family: "Unixel";
+    font-family: "Unixel", sans-serif;
     @apply bg-background text-foreground;
   }
   html {

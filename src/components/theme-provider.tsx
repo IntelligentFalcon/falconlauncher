@@ -2,16 +2,16 @@ import { createContext, useContext, useEffect, useState } from "react";
 
 type Theme = "dark" | "light" | "system";
 
-type ThemeProviderProps = {
+interface ThemeProviderProps {
   children: React.ReactNode;
   defaultTheme?: Theme;
   storageKey?: string;
-};
+}
 
-type ThemeProviderState = {
-  theme: Theme;
+interface ThemeProviderState {
   setTheme: (theme: Theme) => void;
-};
+  theme: Theme;
+}
 
 const initialState: ThemeProviderState = {
   setTheme: () => null,
@@ -49,9 +49,9 @@ export function ThemeProvider({
   }, [theme]);
 
   const value = {
-    setTheme: (theme: Theme) => {
-      localStorage.setItem(storageKey, theme);
-      setTheme(theme);
+    setTheme: (nextTheme: Theme) => {
+      localStorage.setItem(storageKey, nextTheme);
+      setTheme(nextTheme);
     },
     theme,
   };

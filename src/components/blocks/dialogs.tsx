@@ -48,6 +48,7 @@ export function RatingDialog() {
                 {ratings.map((rating) => (
                   <label
                     className="relative flex size-9 cursor-pointer flex-col items-center justify-center rounded-full border border-input text-center text-xl shadow-xs outline-none transition-[color,box-shadow] has-data-disabled:cursor-not-allowed has-data-[state=checked]:border-sky-600 has-focus-visible:border-sky-600 has-data-[state=checked]:bg-sky-600/10 has-data-disabled:opacity-50 has-focus-visible:ring-[3px] has-focus-visible:ring-sky-600/50 dark:has-data-[state=checked]:border-sky-400 dark:has-focus-visible:border-sky-400 dark:has-data-[state=checked]:bg-sky-400/10 dark:has-focus-visible:ring-sky-600/50"
+                    htmlFor={`${id}-${rating.value}`}
                     key={`${id}-${rating.value}`}
                   >
                     <RadioGroupItem

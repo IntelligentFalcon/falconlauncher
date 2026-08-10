@@ -5,5 +5,19 @@
     "ultracite/biome/react",
     "ultracite/biome/tanstack",
     "ultracite/biome/remix"
-  ]
+  ],
+  "linter": {
+    "rules": {
+      "performance": {
+        "noJsxPropsBind": "off"
+      },
+      "suspicious": {
+        "noLeakedRender": "off",
+        "noConfusingVoidType": "off"
+      }
+    }
+  },
+  "files": {
+    "includes": ["!src-tauri"]
+  }
 }

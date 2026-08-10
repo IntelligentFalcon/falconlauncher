@@ -15,12 +15,14 @@ import { useBackend, useBackendMutation } from "@/hooks/use-backend";
 import { errorText } from "@/messages";
 import { useConfig } from "@/stores/config";
 
+const MINECRAFT_MINOR_VERSION_REGEX = /1\.(\d+)/;
+
 const getPanoramaUrl = (version: string | null, face: number) => {
   if (!version) {
     return `https://minecraft.wiki/images/1.21_panorama_${face}.png`;
   }
 
-  const match = version.match(/1\.(\d+)/);
+  const match = version.match(MINECRAFT_MINOR_VERSION_REGEX);
   if (match) {
     const minor = Number.parseInt(match[1], 10);
     if (minor >= 26) {
@@ -47,9 +49,12 @@ export default function IndexPage() {
           <div className="flex animate-background">
             {[0, 1, 2, 3].map((face) => (
               <img
+                alt=""
                 className="h-screen object-cover"
+                height={1080}
                 key={face}
                 src={getPanoramaUrl(version, face)}
+                width={1920}
               />
             ))}
           </div>
@@ -113,7 +118,7 @@ function VersionSelect() {
     <Combobox
       autoHighlight
       items={installedVersions}
-      onValueChange={(version) => setVersion(version)}
+      onValueChange={(newVersion) => setVersion(newVersion)}
       value={version}
     >
       <ComboboxInput
@@ -123,13 +128,13 @@ function VersionSelect() {
       <ComboboxContent className="border-[#333] bg-[#1a1a1a] text-white">
         <ComboboxEmpty>No items found.</ComboboxEmpty>
         <ComboboxList>
-          {(version) => (
+          {(itemVersion) => (
             <ComboboxItem
               className="hover:bg-[#333]"
-              key={version}
-              value={version}
+              key={itemVersion}
+              value={itemVersion}
             >
-              {version}
+              {itemVersion}
             </ComboboxItem>
           )}
         </ComboboxList>

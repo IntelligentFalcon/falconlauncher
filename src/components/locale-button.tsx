@@ -7,6 +7,7 @@ export function LocaleButton() {
     <button
       onClick={() => setLocale(locale === "fa" ? "en" : "fa")}
       title="Change Locale"
+      type="button"
     >
       {locale === "fa" ? "fa" : "en"}
     </button>

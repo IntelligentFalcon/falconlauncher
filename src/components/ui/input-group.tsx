@@ -7,15 +7,14 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
-function InputGroup({ className, ...props }: React.ComponentProps<"div">) {
+function InputGroup({ className, ...props }: React.ComponentProps<"fieldset">) {
   return (
-    <div
+    <fieldset
       className={cn(
         "group/input-group relative flex h-9 w-full min-w-0 items-center rounded-4xl border border-input bg-input/30 outline-none transition-colors in-data-[slot=combobox-content]:focus-within:border-inherit in-data-[slot=combobox-content]:focus-within:ring-0 has-[>[data-align=block-end]]:h-auto has-[>[data-align=block-start]]:h-auto has-[>textarea]:h-auto has-[>[data-align=block-end]]:flex-col has-[>[data-align=block-start]]:flex-col has-[textarea]:rounded-xl has-data-[align=block-end]:rounded-2xl has-data-[align=block-start]:rounded-2xl has-[[data-slot=input-group-control]:focus-visible]:border-ring has-[[data-slot][aria-invalid=true]]:border-destructive has-[[data-slot=input-group-control]:focus-visible]:ring-[3px] has-[[data-slot=input-group-control]:focus-visible]:ring-ring/50 has-[[data-slot][aria-invalid=true]]:ring-[3px] has-[[data-slot][aria-invalid=true]]:ring-destructive/20 dark:has-[[data-slot][aria-invalid=true]]:ring-destructive/40 has-[>[data-align=inline-start]]:[&>input]:ps-1.5 has-[>[data-align=inline-end]]:[&>input]:pe-1.5 has-[>[data-align=block-end]]:[&>input]:pt-3 has-[>[data-align=block-start]]:[&>input]:pb-3",
         className
       )}
       data-slot="input-group"
-      role="group"
       {...props}
     />
   );
@@ -48,17 +47,24 @@ function InputGroupAddon({
   ...props
 }: React.ComponentProps<"div"> & VariantProps<typeof inputGroupAddonVariants>) {
   return (
+    // biome-ignore lint/a11y/useSemanticElements: wraps interactive children (input/button), cannot itself become a <button>
     <div
       className={cn(inputGroupAddonVariants({ align }), className)}
       data-align={align}
       data-slot="input-group-addon"
       onClick={(e) => {
-        if ((e.target as HTMLElement).closest("button")) {
+        if (e.target instanceof HTMLElement && e.target.closest("button")) {
           return;
         }
         e.currentTarget.parentElement?.querySelector("input")?.focus();
       }}
-      role="group"
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.currentTarget.parentElement?.querySelector("input")?.focus();
+        }
+      }}
+      role="button"
+      tabIndex={0}
       {...props}
     />
   );

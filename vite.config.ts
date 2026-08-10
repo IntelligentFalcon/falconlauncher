@@ -1,6 +1,6 @@
+import path from "node:path";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
-import path from "path";
 import { defineConfig } from "vite";
 
 const host = process.env.TAURI_DEV_HOST;
@@ -12,7 +12,7 @@ export default defineConfig(async () => ({
     sourcemap: !!process.env.TAURI_ENV_DEBUG,
     // Tauri uses Chromium on Windows and WebKit on macOS and Linux
     target:
-      process.env.TAURI_ENV_PLATFORM == "windows" ? "chrome105" : "safari13",
+      process.env.TAURI_ENV_PLATFORM === "windows" ? "chrome105" : "safari13",
   },
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`

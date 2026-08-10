@@ -58,7 +58,7 @@ export function NavProfile() {
 
   useEffect(() => {
     if (!profile) {
-      if (selectedProfile && selectedProfile.uuid) {
+      if (selectedProfile?.uuid) {
         const matchedProfile = profiles?.find(
           (p) => p.uuid === selectedProfile.uuid
         );
@@ -179,14 +179,14 @@ export function NavProfile() {
                       <span>{p.username}</span>
                     </div>
 
-                    <div
+                    <button
                       className="hidden items-center justify-center rounded p-1 transition-colors hover:bg-destructive/10 hover:text-destructive group-hover:flex"
                       onClick={(e) => handleRemoveProfile(p, e)}
-                      role="button"
                       title="Remove profile"
+                      type="button"
                     >
                       <HugeiconsIcon className="size-4" icon={Delete01Icon} />
-                    </div>
+                    </button>
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuGroup>

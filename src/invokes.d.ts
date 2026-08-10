@@ -1,31 +1,32 @@
-import { app } from "@tauri-apps/api";
+import type { app } from "@tauri-apps/api";
 
 type AppHandle = typeof app;
 
-type InvokeError<T = unknown> = {
+interface InvokeError<T = unknown> {
   code: string;
   data?: T;
-};
+}
 
 type WithDefaultError<T> = T &
   Record<
     keyof T,
     {
-      custom_error: T extends { custom_error: infer E } ? E : {};
+      custom_error: T extends { custom_error: infer E } ? E : undefined;
     }
   >;
 
 export type Invokes = WithDefaultError<{
   get_fabric_versions: {
-    args: {};
+    args: undefined;
+
     returns: VersionCategory[];
   };
   get_forge_versions: {
-    args: {};
+    args: undefined;
     returns: VersionCategory[];
   };
   get_vanilla_versions: {
-    args: {};
+    args: undefined;
     returns: VersionCategory[];
   };
   get_versions: {

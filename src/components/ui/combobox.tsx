@@ -5,7 +5,8 @@ import {
   Tick02Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
-import * as React from "react";
+import type { ComponentPropsWithRef } from "react";
+import { useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
   InputGroup,
@@ -46,7 +47,6 @@ function ComboboxClear({ className, ...props }: ComboboxPrimitive.Clear.Props) {
   return (
     <ComboboxPrimitive.Clear
       className={cn(className)}
-      render={<InputGroupButton size="icon-xs" variant="ghost" />}
       render={<InputGroupButton size="icon-xs" variant="ghost" />}
       {...props}
     >
@@ -232,7 +232,7 @@ function ComboboxSeparator({
 function ComboboxChips({
   className,
   ...props
-}: React.ComponentPropsWithRef<typeof ComboboxPrimitive.Chips> &
+}: ComponentPropsWithRef<typeof ComboboxPrimitive.Chips> &
   ComboboxPrimitive.Chips.Props) {
   return (
     <ComboboxPrimitive.Chips
@@ -295,7 +295,7 @@ function ComboboxChipsInput({
 }
 
 function useComboboxAnchor() {
-  return React.useRef<HTMLDivElement | null>(null);
+  return useRef<HTMLDivElement | null>(null);
 }
 
 export {
