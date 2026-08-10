@@ -1,10 +1,20 @@
-'use client';
+"use client";
 
+import {
+  ArrowRight01Icon,
+  ConsoleIcon,
+  Download01Icon,
+  GameboyIcon,
+  Package01Icon,
+  Settings01Icon,
+} from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { NavLink } from "react-router";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from '@/components/ui/collapsible';
+} from "@/components/ui/collapsible";
 import {
   SidebarGroup,
   SidebarGroupLabel,
@@ -14,15 +24,7 @@ import {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
-} from '@/components/ui/sidebar';
-import { HugeiconsIcon } from '@hugeicons/react';
-import {
-  ArrowRight01Icon,
-  Download01Icon,
-  GameboyIcon,
-  ConsoleIcon, Settings01Icon, Package01Icon,
-} from '@hugeicons/core-free-icons';
-import { NavLink } from 'react-router';
+} from "@/components/ui/sidebar";
 
 const NAVIGATION_ITEMS: {
   title: string;
@@ -34,30 +36,30 @@ const NAVIGATION_ITEMS: {
   }[];
 }[] = [
   {
-    title: 'Main',
-    url: '/',
     icon: <HugeiconsIcon icon={GameboyIcon} strokeWidth={2} />,
+    title: "Main",
+    url: "/",
   },
   {
-    title: 'Download',
-    url: '/downloads',
     icon: <HugeiconsIcon icon={Download01Icon} strokeWidth={2} />,
+    title: "Download",
+    url: "/downloads",
   },
   {
-    title: 'Mods',
-    url: '/mods',
-    icon: <HugeiconsIcon icon={Package01Icon} strokeWidth={2}/>
+    icon: <HugeiconsIcon icon={Package01Icon} strokeWidth={2} />,
+    title: "Mods",
+    url: "/mods",
   },
   {
-    title: 'Settings',
-    url: '/settings',
-    icon: <HugeiconsIcon icon={Settings01Icon} strokeWidth={2}/>
+    icon: <HugeiconsIcon icon={Settings01Icon} strokeWidth={2} />,
+    title: "Settings",
+    url: "/settings",
   },
   {
-    title: 'Console',
-    url: '/console',
-    icon: <HugeiconsIcon icon={ConsoleIcon} strokeWidth={2}/>
-  }
+    icon: <HugeiconsIcon icon={ConsoleIcon} strokeWidth={2} />,
+    title: "Console",
+    url: "/console",
+  },
 ];
 
 export function NavMenu() {
@@ -66,28 +68,28 @@ export function NavMenu() {
       <SidebarGroupLabel>Platform</SidebarGroupLabel>
       <SidebarMenu>
         {NAVIGATION_ITEMS.map((item) => (
-          <NavLink to={item.url} key={item.title}>
+          <NavLink key={item.title} to={item.url}>
             {({ isActive }) =>
               item.items ? (
                 <Collapsible
-                  defaultOpen={isActive}
                   className="group/collapsible"
+                  defaultOpen={isActive}
                   render={<SidebarMenuItem />}
                 >
                   <CollapsibleTrigger
                     render={
                       <SidebarMenuButton
-                        tooltip={item.title}
                         isActive={isActive}
+                        tooltip={item.title}
                       />
                     }
                   >
                     {item.icon}
                     <span>{item.title}</span>
                     <HugeiconsIcon
+                      className="ms-auto transition-transform duration-200 group-data-open/collapsible:rotate-90"
                       icon={ArrowRight01Icon}
                       strokeWidth={2}
-                      className="ms-auto transition-transform duration-200 group-data-open/collapsible:rotate-90"
                     />
                   </CollapsibleTrigger>
                   <CollapsibleContent>
@@ -106,7 +108,7 @@ export function NavMenu() {
                 </Collapsible>
               ) : (
                 <SidebarMenuItem>
-                  <SidebarMenuButton tooltip={item.title} isActive={isActive}>
+                  <SidebarMenuButton isActive={isActive} tooltip={item.title}>
                     {item.icon}
                     <span>{item.title}</span>
                   </SidebarMenuButton>

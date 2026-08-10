@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { type ComponentProps, type ReactNode, useTransition } from 'react';
-import { toast } from 'sonner';
+import { type ComponentProps, type ReactNode, useTransition } from "react";
+import { toast } from "sonner";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -12,16 +12,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
-import { LoadingSwap } from '@/components/ui/animated/swapper';
-import { Button } from '@/components/ui/button';
+} from "@/components/ui/alert-dialog";
+import { LoadingSwap } from "@/components/ui/animated/swapper";
+import { Button } from "@/components/ui/button";
 
 export function ActionButton({
   action,
   disabled,
   requireAreYouSure = false,
-  areYouSureDescription = 'این عمل غیرقابل بازگشت است.',
-  areYouSureButton = 'باشه.',
+  areYouSureDescription = "این عمل غیرقابل بازگشت است.",
+  areYouSureButton = "باشه.",
   ...props
 }: ComponentProps<typeof Button> & {
   action: () =>
@@ -40,7 +40,7 @@ export function ActionButton({
         const data = await action();
 
         if (data?.error) {
-          toast.error(data.message ?? 'Error');
+          toast.error(data.message ?? "Error");
         }
       } catch (error) {
         console.error(error);

@@ -1,6 +1,6 @@
-import type { ClassValue } from 'clsx';
-import { Spinner } from '@/components/ui/spinner';
-import { cn } from '@/lib/utils';
+import type { ClassValue } from "clsx";
+import { Spinner } from "@/components/ui/spinner";
+import { cn } from "@/lib/utils";
 
 export function ToggleSwap({
   render,
@@ -18,28 +18,28 @@ export function ToggleSwap({
   return (
     <div
       className={cn(
-        'grid grid-cols-1 items-center justify-items-center',
-        containerClassName,
+        "grid grid-cols-1 items-center justify-items-center",
+        containerClassName
       )}
     >
       <div
         className={cn(
-          'col-start-1 col-end-2 row-start-1 row-end-2 w-full transition-all',
+          "col-start-1 col-end-2 row-start-1 row-end-2 w-full transition-all",
           doSwap
-            ? 'pointer-events-none scale-50 opacity-0'
-            : 'scale-100 opacity-100',
-          className,
+            ? "pointer-events-none scale-50 opacity-0"
+            : "scale-100 opacity-100",
+          className
         )}
       >
         {render}
       </div>
       <div
         className={cn(
-          'col-start-1 col-end-2 row-start-1 row-end-2 transition-all',
+          "col-start-1 col-end-2 row-start-1 row-end-2 transition-all",
           doSwap
-            ? 'scale-100 opacity-100'
-            : 'pointer-events-none scale-50 opacity-0',
-          className,
+            ? "scale-100 opacity-100"
+            : "pointer-events-none scale-50 opacity-0",
+          className
         )}
       >
         {renderAlternative}

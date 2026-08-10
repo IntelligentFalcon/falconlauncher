@@ -1,35 +1,35 @@
-import { createMemoryRouter } from 'react-router';
-import Layout from './layout';
-import IndexPage from './pages';
-import Downloads from './pages/downloads';
-import Console from './pages/console.tsx'
-import Settings from "@/pages/settings.tsx";
+import { createMemoryRouter } from "react-router";
 import Mods from "@/pages/mods.tsx";
+import Settings from "@/pages/settings.tsx";
+import Layout from "./layout";
+import IndexPage from "./pages";
+import Console from "./pages/console.tsx";
+import Downloads from "./pages/downloads";
 
 export const router = createMemoryRouter([
   {
-    element: Layout(),
     children: [
       {
-        path: '/',
         element: <IndexPage />,
+        path: "/",
       },
       {
-        path: '/downloads',
         element: <Downloads />,
+        path: "/downloads",
       },
       {
-        path: '/settings',
-        element: <Settings/>
+        element: <Settings />,
+        path: "/settings",
       },
       {
-        path: '/mods',
-        element: <Mods/>
+        element: <Mods />,
+        path: "/mods",
       },
       {
-        path: '/console',
-        element: <Console/>
-      }
+        element: <Console />,
+        path: "/console",
+      },
     ],
+    element: Layout(),
   },
 ]);

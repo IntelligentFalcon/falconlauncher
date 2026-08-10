@@ -1,31 +1,31 @@
-import { ActionButton } from '@/components/ui/action-button';
-import { LoadingSwap } from '@/components/ui/animated/swapper';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { HugeiconsIcon } from '@hugeicons/react';
 import {
-  InformationCircleIcon,
   Alert01Icon,
   AlertCircleIcon,
-  ViewIcon,
-  LayersIcon,
   Delete02Icon,
+  InformationCircleIcon,
+  LayersIcon,
   Search01Icon,
-} from '@hugeicons/core-free-icons';
-import { useEffect, useState, useRef, useMemo } from 'react';
-import { listen } from '@tauri-apps/api/event';
-import { invoke } from '@tauri-apps/api/core';
+  ViewIcon,
+} from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ActionButton } from "@/components/ui/action-button";
+import { LoadingSwap } from "@/components/ui/animated/swapper";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface LogLine {
-  timestamp: string;
+  channel: string;
   level: string;
   message: string;
-  channel: string;
+  timestamp: string;
 }
 
 export default function Console() {
-  const [filterLevel, setFilterLevel] = useState<string>('all');
-  const [filterChannel, setFilterChannel] = useState<string>('all');
-  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [filterLevel, setFilterLevel] = useState<string>("all");
+  const [filterChannel, setFilterChannel] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState<string>("");
   const [logs, setLogs] = useState<LogLine[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const logContainerRef = useRef<HTMLDivElement>(null);
@@ -34,17 +34,17 @@ export default function Console() {
     let active = true;
     let unlistenFn: (() => void) | null = null;
 
-    invoke<LogLine[]>('get_log_history')
+    invoke<LogLine[]>("get_log_history")
       .then((history) => {
         if (active) {
           setLogs(history);
           setIsLoading(false);
         }
       })
-      .catch((err) => console.error('History pipeline failure:', err));
+      .catch((err) => console.error("History pipeline failure:", err));
 
     const setupListener = async () => {
-      const unlisten = await listen<LogLine>('launcher-log-stream', (event) => {
+      const unlisten = await listen<LogLine>("launcher-log-stream", (event) => {
         if (active) {
           setLogs((prevLogs) => {
             const buffered = [...prevLogs, event.payload];
@@ -59,7 +59,9 @@ export default function Console() {
 
     return () => {
       active = false;
-      if (unlistenFn) unlistenFn();
+      if (unlistenFn) {
+        unlistenFn();
+      }
     };
   }, []);
 
@@ -71,14 +73,14 @@ export default function Console() {
 
   const channels = useMemo(() => {
     const uniqueChannels = new Set(logs.map((log) => log.channel));
-    return ['all', ...Array.from(uniqueChannels)];
+    return ["all", ...Array.from(uniqueChannels)];
   }, [logs]);
 
   const filteredLogs = logs.filter((log) => {
     const matchesLevel =
-      filterLevel === 'all' || log.level.toLowerCase() === filterLevel;
+      filterLevel === "all" || log.level.toLowerCase() === filterLevel;
     const matchesChannel =
-      filterChannel === 'all' || log.channel === filterChannel;
+      filterChannel === "all" || log.channel === filterChannel;
     const matchesSearch =
       log.message.toLowerCase().includes(searchQuery.toLowerCase()) ||
       log.channel.toLowerCase().includes(searchQuery.toLowerCase());
@@ -86,37 +88,37 @@ export default function Console() {
   });
 
   const logLevels = [
-    { name: 'all', label: 'All Logs', icon: ViewIcon },
-    { name: 'info', label: 'Info', icon: InformationCircleIcon },
-    { name: 'warn', label: 'Warnings', icon: Alert01Icon },
-    { name: 'error', label: 'Errors', icon: AlertCircleIcon },
+    { icon: ViewIcon, label: "All Logs", name: "all" },
+    { icon: InformationCircleIcon, label: "Info", name: "info" },
+    { icon: Alert01Icon, label: "Warnings", name: "warn" },
+    { icon: AlertCircleIcon, label: "Errors", name: "error" },
   ];
 
   const getLogLevelStyles = (level: string) => {
     switch (level.toLowerCase()) {
-      case 'error':
-        return 'text-destructive font-semibold';
-      case 'warn':
-        return 'text-yellow-500 font-medium';
-      case 'debug':
-        return 'text-muted-foreground/70 italic';
+      case "error":
+        return "text-destructive font-semibold";
+      case "warn":
+        return "text-yellow-500 font-medium";
+      case "debug":
+        return "text-muted-foreground/70 italic";
       default:
-        return 'text-foreground';
+        return "text-foreground";
     }
   };
 
   const handleClearLogs = async () => {
     try {
-      if (filterChannel === 'all') {
-        await invoke('clear_log_history');
+      if (filterChannel === "all") {
+        await invoke("clear_log_history");
         setLogs([]);
       } else {
-        await invoke('clear_log_history_channel', { channel: filterChannel });
+        await invoke("clear_log_history_channel", { channel: filterChannel });
         setLogs((prev) => prev.filter((log) => log.channel !== filterChannel));
       }
     } catch (err) {
-      console.warn('Backend executed buffer modifications:', err);
-      if (filterChannel === 'all') {
+      console.warn("Backend executed buffer modifications:", err);
+      if (filterChannel === "all") {
         setLogs([]);
       } else {
         setLogs((prev) => prev.filter((log) => log.channel !== filterChannel));
@@ -126,35 +128,35 @@ export default function Console() {
 
   return (
     // 1. overflow-hidden ensures the entire component NEVER scrolls
-    <div className="flex flex-col h-full w-full overflow-hidden min-w-0 bg-background">
+    <div className="flex h-full w-full min-w-0 flex-col overflow-hidden bg-background">
       {/* Top Bar Navigation & Controls - shrink-0 ensures this stays pinned and doesn't squish */}
-      <div className="flex flex-col gap-2 shrink-0 pb-2 sm:pb-3">
+      <div className="flex shrink-0 flex-col gap-2 pb-2 sm:pb-3">
         {/* Channel Filter Row & Actions */}
-        <div className="flex items-center justify-between bg-secondary/30 p-1.5 rounded-2xl border border-border/40 gap-2 w-full">
-          <div className="flex items-center gap-2 min-w-0 flex-1">
-            <div className="hidden sm:flex text-[10px] font-bold uppercase tracking-wider text-muted-foreground px-2 items-center gap-1.5 shrink-0">
+        <div className="flex w-full items-center justify-between gap-2 rounded-2xl border border-border/40 bg-secondary/30 p-1.5">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <div className="hidden shrink-0 items-center gap-1.5 px-2 font-bold text-[10px] text-muted-foreground uppercase tracking-wider sm:flex">
               <HugeiconsIcon icon={LayersIcon} size={12} strokeWidth={2.5} />
               Channels
             </div>
 
-            <div className="flex-1 overflow-x-auto scrollbar-none min-w-0">
+            <div className="scrollbar-none min-w-0 flex-1 overflow-x-auto">
               <Tabs
-                value={filterChannel}
                 onValueChange={(val) => setFilterChannel(val as string)}
+                value={filterChannel}
               >
                 <TabsList variant="line">
                   {channels.map((chan) => (
                     <TabsTrigger
+                      className="capitalize md:max-w-[200px]"
                       key={chan}
+                      title={chan === "all" ? "All Channels" : chan}
                       value={chan}
-                      title={chan === 'all' ? 'All Channels' : chan}
-                      className="md:max-w-[200px] capitalize"
                     >
                       <div
-                        className={`h-2 w-2 rounded-full shrink-0 ${chan === 'all' ? 'bg-primary' : 'bg-zinc-400'}`}
+                        className={`h-2 w-2 shrink-0 rounded-full ${chan === "all" ? "bg-primary" : "bg-zinc-400"}`}
                       />
-                      <span className="truncate max-w-[120px]">
-                        {chan === 'all' ? 'ALL Channels' : chan}
+                      <span className="max-w-[120px] truncate">
+                        {chan === "all" ? "ALL Channels" : chan}
                       </span>
                     </TabsTrigger>
                   ))}
@@ -165,35 +167,35 @@ export default function Console() {
 
           <ActionButton
             action={handleClearLogs}
+            className="h-8 shrink-0 gap-1.5 rounded-xl px-2 text-xs sm:px-3"
             variant="destructive"
-            className="h-8 text-xs gap-1.5 rounded-xl shrink-0 px-2 sm:px-3"
           >
             <HugeiconsIcon icon={Delete02Icon} size={14} strokeWidth={2} />
             <span className="hidden sm:inline">
-              Clear {filterChannel === 'all' ? 'All' : filterChannel}
+              Clear {filterChannel === "all" ? "All" : filterChannel}
             </span>
           </ActionButton>
         </div>
 
         {/* Sub-Header Bar (Severity Filter & Search Bar) */}
-        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between bg-secondary p-1.5 rounded-2xl w-full gap-2">
-          <div className="overflow-x-auto scrollbar-none w-full md:w-auto md:flex-1">
+        <div className="flex w-full flex-col items-stretch justify-between gap-2 rounded-2xl bg-secondary p-1.5 md:flex-row md:items-center">
+          <div className="scrollbar-none w-full overflow-x-auto md:w-auto md:flex-1">
             <Tabs
-              value={filterLevel}
               onValueChange={(val) => setFilterLevel(val as string)}
+              value={filterLevel}
             >
               <TabsList className="p-0">
                 {logLevels.map((lvl) => (
                   <TabsTrigger
-                    key={lvl.name}
-                    value={lvl.name}
-                    title={lvl.label}
                     className="md:max-w-[120px]"
+                    key={lvl.name}
+                    title={lvl.label}
+                    value={lvl.name}
                   >
                     <HugeiconsIcon
+                      className="shrink-0"
                       icon={lvl.icon}
                       strokeWidth={2}
-                      className="shrink-0"
                     />
                     <span className="inline">{lvl.label}</span>
                   </TabsTrigger>
@@ -202,24 +204,24 @@ export default function Console() {
             </Tabs>
           </div>
 
-          <div className="relative flex items-center w-full md:max-w-xs md:w-64 h-8 bg-background border border-border/80 rounded-xl px-2.5 group focus-within:border-primary/60 transition-colors shrink-0">
+          <div className="group relative flex h-8 w-full shrink-0 items-center rounded-xl border border-border/80 bg-background px-2.5 transition-colors focus-within:border-primary/60 md:w-64 md:max-w-xs">
             <HugeiconsIcon
+              className="mr-1.5 shrink-0 text-muted-foreground transition-colors group-focus-within:text-primary"
               icon={Search01Icon}
               size={14}
-              className="text-muted-foreground shrink-0 mr-1.5 group-focus-within:text-primary transition-colors"
               strokeWidth={2}
             />
             <input
-              type="text"
-              placeholder="Search console logs..."
-              value={searchQuery}
+              className="w-full min-w-0 border-none bg-transparent p-0 font-sans text-foreground text-xs outline-none placeholder:text-muted-foreground/60 focus:ring-0"
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-transparent text-xs font-sans text-foreground placeholder:text-muted-foreground/60 outline-none border-none p-0 focus:ring-0 min-w-0"
+              placeholder="Search console logs..."
+              type="text"
+              value={searchQuery}
             />
             {searchQuery && (
               <button
-                onClick={() => setSearchQuery('')}
-                className="text-[10px] bg-secondary text-muted-foreground hover:text-foreground px-1.5 py-0.5 rounded-md font-sans shrink-0 transition-colors ml-1.5"
+                className="ml-1.5 shrink-0 rounded-md bg-secondary px-1.5 py-0.5 font-sans text-[10px] text-muted-foreground transition-colors hover:text-foreground"
+                onClick={() => setSearchQuery("")}
               >
                 Clear
               </button>
@@ -229,26 +231,26 @@ export default function Console() {
       </div>
 
       {/* Display Terminal Box Container - flex-1 gives it ALL remaining height, min-h-0 allows internal scrolling */}
-      <div className="flex-1 min-h-0 relative">
-        <LoadingSwap isLoading={isLoading} className="absolute inset-0">
+      <div className="relative min-h-0 flex-1">
+        <LoadingSwap className="absolute inset-0" isLoading={isLoading}>
           <div
+            className="h-full w-full space-y-1 overflow-y-auto rounded-2xl border border-border bg-black p-2 font-mono text-[11px] text-zinc-200 selection:bg-zinc-700 sm:p-4 sm:text-xs"
             ref={logContainerRef}
-            className="h-full w-full bg-black text-zinc-200 font-mono text-[11px] sm:text-xs p-2 sm:p-4 rounded-2xl overflow-y-auto border border-border selection:bg-zinc-700 space-y-1"
           >
             {filteredLogs.length > 0 ? (
               filteredLogs.map((log, index) => (
                 <div
+                  className="flex flex-col whitespace-pre-wrap break-words rounded px-1 py-0.5 leading-relaxed transition-colors hover:bg-zinc-900/50 sm:flex-row sm:items-start"
                   key={index}
-                  className="whitespace-pre-wrap break-words leading-relaxed hover:bg-zinc-900/50 py-0.5 px-1 rounded transition-colors flex flex-col sm:flex-row sm:items-start"
                 >
-                  <div className="flex items-center flex-wrap shrink-0 sm:mb-0 mb-0.5">
-                    <span className="text-muted-foreground mr-1.5 sm:mr-2 select-none shrink-0">
+                  <div className="mb-0.5 flex shrink-0 flex-wrap items-center sm:mb-0">
+                    <span className="mr-1.5 shrink-0 select-none text-muted-foreground sm:mr-2">
                       [{log.timestamp}]
                     </span>
-                    <span className="text-teal-500/90 mr-1.5 sm:mr-2 select-none shrink-0 font-medium">
+                    <span className="mr-1.5 shrink-0 select-none font-medium text-teal-500/90 sm:mr-2">
                       ({log.channel})
                     </span>
-                    <span className="uppercase mr-1.5 sm:mr-2 select-none text-zinc-500 font-bold shrink-0">
+                    <span className="mr-1.5 shrink-0 select-none font-bold text-zinc-500 uppercase sm:mr-2">
                       [{log.level}]
                     </span>
                   </div>
@@ -258,12 +260,12 @@ export default function Console() {
                 </div>
               ))
             ) : (
-              <div className="h-full flex items-center justify-center text-muted-foreground italic text-center p-4">
+              <div className="flex h-full items-center justify-center p-4 text-center text-muted-foreground italic">
                 <div className="max-w-xs">
                   No logs match your current criteria.
                   <br />
-                  <span className="text-[10px] sm:text-[11px] opacity-70 break-words mt-1 block">
-                    (Level: "{filterLevel}" | Channel: "{filterChannel}"{' '}
+                  <span className="mt-1 block break-words text-[10px] opacity-70 sm:text-[11px]">
+                    (Level: "{filterLevel}" | Channel: "{filterChannel}"{" "}
                     {searchQuery && `| Query: "${searchQuery}"`})
                   </span>
                 </div>

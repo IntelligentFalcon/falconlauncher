@@ -1,19 +1,19 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
 interface LocaleStore {
-  locale: 'en' | 'fa';
-  setLocale: (locale: 'en' | 'fa') => void;
+  locale: "en" | "fa";
+  setLocale: (locale: "en" | "fa") => void;
 }
 
 export const useLocale = create<LocaleStore>()(
   persist(
     (set) => ({
-      locale: 'en',
+      locale: "en",
       setLocale: (locale) => set({ locale }),
     }),
     {
-      name: 'locale',
+      name: "locale",
     }
   )
 );

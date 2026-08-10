@@ -1,4 +1,4 @@
-import { app } from '@tauri-apps/api';
+import { app } from "@tauri-apps/api";
 
 type AppHandle = typeof app;
 
@@ -8,12 +8,12 @@ type InvokeError<T = unknown> = {
 };
 
 type WithDefaultError<T> = T &
-    Record<
-        keyof T,
-        {
-          custom_error: T extends { custom_error: infer E } ? E : {};
-        }
-    >;
+  Record<
+    keyof T,
+    {
+      custom_error: T extends { custom_error: infer E } ? E : {};
+    }
+  >;
 
 export type Invokes = WithDefaultError<{
   get_fabric_versions: {
@@ -70,7 +70,7 @@ export type Invokes = WithDefaultError<{
   };
   get_ram_usage: {
     args: undefined;
-      returns: number; // Changed 'int' to 'number'
+    returns: number; // Changed 'int' to 'number'
   };
   get_selected_profile: {
     args: undefined;
@@ -88,8 +88,8 @@ export type Invokes = WithDefaultError<{
   };
   remove_profile: {
     args: {
-      profile: Profile
-    }
+      profile: Profile;
+    };
     returns: void;
   };
   get_installed_versions: {
@@ -102,7 +102,7 @@ export type Invokes = WithDefaultError<{
   };
   set_language: {
     args: {
-      lang: string | 'fa' | 'en';
+      lang: string | "fa" | "en";
     };
     returns: void;
   };
@@ -117,7 +117,7 @@ export type Invokes = WithDefaultError<{
   download_version: {
     args: {
       versionLoader: VersionLoader;
-      name: string
+      name: string;
     };
     returns: void;
   };
@@ -130,7 +130,7 @@ export type Invokes = WithDefaultError<{
   };
   delete_mod: {
     args: {
-      modInfo: ModInfo
+      modInfo: ModInfo;
     };
     returns: void;
   };
@@ -193,37 +193,37 @@ export type Invokes = WithDefaultError<{
 }>;
 
 export interface Mirror {
+  description: string;
   name: string;
   url: string;
-  description: string;
 }
 
 export interface MinecraftVersion {
-  id: string;
-  isInstalled: boolean;
-  base: 'FABRIC' | 'FORGE' | 'NEO_FORGE' | 'LITE_LOADER' | 'VANILLA';
-  inheritedVersion?: string;
+  base: "FABRIC" | "FORGE" | "NEO_FORGE" | "LITE_LOADER" | "VANILLA";
   date: string;
+  id: string;
+  inheritedVersion?: string;
+  isInstalled: boolean;
 }
 
 export enum VersionBase {
-  VANILLA,
-  FORGE,
-  NEOFORGE,
-  FABRIC,
-  LITELOADER,
+  VANILLA = 0,
+  FORGE = 1,
+  NEOFORGE = 2,
+  FABRIC = 3,
+  LITELOADER = 4,
 }
 
 export interface Profile {
+  online: boolean;
   username: string;
   uuid: string;
-  online: boolean;
 }
 
 export interface VersionLoader {
-  id: string;
   base: VersionBase;
   date: string;
+  id: string;
 }
 
 export interface VersionCategory {
@@ -232,9 +232,9 @@ export interface VersionCategory {
 }
 
 export interface Config {
-  launchoptions: LaunchOptions;
-  launchersettings: LauncherSettings;
   downloadsettings: DownloadSettings;
+  launchersettings: LauncherSettings;
+  launchoptions: LaunchOptions;
 }
 
 export interface DownloadSettings {
@@ -246,15 +246,15 @@ export interface LauncherSettings {
 }
 
 export interface LaunchOptions {
-  username: string;
   ramusage: number; // Changed 'u64' to 'number' (TypeScript relies on number or BigInt)
+  username: string;
 }
 
 export interface ModInfo {
-  path: string;
-  modId: string;
-  name: string;
-  version: string;
   description: string;
   enabled: boolean;
+  modId: string;
+  name: string;
+  path: string;
+  version: string;
 }
