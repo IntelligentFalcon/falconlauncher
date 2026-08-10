@@ -173,7 +173,7 @@ pub async fn download_file_if_not_exists(path: &PathBuf, url: String, size: u64)
     Ok(())
 }
 
-async fn download_from_manifest(id: &String, manifest: &Manifest, mir: &Mirror) -> Result<(), AppError> {
+pub(crate) async fn download_from_manifest(id: &String, manifest: &Manifest, mir: &Mirror) -> Result<(), AppError> {
     let version = manifest
         .versions
         .iter()
