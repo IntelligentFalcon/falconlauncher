@@ -15,6 +15,7 @@ use std::io::{BufRead, BufReader};
 use std::path::{PathBuf, MAIN_SEPARATOR_STR};
 use std::process::{Command, Stdio};
 use tauri::{AppHandle, Manager};
+use crate::models::error::AppError::ProfileNotFound;
 use crate::services::game_downloader::download_version;
 
 pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &Global) -> Result<(), AppError> {
@@ -29,7 +30,7 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
     let config = state.config.read().await;
     let launch_options = &config.launch_options;
     let uid = &launch_options.selected_profile;
-    let profile = get_profile(uid).unwrap();
+    let profile = get_profile(uid).ok_or(ProfileNotFound(format!("Selected profile {uid} was not found.")))?;
     let username = profile.username;
     let xms = launch_options.ram_usage_min.to_string() + "M";
     let xmx = launch_options.ram_usage_max.to_string() + "M";
