@@ -1,4 +1,4 @@
-use crate::models::error::AppError;
+use crate::models::error::{AppError, Void};
 use crate::models::java::Java;
 use crate::models::platform::get_current_os;
 use std::env::{home_dir, var_os};
@@ -11,7 +11,7 @@ pub fn get_minecraft_directory() -> PathBuf {
         "osx" => var_os("$HOME")
             .map(|home| PathBuf::from(home).join("Library/Application Support/minecraft"))
             .unwrap(),
-        "linux" => home_dir().unwrap().join(".minecraft"),
+        "linux" => home_dir().expect("Linux was detected but for some reason it does not find any home directory? fix this problem.").join(".minecraft"),
         _ => var_os("APPDATA")
             .map(|home| PathBuf::from(home).join(".minecraft"))
             .unwrap(),
@@ -37,10 +37,6 @@ pub fn get_falcon_launcher_directory() -> PathBuf {
     get_minecraft_directory().join("falconlauncher")
 }
 
-pub fn get_launcher_java_directory() -> PathBuf {
-    get_falcon_launcher_directory().join("java")
-}
-
 pub fn get_mods_folder() -> PathBuf {
     get_minecraft_directory().join("mods")
 }
@@ -54,16 +50,17 @@ pub fn get_temp_directory() -> PathBuf {
 }
 
 
-pub async fn create_necessary_dirs() {
-    create_dir_all(get_versions_directory()).await.unwrap();
-    create_dir_all(get_mods_folder()).await.unwrap();
+pub async fn create_necessary_dirs() -> Void{
+    create_dir_all(get_versions_directory()).await.map_err(|x| AppError::DirCreateFailed(x.to_string()))?;
+    create_dir_all(get_mods_folder()).await.map_err(|x| AppError::DirCreateFailed(x.to_string()))?;
     create_dir_all(get_falcon_launcher_directory())
         .await
-        .unwrap();
-    create_dir_all(get_assets_directory()).await.unwrap();
-    create_dir_all(get_launcher_java_directory()).await.unwrap();
-    create_dir_all(get_mirrors_dir()).await.unwrap();
-    mojang_mirror().write();
+        .map_err(|x| AppError::DirCreateFailed(x.to_string()))?;
+    create_dir_all(get_assets_directory()).await.map_err(|x| AppError::DirCreateFailed(x.to_string()))?;
+    create_dir_all(get_java_dir()).await.map_err(|x| AppError::DirCreateFailed(x.to_string()))?;
+    create_dir_all(get_mirrors_dir()).await.map_err(|x| AppError::DirCreateFailed(x.to_string()))?;
+    mojang_mirror().write().map_err(|x| AppError::FileWriteFailed(x.to_string()))?;;
+    Ok(())
 }
 
 pub fn version_manifest_directory() -> PathBuf {
@@ -100,12 +97,11 @@ pub fn auto_detect_javas() -> Result<Vec<Java>, AppError> {
         vec!["/Library/Java/JavaVirtualMachines"]
     };
     for path in dirs.iter().map(PathBuf::from) {
-        if path.read_dir().is_err() {
+        let Ok(read_dir) = path.read_dir() else {
             continue;
-        }
-        for path in path.read_dir().unwrap() {
-            if path.is_err() {continue;}
-            let path = path.unwrap().path();
+        };
+        for path in read_dir.filter_map(Result::ok) {
+            let path = path.path();
             if validate_java(path.clone()) {
                 paths.push(Java::new(path));
             }

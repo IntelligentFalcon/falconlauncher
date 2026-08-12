@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use crate::models::platform;
-use crate::services::directory_manager::get_launcher_java_directory;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Java {
