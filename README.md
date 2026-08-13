@@ -1,10 +1,10 @@
+[![Telegram](https://img.shields.io/badge/Telegram-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/intelligentfalcon)
 # فالکن لانچر
 
 یک لانچر فارسی زبان برای کاربران ایرانی بازی ماینکرفت.
 
 و همچنان در دست توسعه...
 
-جهت اطلاع یافتن از اخبار بروز لانچر داخل چنل تلگرامیمون @IntelligentFalcon عضو بشید...
 
 Note: This project is not affiliated with Mojang or Microsoft. Minecraft is a trademark of Mojang Synergies AB.
 
