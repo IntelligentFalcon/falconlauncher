@@ -7,7 +7,7 @@ use crate::models::error::AppError;
 use crate::models::fabric::{FabricInstaller, FabricLoader, FabricMinecraftVersion};
 use crate::models::logger::{init_log_bridge, LogLine};
 use crate::services::config::load;
-use log::info;
+use log::{error, info};
 use models::mirror::mojang_mirror;
 use models::mods::ModInfo;
 use models::versions::MinecraftVersion;
@@ -180,10 +180,17 @@ pub fn run() {
             commands::mirrors::get_available_mirrors,
             commands::mirrors::set_mirror,
             commands::mirrors::get_mirror,
-            commands::mirrors::import_mirror
+            commands::mirrors::import_mirror,
+            error
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+
+#[command]
+async fn error(message: String){
+    error!("{}", message);
 }
 #[command]
 async fn play(app: AppHandle, state: State<'_, AppState>, selected_version: String) -> Result<(), AppError> {

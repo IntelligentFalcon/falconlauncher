@@ -23,7 +23,6 @@ pub async fn get_vanilla_versions(
         AppError::ManifestParseFailed("Failed to parse version manifest".to_string())
     })?;
     let cfg = state.config.read().await;
-    let mirror = &cfg.download_settings.mirror;
     let mut result: Vec<VersionCategory> = Vec::new();
     let versions: Vec<&VersionInfo> = manifest
         .versions

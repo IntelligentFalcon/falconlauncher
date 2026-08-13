@@ -662,7 +662,6 @@ pub async fn download_fabric(
         .spawn()
         .expect("Failed to spawn child process");
     let stderr = child.stderr.take().unwrap();
-    let logger_clone = logger.clone();
     spawn_thread(stderr, format!("fabric_installer_{}",version_loader.id));
 
     generate_stdout(&mut child, format!("fabric_installer_{}",version_loader.id));
@@ -722,8 +721,8 @@ pub async fn get_available_fabric_versions(version_id: &String) -> Result<Vec<St
     }
 
     let mut result = Vec::new();
-    let loaders = &global_cache.fabric_loaders;
-    for loader in loaders.clone().unwrap() {
+    let loaders = &global_cache.fabric_loaders.clone().unwrap_or(Vec::new());
+    for loader in loaders {
         result.push(format!("{}-{}", version_id.to_string(), loader.version));
     }
     Ok(result)
