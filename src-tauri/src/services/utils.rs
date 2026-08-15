@@ -63,15 +63,16 @@ pub fn vec_to_string(vec: Vec<String>, separator: String) -> String {
     builder
 }
 
-pub fn parse_library_name_to_path(mavenized_path: String) -> String {
+pub fn parse_library_name_to_path(mavenized_path: String) -> Result<String,AppError> {
     let parts = mavenized_path.split(":").collect::<Vec<&str>>();
     let group = parts[0].replace(".", "/");
     let artifact_id = parts[1];
     let version = parts[2];
-    format!(
+    let libraries_path = get_libraries_directory().to_str().ok_or(AppError::InvalidPath("Libraries directory".to_string()))?;
+    Ok(format!(
         "{}/{group}/{artifact_id}/{version}/{artifact_id}-{version}.jar",
-        get_libraries_directory().to_str().unwrap()
-    )
+        libraries_path
+    ))
 }
 
 /// concatenate two vectors without adding repeated indexes
@@ -155,14 +156,16 @@ pub fn check_os_rule(rule_map: &Map<String, Value>) -> bool {
 }
 
 pub fn update_download_bar(progress: i64, app_handle: &AppHandle) {
-    app_handle.emit("progressBar", progress).unwrap();
+    app_handle.emit("progressBar", progress)
+        .unwrap_or_else(|x| info!("Failed to emit progress to progressBar event. detailed error: \n {x}"));
 }
 pub fn update_download_status(text: &str, app_handle: &AppHandle) {
-    app_handle.emit("progress", text).unwrap();
+    app_handle.emit("progress", text)
+        .unwrap_or_else(|x| info!("Failed to emit text to progress event. detailed error: \n {x}"));;
 }
 pub fn update_download(progress: i64, text: &str, app_handle: &AppHandle) {
-    app_handle.emit("progress", text).unwrap();
-    app_handle.emit("progressBar", progress).unwrap();
+    update_download_status(text,app_handle);
+    update_download_bar(progress,app_handle);
 }
 
 /// Fixes permission issues related to java when using linux.

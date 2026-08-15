@@ -10,6 +10,7 @@ use std::fs;
 use std::path::{PathBuf, MAIN_SEPARATOR, MAIN_SEPARATOR_STR};
 use log::debug;
 use crate::models::error::AppError;
+use crate::models::logger::info;
 
 impl PartialEq for VersionType {
     fn eq(&self, other: &Self) -> bool {
@@ -107,8 +108,11 @@ impl MinecraftVersion {
         for library in value.as_array().unwrap() {
             if library.get("downloads").is_none() || library["downloads"].is_null() {
                 let library_name = library["name"].as_str().unwrap();
-                let library_path_str = parse_library_name_to_path(library_name.to_string())
-                    .replace("/", MAIN_SEPARATOR_STR);
+                let Ok(mut library_path_str) = parse_library_name_to_path(library_name.to_string()) else {
+                    continue; // TODO: Should make this function return AppError and Vec both and return the possible error instead of ignoring it.
+
+                };
+                library_path_str = library_path_str.replace("/", MAIN_SEPARATOR_STR);
                 let library_path = PathBuf::from(&library_path_str);
                 if !library_path.exists() {
 

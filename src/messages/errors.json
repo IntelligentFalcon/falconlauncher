@@ -107,6 +107,10 @@
     "title": "Mod loading failed",
     "description": "Failed to load a mod"
   },
+  "ERROR_INVALID_PATH": {
+    "title": "Invalid path detected",
+    "description": "Failed to get a path due to invalidation"
+  },
   "ERROR_UNKNOWN": {
     "title": "Unknown",
     "description": "Unknown error has occurred!~"
