@@ -5,36 +5,17 @@ use crate::models::java::Java;
 use crate::models::platform::get_current_os;
 use crate::services::directory_manager::get_libraries_directory;
 use serde_json::{Map, Value};
-use sha2::{Digest, Sha256};
 use std::fs::File;
-use std::io::{BufReader, Read};
+use std::io::{Read};
 use std::path::Path;
 use log::info;
+use sha1::{Digest, Sha1};
 use tauri::{AppHandle, Emitter};
 use uuid::{Builder, Uuid};
 
-fn calculate_file_sha1<P: AsRef<Path>>(path: P) -> Result<String, AppError> {
-    let file = File::open(path).map_err(|e| AppError::FileReadFailed(e.to_string()))?;
-    let mut reader = BufReader::new(file);
-    let mut hasher = Sha256::new();
-    let mut buffer = [0; 8192]; // Read in 8KB chunks
-
-    loop {
-        let bytes_read = reader
-            .read(&mut buffer)
-            .map_err(|x| AppError::BufferReadFailed(x.to_string()))?;
-        if bytes_read == 0 {
-            break;
-        }
-        hasher.update(&buffer[..bytes_read]);
-    }
-
-    let result = hasher.finalize();
-    Ok(format!("{:x}", result))
-}
 
 /// Verifies if file exists and is not broken by the expected file size if expected_size is zero it will ignore checking file size
-pub fn verify_file_existence(path_str: &String, expected_size: u64) -> bool {
+pub fn verify_file_existence_with_size(path_str: &String, expected_size: u64) -> bool {
     let path = Path::new(&path_str);
     if !path.exists() {
         false
@@ -47,9 +28,43 @@ pub fn verify_file_existence(path_str: &String, expected_size: u64) -> bool {
     }
 }
 
+pub fn verify_file_existence_with_sha<P: AsRef<Path>>(
+    file_path: P,
+    expected_sha: &str,
+) -> Result<bool, AppError> {
+    let path = file_path.as_ref();
+
+    if !path.exists() {
+        return Ok(false);
+    }
+
+    let mut file = File::open(path).map_err(|e| {
+        AppError::InvalidPath(e.to_string())
+    })?;
+
+    let mut hasher = Sha1::new();
+    let mut buffer = [0; 8192];
+
+    loop {
+        let bytes_read = file.read(&mut buffer).map_err(|e| {
+            AppError::ManifestParseFailed(format!("Failed to read file chunk: {}", e))
+        })?;
+
+        if bytes_read == 0 {
+            break;
+        }
+
+        hasher.update(&buffer[..bytes_read]);
+    }
+
+    let computed_hash = format!("{:x}", hasher.finalize());
+
+    Ok(computed_hash.eq_ignore_ascii_case(expected_sha))
+}
+
 pub async fn load_json_url(url: &String) -> Option<Value> {
     let result = reqwest::get(url).await.unwrap();
-    let text = result.text().await.unwrap_or(String::new());
+    let text = result.text().await.unwrap_or_default();
     Some(serde_json::from_str(text.as_str()).expect("JSON File isn't well formatted."))
 }
 
@@ -68,7 +83,8 @@ pub fn parse_library_name_to_path(mavenized_path: String) -> Result<String,AppEr
     let group = parts[0].replace(".", "/");
     let artifact_id = parts[1];
     let version = parts[2];
-    let libraries_path = get_libraries_directory().to_str().ok_or(AppError::InvalidPath("Libraries directory".to_string()))?;
+    let libs_dir = get_libraries_directory();
+    let libraries_path = libs_dir.to_str().ok_or(AppError::InvalidPath("Libraries directory".to_string()))?;
     Ok(format!(
         "{}/{group}/{artifact_id}/{version}/{artifact_id}-{version}.jar",
         libraries_path
@@ -161,7 +177,7 @@ pub fn update_download_bar(progress: i64, app_handle: &AppHandle) {
 }
 pub fn update_download_status(text: &str, app_handle: &AppHandle) {
     app_handle.emit("progress", text)
-        .unwrap_or_else(|x| info!("Failed to emit text to progress event. detailed error: \n {x}"));;
+        .unwrap_or_else(|x| info!("Failed to emit text to progress event. detailed error: \n {x}"));
 }
 pub fn update_download(progress: i64, text: &str, app_handle: &AppHandle) {
     update_download_status(text,app_handle);

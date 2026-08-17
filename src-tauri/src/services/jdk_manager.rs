@@ -62,10 +62,10 @@ pub async fn download_java(
                 let download_raw = &v["downloads"]["raw"];
                 let url = mirror.parse_url(&download_raw["url"].as_str().unwrap().to_string());
                 let size = download_raw["size"].as_u64().unwrap();
-
+                let sha1 = download_raw.get("sha1").unwrap_or_default().as_str().unwrap_or_default();
                 create_dir_all(&runtime_dir);
                 info!("Downloading {} ({} bytes)", url, size);
-                download_file_if_not_exists(&runtime_dir.join(k), url.to_string(), size).await?;
+                download_file_if_not_exists(&runtime_dir.join(k), url.to_string(), sha1, size).await?;
             } else {
                 create_dir_all(runtime_dir.join(k))
                     .expect(format!("error on {}", runtime_dir.display()).as_str());

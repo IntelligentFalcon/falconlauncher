@@ -166,7 +166,6 @@ pub fn run() {
             commands::mods::import_mod_from_local,
             commands::downloader::download_version,
             commands::downloader::get_installed_versions,
-            commands::downloader::get_non_installed_versions,
             commands::downloader::get_forge_versions,
             commands::downloader::get_fabric_versions,
             commands::downloader::get_vanilla_versions,

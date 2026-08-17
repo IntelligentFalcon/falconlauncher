@@ -1375,7 +1375,7 @@ dependencies = [
  "serde",
  "serde_ini",
  "serde_json",
- "sha2",
+ "sha1",
  "sys-info",
  "tauri",
  "tauri-build",

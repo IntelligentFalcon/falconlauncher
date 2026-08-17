@@ -139,6 +139,7 @@ pub struct LibraryArtifact {
     pub path: Option<String>,
     pub url: String,
     pub size: u64,
+    pub sha1: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -158,7 +159,7 @@ pub struct VersionInfo {
     pub release_time: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize,Clone)]
 pub struct VersionLoader {
     pub id: String,
     pub base: VersionBase,
@@ -252,6 +253,8 @@ pub struct ForgeLibraryDownloads {
 pub struct ForgeArtifact {
     pub path: Option<String>,
     pub url: String,
+    pub size: Option<u64>,
+    pub sha1: Option<String>,
 }
 
 // helper converter to adapter from Library struct
