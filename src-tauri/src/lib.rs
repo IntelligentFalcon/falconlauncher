@@ -192,8 +192,7 @@ async fn error(message: String){
     error!("{}", message);
 }
 #[command]
-async fn play(app: AppHandle, state: State<'_, AppState>, selected_version: String) -> Result<(), AppError> {
-    launch_game(app, selected_version, &*GLOBAL_CACHE.lock().await).await;
-    Err(FileReadFailed("Tesat".to_string()))
+async fn play(app: AppHandle, state: State<'_, AppState>, selected_version: String,repair_mode: bool) -> Result<(), AppError> {
+    launch_game(app, selected_version, &*GLOBAL_CACHE.lock().await,repair_mode).await
 }
 

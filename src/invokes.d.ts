@@ -138,6 +138,7 @@ export type Invokes = WithDefaultError<{
   play: {
     args: {
       selectedVersion: string;
+      repairMode: boolean,
     };
     returns: void;
   };

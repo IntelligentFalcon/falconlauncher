@@ -18,10 +18,8 @@ use tauri::{AppHandle, Manager};
 use crate::models::error::AppError::ProfileNotFound;
 use crate::services::game_downloader::download_version;
 
-pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &Global) -> Result<(), AppError> {
+pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &Global, repair_mode: bool) -> Result<(), AppError> {
     info!("Launching minecraft {version} ");
-    let repair_if_required = true; // TODO: Add this as an argument and adding a toggle button for this that has a default value of true
-
 
     let state = &app_handle.state::<AppState>();
     let tx_err = state.log_tx.clone();
@@ -52,7 +50,7 @@ pub async fn launch_game(app_handle: AppHandle, version: String, global_cache: &
     /// TODO: better java handling system is required for future release builds
     info!("{}", inherited_json);
     let java_component = inherited_json["javaVersion"]["component"].as_str().unwrap();
-    if repair_if_required {
+    if repair_mode {
         download_version(&version, &"".to_string(), &app_handle, &state.log_tx, &config).await?;
         download_version(&inherited_version, &"".to_string(), &app_handle, &state.log_tx, &config).await?;
     }
