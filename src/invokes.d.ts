@@ -139,6 +139,7 @@ export type Invokes = WithDefaultError<{
     args: {
       selectedVersion: string;
       repairMode: boolean,
+      profile: string
     };
     returns: void;
   };
