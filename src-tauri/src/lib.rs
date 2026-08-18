@@ -101,10 +101,6 @@ pub fn run() {
             info!("Successfully passed the debug assertions.");
             spawn(async {
                 create_necessary_dirs().await;
-
-                if mojang_mirror().is_connected().await {
-                    download_version_manifest(&mojang_mirror()).await.unwrap();
-                }
             });
             info!("Created required necessary directories.");
             let app_handle = app.handle().clone();

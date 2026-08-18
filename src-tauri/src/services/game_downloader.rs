@@ -12,7 +12,7 @@ use crate::services::utils::{
     verify_file_existence_with_size,
 };
 use crate::services::utils::{update_download, update_download_bar, update_download_status};
-use crate::services::version_manager::load_version_manifest;
+use crate::services::version_manager::{load_version_manifest, load_version_manifest_local};
 
 use crate::models::config::Config;
 use crate::models::downloader::{
@@ -55,7 +55,7 @@ pub async fn download_version(
 
     info!("Downloading version {} with name of {name}", &version.id);
 
-    let manifest = load_version_manifest(&mirror).await?;
+    let manifest = load_version_manifest_local()?;
     download_from_manifest(id, &manifest, &mirror)
         .await
         .or_else(|x| {
@@ -85,7 +85,7 @@ pub async fn download_version(
         logger,
         &mirror,
     )
-    .await?;
+        .await?;
 
     download_libraries(&json.libraries, &id, app_handle, logger, &mirror).await?;
 
@@ -110,7 +110,7 @@ pub async fn download_version(
             logging.client.file.sha1.as_str(),
             logging.client.file.size,
         )
-        .await?;
+            .await?;
     }
 
     update_download(100, "Done", app_handle);
@@ -139,7 +139,7 @@ async fn download_assets(
         hash,
         total_size,
     )
-    .await?;
+        .await?;
     let content =
         fs::read_to_string(PathBuf::from(&asset_index_path)).expect("Failed to read file.");
 
@@ -210,7 +210,7 @@ pub(crate) async fn download_from_manifest(
             .unwrap()
             .to_string(),
     )
-    .await
+        .await
 }
 
 async fn download_client(
@@ -313,7 +313,7 @@ async fn download_libraries(
                 hash.as_str(),
                 library_artifact.size,
             )
-            .await?;
+                .await?;
         }
     }
     Ok(())
@@ -556,9 +556,9 @@ pub async fn download_forge_version(
         version_json_path,
         serde_json::to_string(&version_json).unwrap(),
     )
-    .map_err(|x| {
-        AppError::FileWriteFailed("Failed to write to the forge json file.".to_string())
-    })?;
+        .map_err(|x| {
+            AppError::FileWriteFailed("Failed to write to the forge json file.".to_string())
+        })?;
 
     if let Some(profile_libraries) = &install_profile_json.libraries {
         for library in profile_libraries {
@@ -576,11 +576,11 @@ pub async fn download_forge_version(
                                     .parent()
                                     .unwrap(),
                             )
-                            .map_err(|x| {
-                                AppError::DirCreateFailed(
-                                    "Failed to create the directory".to_string(),
-                                )
-                            })?;
+                                .map_err(|x| {
+                                    AppError::DirCreateFailed(
+                                        "Failed to create the directory".to_string(),
+                                    )
+                                })?;
                             let mut file =
                                 File::create(get_libraries_directory().join(path)).unwrap();
                             std::io::copy(&mut f, &mut file).map_err(|x| {
@@ -612,7 +612,7 @@ pub async fn download_forge_version(
                         hash.as_str(),
                         size,
                     )
-                    .await?;
+                        .await?;
                 }
             }
         }
@@ -677,7 +677,7 @@ pub async fn download_fabric(
         stable_installer.url.to_string(),
         &installer_path_download.clone(),
     )
-    .await?;
+        .await?;
     download_java(&"jre-legacy".to_string(), &"8".to_string(), logger, mirror).await?;
     let jdk_8 = get_java("jre-legacy".to_string())?;
     let mut child = Command::new(jdk_8.get_bin_file())
@@ -691,11 +691,11 @@ pub async fn download_fabric(
         .arg("-dir")
         .arg(get_minecraft_directory().display().to_string())
         .current_dir(
-            PathBuf::from(installer_path_download)
+            PathBuf::from(installer_path_download.clone())
                 .parent()
-                .unwrap()
+                .ok_or(AppError::InvalidPath(format!("Failed to fetch the parent directory of {installer_path_download}")))?
                 .to_str()
-                .unwrap(),
+                .ok_or(AppError::InvalidPath(format!("Failed to fetch the parent directory of {installer_path_download} as string")))?
         )
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
