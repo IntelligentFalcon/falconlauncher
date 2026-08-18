@@ -157,6 +157,7 @@ function PlayButton() {
       app,
       selectedVersion: version ?? "",
       repairMode: repairMode,
+      profile: profile?.uuid,
     },
     name: "play",
   });

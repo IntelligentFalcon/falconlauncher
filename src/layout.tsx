@@ -51,7 +51,7 @@ export default function Layout() {
                   <HugeiconsIcon icon={XslFreeIcons} />
                 </Button>
                 <Button
-                  onClick={() => window.destroy()}
+                  onClick={() => window.close()}
                   size="icon-xs"
                   variant="destructive"
                 >

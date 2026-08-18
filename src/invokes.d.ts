@@ -47,12 +47,7 @@ export type Invokes = WithDefaultError<{
     args: undefined;
     returns: number; // Note: Changed 'int' to 'number' (TypeScript doesn't have 'int')
   };
-  set_selected_profile: {
-    args: {
-      profile: Profile;
-    };
-    returns: void;
-  };
+
   save: {
     args: undefined;
     returns: void;
@@ -72,10 +67,6 @@ export type Invokes = WithDefaultError<{
   get_ram_usage: {
     args: undefined;
     returns: number; // Changed 'int' to 'number'
-  };
-  get_selected_profile: {
-    args: undefined;
-    returns: Profile;
   };
   get_profiles: {
     args: undefined;
@@ -139,7 +130,7 @@ export type Invokes = WithDefaultError<{
     args: {
       selectedVersion: string;
       repairMode: boolean,
-      profile: string
+      profile: string,
     };
     returns: void;
   };
