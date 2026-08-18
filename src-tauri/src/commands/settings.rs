@@ -74,17 +74,4 @@ pub async fn set_config(state: State<'_, AppState>, config: Config) -> Result<()
     Ok(())
 }
 
-#[command]
-pub async fn get_selected_profile(state: State<'_, AppState>) -> Result<Profile, AppError> {
-    let cfg = state.config.read().await;
-    Ok(get_profile(&cfg.launch_options.selected_profile).unwrap_or_default())
-}
-
-#[command]
-pub async fn set_selected_profile(state: State<'_, AppState>, profile: Profile) -> Result<(), AppError> {
-    let mut cfg = state.config.write().await;
-    cfg.launch_options.selected_profile = profile.uuid;
-
-    Ok(())
-}
 

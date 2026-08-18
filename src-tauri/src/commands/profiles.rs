@@ -18,9 +18,7 @@ pub async fn create_offline_profile(
     state: State<'_, AppState>,
     username: String,
 ) -> Result<(), AppError> {
-    let mut cfg = state.config.write().await;
     let result = profiles::create_new_profile(username.clone(), false);
-    cfg.launch_options.selected_profile = uuid_from_username(username.as_str());
     result
 }
 
@@ -42,8 +40,5 @@ pub async fn remove_profile(state: State<'_, AppState>, profile: Profile) -> Voi
         json.map_err(|x| AppError::JsonParseFailed(x.to_string()))?,
     )
     .map_err(|x| AppError::FileWriteFailed(x.to_string()))?;
-    if cfg.launch_options.selected_profile == profile.uuid {
-
-    }
     Ok(())
 }

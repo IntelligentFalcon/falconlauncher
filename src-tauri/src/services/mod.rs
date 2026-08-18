@@ -3,7 +3,7 @@ pub mod directory_manager;
 pub mod game_downloader;
 pub mod game_launcher;
 pub mod version_manager;
-mod jdk_manager;
+pub(crate) mod jdk_manager;
 pub mod utils;
 pub mod mod_manager;
 pub mod modrinth_helper;

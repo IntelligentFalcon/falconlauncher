@@ -8,14 +8,11 @@ use crate::models::fabric::{FabricInstaller, FabricLoader, FabricMinecraftVersio
 use crate::models::logger::{init_log_bridge, LogLine};
 use crate::services::config::load;
 use log::{error, info};
-use models::mirror::mojang_mirror;
-use models::mods::ModInfo;
 use models::versions::MinecraftVersion;
 use services::directory_manager::{
     create_necessary_dirs, get_falcon_launcher_directory,
 };
-use services::game_launcher::launch_game;
-use services::version_manager::{download_version_manifest, reload_installed_versions};
+use services::version_manager::{reload_installed_versions};
 use std::collections::{HashMap, VecDeque};
 use std::env;
 use std::string::ToString;
@@ -24,10 +21,8 @@ use tauri::async_runtime::{block_on, spawn};
 use tauri::{command, AppHandle, Manager, State};
 use tauri_plugin_deep_link::DeepLinkExt;
 use tauri_plugin_log::{Target, TargetKind, TimezoneStrategy};
-use tokio::fs::copy;
 use tokio::sync;
 use tokio::sync::{mpsc, RwLock};
-use crate::models::error::AppError::FileReadFailed;
 
 pub struct FalconLauncher {
     pub name: String,
@@ -141,7 +136,7 @@ pub fn run() {
 
         })
         .invoke_handler(tauri::generate_handler![
-            play,
+            commands::game_launcher::play,
             commands::downloader::get_versions,
             commands::settings::get_maximum_ram_usage,
             commands::settings::get_minimum_ram_usage,
@@ -153,8 +148,6 @@ pub fn run() {
             commands::settings::should_exit_on_launch,
             commands::settings::save,
             commands::settings::set_config,
-            commands::settings::get_selected_profile,
-            commands::settings::set_selected_profile,
             commands::settings::get_total_ram,
             commands::mods::toggle_mod,
             commands::mods::delete_mod,
@@ -187,8 +180,3 @@ pub fn run() {
 async fn error(message: String){
     error!("{}", message);
 }
-#[command]
-async fn play(app: AppHandle, state: State<'_, AppState>, selected_version: String,repair_mode: bool) -> Result<(), AppError> {
-    launch_game(app, selected_version, &*GLOBAL_CACHE.lock().await,repair_mode).await
-}
-

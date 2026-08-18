@@ -27,7 +27,6 @@ impl Default for NativeLibraries {
 }
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LaunchOptions {
-    pub selected_profile: Uuid,
     pub ram_usage_min: u64,
     pub ram_usage_max: u64,
     pub use_dedicated_gpu: Bool,
@@ -36,7 +35,6 @@ pub struct LaunchOptions {
 impl Default for LaunchOptions {
     fn default() -> Self {
         Self {
-            selected_profile: utils::uuid_from_username("Player"),
             ram_usage_min: 1024,
             ram_usage_max: 2048,
             use_dedicated_gpu: Bool::TRUE,
