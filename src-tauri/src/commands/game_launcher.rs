@@ -13,12 +13,12 @@ use crate::services::utils::{extend_once, patch_java_permission_linux, vec_to_st
 use crate::{services, AppState, GLOBAL_CACHE};
 use serde_json::Value;
 use std::ffi::OsStr;
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, Stdin};
 use std::path::{PathBuf, MAIN_SEPARATOR_STR};
 use std::process::{Command, Stdio};
 use std::str::FromStr;
 use std::sync::Mutex;
-use tauri::{command, AppHandle, State};
+use tauri::{command, AppHandle, Manager, State};
 use uuid::Uuid;
 
 #[command]
@@ -200,8 +200,9 @@ pub async fn play(
             .env("__GL_THREADED_OPTIMIZATIONS", "0");
     }
 
-    services::game_launcher::apply_dedicated_gpu_env(&mut child_cmd);
-
+    if config.launch_options.use_dedicated_gpu.boolean() {
+        services::game_launcher::apply_dedicated_gpu_env(&mut child_cmd);
+    }
     if !jvm_args.is_empty() {
         for arg in jvm_args.clone() {
             child_cmd.arg(
@@ -226,9 +227,7 @@ pub async fn play(
 
     child_cmd
         .arg(main_class)
-        .args(&run_args)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
+        .args(&run_args);
 
     let run_args_str = run_args.join(" ");
     let jvm_args_str = jvm_args.join(" ");
@@ -264,7 +263,29 @@ pub async fn play(
         version_id_out_clone.clone(),
     ));
 
+
+    if config.launcher_settings.exit_on_launch.boolean() {  // FIXME: closes the process if launcher exists
+        #[cfg(target_family = "unix")]
+        use std::os::unix::process::CommandExt;
+        #[cfg(target_os = "windows")]
+        use std::os::windows::process::CommandExt;
+        #[cfg(target_family = "unix")]
+        child_cmd.process_group(0);
+        #[cfg(target_os = "windows")]
+        child_cmd.creation_flags(0x00000008);
+
+        child_cmd.stdout(Stdio::null())
+            .stderr(Stdio::null()).stdin(Stdio::null())
+            .spawn()
+            .map_err(|e| AppError::Internal(format!("Failed to spawn java process: {}", e)))?;
+
+        std::process::exit(0x0);
+
+    }
+
     let mut child = child_cmd
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
         .spawn()
         .map_err(|e| AppError::Internal(format!("Failed to spawn java process: {}", e)))?;
 
@@ -291,6 +312,7 @@ pub async fn play(
             let _ = tx_out.send(info(line, version_id_out_clone.clone()));
         }
     });
+
     let proc_manager = &state.process_manager;
     let mut processes = proc_manager
         .active_processes

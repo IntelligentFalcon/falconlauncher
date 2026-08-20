@@ -5,9 +5,9 @@ import {
     UnfoldMoreIcon,
     UserIcon,
 } from "@hugeicons/core-free-icons";
-import {HugeiconsIcon} from "@hugeicons/react";
+import { HugeiconsIcon } from "@hugeicons/react";
 import type React from "react";
-import {useEffect, useState} from "react";
+import { useEffect, useState } from "react";
 import {
     Dialog,
     DialogClose,
@@ -32,22 +32,22 @@ import {
     SidebarMenuItem,
     useSidebar,
 } from "@/components/ui/sidebar";
-import {useBackend, useBackendMutation} from "@/hooks/use-backend";
-import type {Profile} from "@/invokes";
-import {Button} from "./ui/button";
-import {Field, FieldGroup} from "./ui/field";
-import {Input} from "./ui/input";
-import {Label} from "./ui/label";
-import {useConfig} from "@/stores/config.ts";
+import { useBackend, useBackendMutation } from "@/hooks/use-backend";
+import type { Profile } from "@/invokes";
+import { Button } from "./ui/button";
+import { Field, FieldGroup } from "./ui/field";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
+import { useConfig } from "@/stores/config.ts";
 
 export function NavProfile() {
-    const {isMobile} = useSidebar();
+    const { isMobile } = useSidebar();
 
-    const {profile, setProfile} = useConfig();
+    const { profile, setProfile } = useConfig();
     const [openCreateDialog, setOpenCreateDialog] = useState(false);
     const [newUsername, setNewUsername] = useState("");
 
-    const {data: profiles, refetch: refetchProfiles} = useBackend({
+    const { data: profiles, refetch: refetchProfiles } = useBackend({
         name: "get_profiles",
         queryKey: ["profiles"],
     });
@@ -58,7 +58,7 @@ export function NavProfile() {
         }
     }, [profiles, profile, setProfile]);
 
-    const {mutate: createOfflineProfile, isPending: isCreating} =
+    const { mutate: createOfflineProfile, isPending: isCreating } =
         useBackendMutation({
             name: "create_offline_profile",
             onSuccess: () => {
@@ -68,7 +68,7 @@ export function NavProfile() {
             },
         });
 
-    const {mutate: removeProfileMutation} = useBackendMutation({
+    const { mutate: removeProfileMutation } = useBackendMutation({
         name: "remove_profile",
         onSuccess: () => {
             refetchProfiles();
@@ -82,13 +82,13 @@ export function NavProfile() {
             return;
         }
 
-        createOfflineProfile({username: trimmed});
+        createOfflineProfile({ username: trimmed });
     };
 
     const handleRemoveProfile = (p: Profile, e: React.MouseEvent) => {
         e.stopPropagation();
 
-        removeProfileMutation({profile: p});
+        removeProfileMutation({ profile: p });
 
         if (profile?.uuid === p.uuid) {
             setProfile(null);
@@ -103,28 +103,24 @@ export function NavProfile() {
                         <DropdownMenuTrigger
                             render={
                                 <SidebarMenuButton
-                                    // Added select-none to prevent highlighting the trigger text
                                     className="data-open:bg-sidebar-accent data-open:text-sidebar-accent-foreground group-data-[state=collapsed]:rounded-full select-none"
                                     size="lg"
                                     tooltip="Switch Profile"
                                 />
                             }
                         >
-                            <div
-                                className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                                {/* Added pointer-events-none */}
+                            <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
                                 <HugeiconsIcon
                                     className="pointer-events-none shrink-0"
                                     icon={profile?.online ? MicrosoftIcon : UserIcon}
                                 />
                             </div>
                             <div className="grid flex-1 text-start text-sm leading-tight">
-                                <span className="truncate font-medium">
-                                  {profile?.username}
-                                </span>
+                <span className="truncate font-medium">
+                  {profile?.username}
+                </span>
                                 <span className="truncate text-xs">{profile?.uuid}</span>
                             </div>
-                            {/* Added pointer-events-none */}
                             <HugeiconsIcon
                                 className="ms-auto pointer-events-none shrink-0"
                                 icon={UnfoldMoreIcon}
@@ -133,7 +129,6 @@ export function NavProfile() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent
                             align="start"
-                            // Added select-none to lock down text selection inside the dropdown
                             className="min-w-56 rounded-lg select-none"
                             side={isMobile ? "bottom" : "right"}
                             sideOffset={4}
@@ -148,38 +143,40 @@ export function NavProfile() {
                                         key={p.uuid}
                                         onClick={() => setProfile(p)}
                                     >
-                                        <div className="flex items-center gap-2">
-                                            <div className="flex size-6 items-center justify-center rounded-md border">
-                                                {/* Added pointer-events-none */}
+                                        <div className="flex flex-1 min-w-0 items-center gap-2">
+                                            <div className="flex size-6 shrink-0 items-center justify-center rounded-md border">
                                                 <HugeiconsIcon
                                                     className="pointer-events-none shrink-0"
                                                     icon={p?.online ? MicrosoftIcon : UserIcon}
                                                 />
                                             </div>
-                                            <span>{p.username}</span>
+                                            {/* Swapped whitespace-normal for line-clamp-1 to truncate gracefully */}
+                                            <span className="line-clamp-1 break-all leading-tight">
+                        {p.username}
+                      </span>
                                         </div>
 
                                         <button
-                                            className="hidden items-center justify-center rounded p-1 transition-colors hover:bg-destructive/10 hover:text-destructive group-hover:flex"
+                                            className="hidden shrink-0 items-center justify-center rounded p-1 transition-colors hover:bg-destructive/10 hover:text-destructive group-hover:flex"
                                             onClick={(e) => handleRemoveProfile(p, e)}
                                             title="Remove profile"
                                             type="button"
                                         >
-                                            {/* Added pointer-events-none */}
-                                            <HugeiconsIcon className="size-4 pointer-events-none shrink-0" icon={Delete01Icon}/>
+                                            <HugeiconsIcon
+                                                className="size-4 pointer-events-none shrink-0"
+                                                icon={Delete01Icon}
+                                            />
                                         </button>
                                     </DropdownMenuItem>
                                 ))}
                             </DropdownMenuGroup>
-                            <DropdownMenuSeparator/>
+                            <DropdownMenuSeparator />
                             <DropdownMenuGroup>
                                 <DropdownMenuItem
                                     className="cursor-pointer gap-2 p-2"
                                     onClick={() => setOpenCreateDialog(true)}
                                 >
-                                    <div
-                                        className="flex size-6 items-center justify-center rounded-md border bg-transparent">
-                                        {/* Added pointer-events-none */}
+                                    <div className="flex size-6 items-center justify-center rounded-md border bg-transparent">
                                         <HugeiconsIcon
                                             className="size-4 pointer-events-none shrink-0"
                                             icon={PlusSignIcon}

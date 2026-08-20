@@ -158,6 +158,8 @@ pub fn run() {
             commands::settings::get_language,
             commands::settings::set_exit_on_launch,
             commands::settings::should_exit_on_launch,
+            commands::settings::set_use_dedicated_gpu,
+            commands::settings::should_use_dedicated_gpu,
             commands::settings::save,
             commands::settings::set_config,
             commands::settings::get_total_ram,

@@ -27,6 +27,17 @@ pub async fn get_minimum_ram_usage(state: State<'_, AppState>) -> Result<u64, Ap
 }
 
 #[command]
+pub async fn set_use_dedicated_gpu(state: State<'_, AppState>, toggle: bool) -> Result<(), AppError> {
+    let mut config = state.config.write().await;
+    config.launch_options.use_dedicated_gpu = Bool::new(toggle);
+    Ok(())
+}
+#[command]
+pub async fn should_use_dedicated_gpu(state: State<'_, AppState>) -> Result<bool, AppError> {
+    Ok(state.config.read().await.launch_options.use_dedicated_gpu.boolean())
+}
+
+#[command]
 pub async fn get_language(state: State<'_, AppState>) -> Result<String, AppError> {
     let cfg = state.config.read().await;
     Ok(cfg.launcher_settings.language.clone())

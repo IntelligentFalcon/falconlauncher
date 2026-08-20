@@ -184,6 +184,16 @@ export type Invokes = WithDefaultError<{
     };
     returns: void;
   };
+  should_use_dedicated_gpu: {
+    args: undefined;
+    returns: boolean;
+  };
+  set_use_dedicated_gpu: {
+    args: {
+      toggle: boolean;
+    };
+    returns: void;
+  };
   get_available_mirrors: {
     args: undefined;
     returns: Mirror[];
