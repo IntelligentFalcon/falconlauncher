@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Alert01Icon } from "@hugeicons/core-free-icons";
+import { Alert01Icon, PlayIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { app } from "@tauri-apps/api";
 import { ActionButton } from "@/components/ui/action-button";
@@ -41,10 +41,14 @@ const getPanoramaUrl = (version: string | null, face: number) => {
 export default function IndexPage() {
   const version = useConfig((state) => state.version);
 
+  // Poll the backend every 1.5 seconds to get the latest list of running processes
+  const { data: runningProcesses = [] } = useBackend({
+    name: "get_processes",
+    refetchInterval: 1500,
+  });
+
   return (
-      // Added select-none to the root container so no text on the page can be highlighted
       <div className="h-full select-none">
-        {/* Main Content Area */}
         <div className="relative flex h-full flex-1 flex-col overflow-hidden rounded-xl bg-black">
           {/* Animated 3D Panorama */}
           <div className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -52,7 +56,6 @@ export default function IndexPage() {
               {[0, 1, 2, 3].map((face) => (
                   <img
                       alt=""
-                      // Added pointer-events-none and draggable={false} to completely stop image ghost dragging
                       className="pointer-events-none h-screen object-cover"
                       draggable={false}
                       height={1080}
@@ -82,11 +85,11 @@ export default function IndexPage() {
           {/* Bottom Action Bar */}
           <div className="relative z-10 flex min-h-24 flex-wrap items-center justify-between gap-4 border-[#333] border-t bg-[#232323] px-8 py-4 shadow-[0_-10px_30px_rgba(0,0,0,0.5)]">
             <div className="w-full sm:w-64">
-              <VersionSelect />
+              <VersionSelect runningProcesses={runningProcesses} />
             </div>
 
             <div className="w-full sm:w-96">
-              <PlayButton />
+              <PlayButton runningProcesses={runningProcesses} />
             </div>
           </div>
         </div>
@@ -94,7 +97,7 @@ export default function IndexPage() {
   );
 }
 
-function VersionSelect() {
+function VersionSelect({ runningProcesses }: { runningProcesses: string[] }) {
   const { version, setVersion } = useConfig();
 
   const { data: installedVersions, error } = useBackend({
@@ -107,7 +110,6 @@ function VersionSelect() {
     return (
         <Empty className="h-12 w-full flex-row justify-start gap-2 rounded-xl border border-destructive/20 bg-destructive/5 p-2">
           <HugeiconsIcon
-              // Added pointer-events-none shrink-0 to prevent icon dragging
               className="pointer-events-none shrink-0 text-destructive"
               icon={Alert01Icon}
               size={20}
@@ -127,71 +129,108 @@ function VersionSelect() {
           value={version}
       >
         <ComboboxInput
-            // Added select-text here to override the parent's select-none, ensuring the user can still highlight/edit their search query!
             className="h-12 w-full select-text border-[#333] bg-[#1a1a1a] text-white"
             placeholder="Select a Version"
         />
         <ComboboxContent className="border-[#333] bg-[#1a1a1a] text-white">
           <ComboboxEmpty>No items found.</ComboboxEmpty>
           <ComboboxList>
-            {(itemVersion) => (
-                <ComboboxItem
-                    className="hover:bg-[#333]"
-                    key={itemVersion}
-                    value={itemVersion}
-                >
-                  {itemVersion}
-                </ComboboxItem>
-            )}
+            {(itemVersion) => {
+              const isRunning = runningProcesses.includes(itemVersion);
+              return (
+                  <ComboboxItem
+                      className="hover:bg-[#333]"
+                      key={itemVersion}
+                      value={itemVersion}
+                  >
+                    <div className="flex w-full items-center justify-between">
+                      <span>{itemVersion}</span>
+                      {isRunning && (
+                          <HugeiconsIcon
+                              icon={PlayIcon}
+                              size={16}
+                              className="text-green-500 animate-pulse"
+                          />
+                      )}
+                    </div>
+                  </ComboboxItem>
+              );
+            }}
           </ComboboxList>
         </ComboboxContent>
       </Combobox>
   );
 }
 
-function PlayButton() {
-  const version = useConfig((state) => state.version);
-  const profile = useConfig((state) => state.profile);
+function PlayButton({ runningProcesses }: { runningProcesses: string[] }) {
+    const version = useConfig((state) => state.version);
+    const profile = useConfig((state) => state.profile);
+    const [repairMode, setRepairMode] = useState(false);
 
-  // Repair mode state
-  const [repairMode, setRepairMode] = useState(false);
+    const isRunning = version ? runningProcesses.includes(version) : false;
 
-  const { mutateAsync } = useBackendMutation({
-    args: {
-      app,
-      selectedVersion: version ?? "",
-      repairMode: repairMode,
-      profile: profile?.uuid,
-    },
-    name: "play",
-  });
+    // Play mutation
+    const { mutateAsync: playMutate } = useBackendMutation({
+        args: {
+            app,
+            selectedVersion: version ?? "",
+            repairMode: repairMode,
+            profile: profile?.uuid,
+        },
+        name: "play",
+    });
 
-  return (
-      <div className="flex w-full flex-wrap items-center gap-3">
-        {/* Repair Mode Toggle */}
-        <button
-            type="button"
-            title="Downloads required files if they're not installed/corrupted. this option is only recommended to use if the selected version crashes."
-            onClick={() => setRepairMode((prev) => !prev)}
-            className={`flex h-14 flex-1 sm:flex-none items-center justify-center rounded-xl border px-4 font-bold text-sm transition-colors ${
-                repairMode
-                    ? "border-amber-500 bg-amber-500/10 text-amber-500"
-                    : "border-[#333] bg-[#1a1a1a] text-gray-400 hover:bg-[#333] hover:text-white"
-            }`}
-        >
-          Repair Mode: {repairMode ? "ON" : "OFF"}
-        </button>
+    // Kill mutation
+    const { mutateAsync: killMutate } = useBackendMutation({
+        args: {
+            selectedProcess: version ?? "",
+        },
+        name: "kill_process",
+    });
 
-        {/* Play Button */}
-        <ActionButton
-            action={async () => {
-              await mutateAsync();
-            }}
-            className="h-14 flex-1 font-bold text-2xl"
-            disabled={version === null || profile === null}
-        >
-          PLAY
-        </ActionButton>
-      </div>
-  );
+    return (
+        <div className="flex w-full flex-wrap items-center gap-3">
+            {/*
+            Changed `transition-colors` to `transition-all duration-300`.
+            Replaced `invisible` with `opacity-0 scale-95` to create a smooth fade and shrink effect.
+        */}
+            <button
+                type="button"
+                disabled={isRunning}
+                aria-hidden={isRunning}
+                title="Downloads required files if they're not installed/corrupted. this option is only recommended to use if the selected version crashes."
+                onClick={() => setRepairMode((prev) => !prev)}
+                className={`flex h-14 flex-1 sm:flex-none items-center justify-center rounded-xl border px-4 font-bold text-sm transition-all duration-300 ease-in-out ${
+                    isRunning
+                        ? "opacity-0 scale-95 pointer-events-none"
+                        : "opacity-100 scale-100"
+                } ${
+                    repairMode
+                        ? "border-amber-500 bg-amber-500/10 text-amber-500"
+                        : "border-[#333] bg-[#1a1a1a] text-gray-400 hover:bg-[#333] hover:text-white"
+                }`}
+            >
+                Repair Mode: {repairMode ? "ON" : "OFF"}
+            </button>
+
+            {/* Dynamic Action Button (PLAY / STOP) */}
+            <ActionButton
+                action={async () => {
+                    if (isRunning) {
+                        await killMutate();
+                    } else {
+                        await playMutate();
+                    }
+                }}
+                className={`h-14 flex-1 font-bold text-2xl transition-all duration-300 ${
+                    isRunning
+                        ? "bg-red-600/20 text-red-500 border border-red-500/50 hover:bg-red-600 hover:text-white hover:border-red-600"
+                        : ""
+                }`}
+                disabled={version === null || profile === null}
+            >
+                {isRunning ? "STOP" : "PLAY"}
+            </ActionButton>
+        </div>
+    );
 }

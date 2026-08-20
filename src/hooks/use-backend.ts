@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import type { InvokeError, Invokes } from "@/invokes";
 import { backend } from "@/lib/utils";
 import { errorText } from "@/messages";
+import {invoke} from "@tauri-apps/api/core";
 
 export function useBackend<
   Invoke extends keyof Invokes,
@@ -81,6 +82,10 @@ export function useBackendMutation<
           body: displayError.description,
           title: displayError.title,
         });
+        if (typeof error.data == "string"){
+
+          invoke("error", { message: error.data });
+        }
       }
     },
     ...params,

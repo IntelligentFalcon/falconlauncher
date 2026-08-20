@@ -15,6 +15,7 @@ use services::directory_manager::{
 use services::version_manager::{load_installed_versions};
 use std::collections::{HashMap, VecDeque};
 use std::env;
+use std::process::Child;
 use std::string::ToString;
 use std::sync::{Arc, LazyLock, Mutex};
 use tauri::async_runtime::{block_on, spawn};
@@ -33,8 +34,19 @@ pub struct AppState {
     pub launcher_details: FalconLauncher,
     pub log_tx: mpsc::UnboundedSender<LogLine>,
     pub log_history: Arc<Mutex<VecDeque<LogLine>>>,
+    pub process_manager: ProcessManager
+}
+pub struct ProcessManager {
+    pub active_processes: Mutex<HashMap<String, Mutex<Child>>>,
 }
 
+impl ProcessManager {
+    pub fn new() -> Self {
+        Self {
+            active_processes: Mutex::new(HashMap::new()),
+        }
+    }
+}
 pub struct Global {
     pub forge: Option<HashMap<String, Vec<String>>>,
     pub fabric_loaders: Option<Vec<FabricLoader>>,
@@ -111,6 +123,7 @@ pub fn run() {
                 },
                 log_tx,
                 log_history: shared_history,
+                process_manager: ProcessManager::new(),
             });
             block_on(async {
                 load_installed_versions().await;
@@ -171,6 +184,8 @@ pub fn run() {
             commands::mirrors::set_mirror,
             commands::mirrors::get_mirror,
             commands::mirrors::import_mirror,
+            commands::process_manager::get_processes,
+            commands::process_manager::kill_process,
             error
         ])
         .run(tauri::generate_context!())

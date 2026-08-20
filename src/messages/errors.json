@@ -115,9 +115,13 @@
     "title": "Open Path Failed",
     "description": "Failed to open the specified directory"
   },
-  "ERROR_INTERNAL": {
-    "title": "Internal Error",
-    "description": "An internal error has occurred."
+  "ERROR_FETCH_PROCESSES": {
+    "title": "Fetching Processes Failed",
+    "description": "Failed to fetch active processes."
+  },
+  "ERROR_INVALID_PROCESS": {
+    "title": "Specified Process Not Found",
+    "description": "Failed to find the specified process. maybe its already closed?"
   },
   "ERROR_UNKNOWN": {
     "title": "Unknown",

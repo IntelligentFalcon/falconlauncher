@@ -109,6 +109,12 @@ pub enum AppError {
 
     #[error("Internal error has occured: {0}")]
     Internal(String),
+
+    #[error("Failed to get the active processes")]
+    ProcessFetchFailed(String),
+
+    #[error("Failed to find the specified process")]
+    ProcessNotFound(String)
 }
 
 // Since frontend expects `{ "code": "...", "data": "..." }`:
@@ -156,6 +162,8 @@ impl Serialize for AppError {
             AppError::InvalidPath(path) => ("ERROR_INVALID_PATH", Some(format!("The {path} is invalid."))),
             AppError::OpenPathFailed(e) => ("ERROR_OPEN_PATH", Some(e.to_string())),
             AppError::Internal(e) => ("ERROR_INTERNAL", Some(e.to_string())),
+            AppError::ProcessFetchFailed(e) => ("ERROR_FETCH_PROCESSES", Some(e.to_string())),
+            AppError::ProcessNotFound(proc) => ("ERROR_INVALID_PROCESS", Some(format!("{proc} was not found!"))),
             AppError::UnknownError(e) => ("ERROR_UNKNOWN", Some(e.to_string())),
         };
 

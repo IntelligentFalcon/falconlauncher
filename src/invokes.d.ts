@@ -123,6 +123,16 @@ export type Invokes = WithDefaultError<{
     args: undefined;
     returns: void;
   };
+  get_processes: {
+    args: undefined;
+    returns: string[];
+  };
+  kill_process: {
+    args: {
+      selectedProcess: string;
+    }
+    returns: void;
+  }
   toggle_mod: {
     args: {
       modInfo: ModInfo;

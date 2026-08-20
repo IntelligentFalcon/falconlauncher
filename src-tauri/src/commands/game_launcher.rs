@@ -1,25 +1,34 @@
+use crate::models::error::AppError::ProfileNotFound;
+use crate::models::error::{AppError, Void};
+use crate::models::logger::{error, info};
+use crate::models::platform::get_current_os;
+use crate::models::profiles::get_profile;
+use crate::services::directory_manager::{
+    get_assets_directory, get_minecraft_directory, get_natives_folder,
+};
+use crate::services::game_downloader::download_version;
+use crate::services::game_launcher::{get_jvm_args, get_launch_args};
+use crate::services::utils;
+use crate::services::utils::{extend_once, patch_java_permission_linux, vec_to_string};
+use crate::{services, AppState, GLOBAL_CACHE};
+use serde_json::Value;
 use std::ffi::OsStr;
 use std::io::{BufRead, BufReader};
 use std::path::{PathBuf, MAIN_SEPARATOR_STR};
 use std::process::{Command, Stdio};
 use std::str::FromStr;
-use serde_json::Value;
+use std::sync::Mutex;
 use tauri::{command, AppHandle, State};
 use uuid::Uuid;
-use crate::{services, AppState, GLOBAL_CACHE};
-use crate::models::error::{AppError, Void};
-use crate::models::error::AppError::ProfileNotFound;
-use crate::models::logger::{error, info};
-use crate::models::platform::get_current_os;
-use crate::models::profiles::get_profile;
-use crate::services::directory_manager::{get_assets_directory, get_minecraft_directory, get_natives_folder};
-use crate::services::game_downloader::download_version;
-use crate::services::game_launcher::{get_jvm_args, get_launch_args};
-use crate::services::utils;
-use crate::services::utils::{extend_once, patch_java_permission_linux, vec_to_string};
 
 #[command]
-pub async fn play(app_handle: AppHandle, state: State<'_, AppState>, selected_version: String, repair_mode: bool, profile: &str) -> Void {
+pub async fn play(
+    app_handle: AppHandle,
+    state: State<'_, AppState>,
+    selected_version: String,
+    repair_mode: bool,
+    profile: &str,
+) -> Void {
     log::info!("Launching minecraft {selected_version} ");
 
     let global_cache = &*GLOBAL_CACHE.lock().await;
@@ -30,12 +39,16 @@ pub async fn play(app_handle: AppHandle, state: State<'_, AppState>, selected_ve
 
     let config = state.config.read().await;
     let launch_options = &config.launch_options;
-    let profile = get_profile(&uid).ok_or_else(|| ProfileNotFound(format!("Selected profile {uid} was not found.")))?;
+    let profile = get_profile(&uid)
+        .ok_or_else(|| ProfileNotFound(format!("Selected profile {uid} was not found.")))?;
     let username = profile.username;
     let xms = launch_options.ram_usage_min.to_string() + "M";
     let xmx = launch_options.ram_usage_max.to_string() + "M";
 
-    let mut versions = global_cache.versions.iter().filter(|x| x.id == selected_version);
+    let mut versions = global_cache
+        .versions
+        .iter()
+        .filter(|x| x.id == selected_version);
     let version = versions.next().ok_or(AppError::VersionNotFound)?;
     let version_id = &version.id;
     let version_id_err_clone = version_id.clone();
@@ -47,17 +60,33 @@ pub async fn play(app_handle: AppHandle, state: State<'_, AppState>, selected_ve
     let inherited_json = inherited_version.load_json();
     let inherited_id = &inherited_version.id;
 
-    log::info!("{}", inherited_json);
-
-    // Throw an error if crucial manifest data is missing instead of falling back
     let java_component = inherited_json
         .pointer("/javaVersion/component")
         .and_then(|v| v.as_str())
-        .ok_or_else(|| AppError::ManifestParseFailed("Missing '/javaVersion/component' in manifest. The JSON might be corrupted.".to_string()))?;
+        .ok_or_else(|| {
+            AppError::ManifestParseFailed(
+                "Missing '/javaVersion/component' in manifest. The JSON might be corrupted."
+                    .to_string(),
+            )
+        })?;
 
     if repair_mode {
-        download_version(&version, &"".to_string(), &app_handle, &state.log_tx, &config).await?;
-        download_version(&inherited_version, &"".to_string(), &app_handle, &state.log_tx, &config).await?;
+        download_version(
+            &version,
+            &"".to_string(),
+            &app_handle,
+            &state.log_tx,
+            &config,
+        )
+        .await?;
+        download_version(
+            &inherited_version,
+            &"".to_string(),
+            &app_handle,
+            &state.log_tx,
+            &config,
+        )
+        .await?;
     }
 
     let java = services::jdk_manager::get_java(java_component.to_string())?;
@@ -75,13 +104,21 @@ pub async fn play(app_handle: AppHandle, state: State<'_, AppState>, selected_ve
     let asset_index = inherited_json
         .get("assets")
         .and_then(|v| v.as_str())
-        .ok_or_else(|| AppError::ManifestParseFailed("Missing 'assets' index in manifest. The JSON might be corrupted.".to_string()))?
+        .ok_or_else(|| {
+            AppError::ManifestParseFailed(
+                "Missing 'assets' index in manifest. The JSON might be corrupted.".to_string(),
+            )
+        })?
         .to_string();
 
     let main_class = json
         .get("mainClass")
         .and_then(|v| v.as_str())
-        .ok_or_else(|| AppError::ManifestParseFailed("Missing 'mainClass' in manifest. The JSON might be corrupted.".to_string()))?;
+        .ok_or_else(|| {
+            AppError::ManifestParseFailed(
+                "Missing 'mainClass' in manifest. The JSON might be corrupted.".to_string(),
+            )
+        })?;
 
     let class_path = version_directory
         .join(format!("{inherited_id}.jar"))
@@ -92,10 +129,11 @@ pub async fn play(app_handle: AppHandle, state: State<'_, AppState>, selected_ve
         .to_string_lossy()
         .into_owned();
 
-    let typ = json
-        .get("type")
-        .and_then(|v| v.as_str())
-        .ok_or_else(|| AppError::ManifestParseFailed("Missing 'type' in manifest. The JSON might be corrupted.".to_string()))?;
+    let typ = json.get("type").and_then(|v| v.as_str()).ok_or_else(|| {
+        AppError::ManifestParseFailed(
+            "Missing 'type' in manifest. The JSON might be corrupted.".to_string(),
+        )
+    })?;
 
     let run_args_iter = get_launch_args(&json)?;
     let mut jvm_args = get_jvm_args(&json);
@@ -123,13 +161,16 @@ pub async fn play(app_handle: AppHandle, state: State<'_, AppState>, selected_ve
         })
         .collect::<Vec<String>>();
 
-    // Logging is genuinely optional, so keeping this as a safe fallback
-    if let Some(argument) = json.pointer("/logging/client/argument").and_then(|v| v.as_str()) {
-        if let Some(file_id) = json.pointer("/logging/client/file/id").and_then(|v| v.as_str()) {
+    if let Some(argument) = json
+        .pointer("/logging/client/argument")
+        .and_then(|v| v.as_str())
+    {
+        if let Some(file_id) = json
+            .pointer("/logging/client/file/id")
+            .and_then(|v| v.as_str())
+        {
             let logger_path = version_directory.join(file_id);
-            run_args.push(
-                argument.replace("{path}", &logger_path.to_string_lossy())
-            );
+            run_args.push(argument.replace("{path}", &logger_path.to_string_lossy()));
         }
     }
 
@@ -144,10 +185,11 @@ pub async fn play(app_handle: AppHandle, state: State<'_, AppState>, selected_ve
         libraries_str = libraries_str.replace("\\", MAIN_SEPARATOR_STR);
     }
 
-    patch_java_permission_linux(&java);
+    patch_java_permission_linux(&java)?;
 
     let mut child_cmd = Command::new(java.get_bin_file());
-    child_cmd.current_dir(&game_directory)
+    child_cmd
+        .current_dir(&game_directory)
         .arg(format!("-Xms{xms}"))
         .arg(format!("-Xmx{xmx}"));
 
@@ -165,14 +207,14 @@ pub async fn play(app_handle: AppHandle, state: State<'_, AppState>, selected_ve
             child_cmd.arg(
                 arg.replace(
                     "${natives_directory}",
-                    &get_natives_folder(&version_id.to_string()).to_string_lossy()
+                    &get_natives_folder(&version_id.to_string()).to_string_lossy(),
                 )
-                    .replace("${launcher_name}", &state.launcher_details.name)
-                    .replace("${launcher_version}", &state.launcher_details.version)
-                    .replace(
-                        "${classpath}",
-                        &format!("{}{}{}", class_path, separator, libraries_str),
-                    ),
+                .replace("${launcher_name}", &state.launcher_details.name)
+                .replace("${launcher_version}", &state.launcher_details.version)
+                .replace(
+                    "${classpath}",
+                    &format!("{}{}{}", class_path, separator, libraries_str),
+                ),
             );
         }
     } else {
@@ -210,7 +252,8 @@ pub async fn play(app_handle: AppHandle, state: State<'_, AppState>, selected_ve
             format!(
                 "{}={}",
                 k.to_string_lossy(),
-                v.map(|val| val.to_string_lossy().into_owned()).unwrap_or_default()
+                v.map(|val| val.to_string_lossy().into_owned())
+                    .unwrap_or_default()
             )
         })
         .collect::<Vec<String>>()
@@ -248,6 +291,11 @@ pub async fn play(app_handle: AppHandle, state: State<'_, AppState>, selected_ve
             let _ = tx_out.send(info(line, version_id_out_clone.clone()));
         }
     });
-
+    let proc_manager = &state.process_manager;
+    let mut processes = proc_manager
+        .active_processes
+        .lock()
+        .map_err(|e| AppError::ProcessFetchFailed(e.to_string()))?;
+    processes.insert(version_id.clone(), Mutex::from(child)); // TODO: version_id is going to be changed to versions name instead.
     Ok(())
 }

@@ -5,3 +5,4 @@ pub mod logger;
 pub mod settings;
 pub mod mods;
 pub mod game_launcher;
+pub mod process_manager;

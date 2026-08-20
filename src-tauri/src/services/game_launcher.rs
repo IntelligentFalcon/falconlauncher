@@ -1,24 +1,8 @@
 use crate::models::error::AppError;
-use crate::models::logger::{error, info};
-use crate::models::platform::get_current_os;
-use crate::models::profiles::get_profile;
-use crate::services::directory_manager::*;
-use crate::services::jdk_manager::{download_java, get_java};
 use crate::services::utils;
-use crate::services::utils::{extend_once, patch_java_permission_linux, vec_to_string};
 pub use crate::AppState;
-use crate::Global;
-use log::info as log_info;
 use serde_json::Value;
-use std::ffi::OsStr;
-use std::io::{BufRead, BufReader};
-use std::path::{PathBuf, MAIN_SEPARATOR_STR};
-use std::process::{Command, Stdio};
-use std::str::FromStr;
-use tauri::{AppHandle};
-use uuid::Uuid;
-use crate::models::error::AppError::ProfileNotFound;
-use crate::services::game_downloader::download_version;
+use std::process::Command;
 
 pub(crate) fn apply_dedicated_gpu_env(cmd: &mut Command) {
     cmd.env("DRI_PRIME", "1");
