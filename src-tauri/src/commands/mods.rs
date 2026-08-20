@@ -1,4 +1,4 @@
-use crate::models::error::AppError;
+use crate::models::error::{AppError, Void};
 use crate::models::mods::ModInfo;
 use crate::services::directory_manager::get_mods_folder;
 use crate::services::mod_manager;
@@ -10,8 +10,10 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 use tauri::{command, AppHandle};
 use tauri_plugin_dialog::DialogExt;
+use tauri_plugin_opener::OpenerExt;
 use tokio::fs::copy;
 use zip::ZipArchive;
+use crate::models::error::AppError::InvalidPath;
 
 #[command]
 pub async fn toggle_mod(mod_info: ModInfo, toggle: bool) -> Result<(), AppError> {
@@ -65,4 +67,12 @@ pub async fn import_mod_from_local(app: AppHandle) -> Result<(), AppError> {
 pub async fn delete_mod(mod_info: ModInfo) -> Result<(), AppError> {
     let path = PathBuf::from(&mod_info.path);
     fs::remove_file(&path).map_err(|x| AppError::FileDeleteFailed(x.to_string()))
+}
+
+#[command]
+pub async fn open_mods_folder(app: AppHandle,version: String) -> Void{
+    let mods_dir = get_mods_folder();
+    let mods_dir_str = mods_dir.to_str().ok_or(InvalidPath(format!("{version}'s mod directory")))?;
+    app.opener().open_path(mods_dir_str, None::<&str>)
+        .map_err(|e| AppError::OpenPathFailed(format!("failed to open the {version}'s mod directory: {e}")))
 }

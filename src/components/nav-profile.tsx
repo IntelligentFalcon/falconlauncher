@@ -103,7 +103,8 @@ export function NavProfile() {
                         <DropdownMenuTrigger
                             render={
                                 <SidebarMenuButton
-                                    className="data-open:bg-sidebar-accent data-open:text-sidebar-accent-foreground group-data-[state=collapsed]:rounded-full"
+                                    // Added select-none to prevent highlighting the trigger text
+                                    className="data-open:bg-sidebar-accent data-open:text-sidebar-accent-foreground group-data-[state=collapsed]:rounded-full select-none"
                                     size="lg"
                                     tooltip="Switch Profile"
                                 />
@@ -111,25 +112,29 @@ export function NavProfile() {
                         >
                             <div
                                 className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+                                {/* Added pointer-events-none */}
                                 <HugeiconsIcon
+                                    className="pointer-events-none shrink-0"
                                     icon={profile?.online ? MicrosoftIcon : UserIcon}
                                 />
                             </div>
                             <div className="grid flex-1 text-start text-sm leading-tight">
-                <span className="truncate font-medium">
-                  {profile?.username}
-                </span>
+                                <span className="truncate font-medium">
+                                  {profile?.username}
+                                </span>
                                 <span className="truncate text-xs">{profile?.uuid}</span>
                             </div>
+                            {/* Added pointer-events-none */}
                             <HugeiconsIcon
-                                className="ms-auto"
+                                className="ms-auto pointer-events-none shrink-0"
                                 icon={UnfoldMoreIcon}
                                 strokeWidth={2}
                             />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent
                             align="start"
-                            className="min-w-56 rounded-lg"
+                            // Added select-none to lock down text selection inside the dropdown
+                            className="min-w-56 rounded-lg select-none"
                             side={isMobile ? "bottom" : "right"}
                             sideOffset={4}
                         >
@@ -145,7 +150,9 @@ export function NavProfile() {
                                     >
                                         <div className="flex items-center gap-2">
                                             <div className="flex size-6 items-center justify-center rounded-md border">
+                                                {/* Added pointer-events-none */}
                                                 <HugeiconsIcon
+                                                    className="pointer-events-none shrink-0"
                                                     icon={p?.online ? MicrosoftIcon : UserIcon}
                                                 />
                                             </div>
@@ -158,7 +165,8 @@ export function NavProfile() {
                                             title="Remove profile"
                                             type="button"
                                         >
-                                            <HugeiconsIcon className="size-4" icon={Delete01Icon}/>
+                                            {/* Added pointer-events-none */}
+                                            <HugeiconsIcon className="size-4 pointer-events-none shrink-0" icon={Delete01Icon}/>
                                         </button>
                                     </DropdownMenuItem>
                                 ))}
@@ -171,8 +179,9 @@ export function NavProfile() {
                                 >
                                     <div
                                         className="flex size-6 items-center justify-center rounded-md border bg-transparent">
+                                        {/* Added pointer-events-none */}
                                         <HugeiconsIcon
-                                            className="size-4"
+                                            className="size-4 pointer-events-none shrink-0"
                                             icon={PlusSignIcon}
                                             strokeWidth={2}
                                         />

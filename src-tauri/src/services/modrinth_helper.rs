@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
-use std::fmt::format;
 use log::info;
-// TODO: Implementation of Modrinth mod manager
+use crate::models::error::AppError;
 
+// TODO: Implementation of Modrinth mod manager
 
 pub async fn search_for_project(
     name: String,
@@ -10,19 +10,23 @@ pub async fn search_for_project(
     index: String,
     offset: u64,
     limit: u64,
-) -> ModrinthSearchResults {
+) -> Result<ModrinthSearchResults, AppError> {
     let api = format!("https://api.modrinth.com/v2/search?name={name}&facets={facets}&offset={offset}&limit={limit}&index={index}");
     info!("{}", api);
+
     let results = reqwest::get(&api)
         .await
-        .unwrap()
+        .map_err(|e| AppError::NetworkRequestFailed(format!("Modrinth API request failed: {}", e)))?
         .json::<ModrinthSearchResults>()
         .await
-        .unwrap();
-    results
+        .map_err(|e| AppError::JsonParseFailed(format!("Failed to parse Modrinth search results: {}", e)))?;
+
+    Ok(results)
 }
+
 pub async fn get_project(project_id: String) {
-    let api = format!("https://api.modrinth.com/v2/project/{project_id}");
+    let _api = format!("https://api.modrinth.com/v2/project/{project_id}");
+    // TODO: implement project fetching logic
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -32,6 +36,7 @@ pub struct ModrinthSearchResults {
     pub limit: u64,
     pub total_hits: u64,
 }
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ModrinthSearchResult {
     pub project_id: String,
@@ -51,6 +56,7 @@ pub struct ModrinthSearchResult {
 pub struct SearchFacet {
     data: String,
 }
+
 impl SearchFacet {
     pub fn new() -> SearchFacet {
         SearchFacet {
@@ -69,19 +75,21 @@ impl SearchFacet {
             .push_str(format!("[\"categories:{}\"]", category).as_str());
         self
     }
+
     pub fn project_type(mut self, project_type: &str) -> SearchFacet {
         self.data
             .push_str(format!("[\"project_types:{}\"]", project_type).as_str());
         self
     }
+
     pub fn get_str(&self) -> String {
         let mut s = self.data.clone();
-        if s.len() == 0 {
+        if s.is_empty() {
             return "".to_string();
         }
-        s.insert(0, '[');
 
-        s.insert(&s.len() - 1, ']');
+        s.insert(0, '[');
+        s.push(']');
 
         s.replace("][", "],[")
     }

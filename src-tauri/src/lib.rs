@@ -12,7 +12,7 @@ use models::versions::MinecraftVersion;
 use services::directory_manager::{
     create_necessary_dirs, get_falcon_launcher_directory,
 };
-use services::version_manager::{reload_installed_versions};
+use services::version_manager::{load_installed_versions};
 use std::collections::{HashMap, VecDeque};
 use std::env;
 use std::string::ToString;
@@ -53,7 +53,7 @@ pub static GLOBAL_CACHE: LazyLock<sync::Mutex<Global>> = LazyLock::new(|| {
     })
 });
 
-pub const DEV_MODE: bool = true;
+pub const DEV_MODE: bool = false;
 pub const LAUNCHER_NAME: &str = "FalconLauncher";
 pub const LAUNCHER_VERSION: &str = "BETA-0.1";
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -113,7 +113,7 @@ pub fn run() {
                 log_history: shared_history,
             });
             block_on(async {
-                reload_installed_versions().await;
+                load_installed_versions().await;
             });
             info!("Reloaded installed versions.");
 
@@ -137,7 +137,6 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::game_launcher::play,
-            commands::downloader::get_versions,
             commands::settings::get_maximum_ram_usage,
             commands::settings::get_minimum_ram_usage,
             commands::settings::set_maximum_ram_usage,
@@ -153,6 +152,9 @@ pub fn run() {
             commands::mods::delete_mod,
             commands::mods::get_mods,
             commands::mods::import_mod_from_local,
+            commands::mods::open_mods_folder,
+            commands::downloader::get_versions,
+            commands::downloader::reload_version_manifest,
             commands::downloader::download_version,
             commands::downloader::get_installed_versions,
             commands::downloader::get_forge_versions,

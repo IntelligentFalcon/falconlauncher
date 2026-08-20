@@ -18,9 +18,13 @@ pub fn load() -> Config {
     
     config
 }
-fn initialize_configuration_file() -> Result<(), AppError>{
-    if !get_config_directory().exists() {
-        create_dir_all(get_config_directory().parent().unwrap()).unwrap();
+fn initialize_configuration_file() -> Result<(), AppError> {
+    let config_dir = get_config_directory();
+    if !config_dir.exists() {
+        if let Some(parent) = config_dir.parent() {
+            std::fs::create_dir_all(parent)
+                .map_err(|e| AppError::DirCreateFailed(format!("Failed to create config directory: {}", e)))?;
+        }
         return Config::default().write_to_file();
     }
     Ok(())

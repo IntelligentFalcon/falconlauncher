@@ -102,7 +102,7 @@ pub struct MinecraftManifestVersion {
     pub id: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct JavaVersion {
     pub component: String,
     #[serde(rename = "majorVersion")]
@@ -138,7 +138,7 @@ pub struct LibraryDownloads {
 pub struct LibraryArtifact {
     pub path: Option<String>,
     pub url: String,
-    pub size: u64,
+    pub size: Option<u64>,
     pub sha1: Option<String>,
 }
 

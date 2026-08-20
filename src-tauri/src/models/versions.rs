@@ -5,9 +5,8 @@ use crate::services::directory_manager::{get_libraries_directory, get_versions_d
 use crate::services::utils::{extend_once, parse_library_name_to_path};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use serde_json::Value::Null;
 use std::fs;
-use std::path::{PathBuf, MAIN_SEPARATOR, MAIN_SEPARATOR_STR};
+use std::path::{PathBuf, MAIN_SEPARATOR_STR};
 use log::debug;
 use crate::models::error::AppError;
 use crate::models::logger::info;
@@ -20,7 +19,6 @@ impl PartialEq for VersionType {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "snake_case")]
-// #[derive(PartialEq)]
 pub enum VersionType {
     Release,
     Snapshot,
@@ -39,125 +37,159 @@ impl MinecraftVersion {
             id,
             version_path: versions_dir
                 .join(version_folder)
-                .to_str()
-                .unwrap()
-                .to_string(),
+                .to_string_lossy()
+                .into_owned(),
         }
     }
+
     pub fn get_json(&self) -> String {
-        self.version_path.clone() + "/" + self.id.clone().as_str() + ".json"
+        format!("{}/{}.json", self.version_path, self.id)
     }
+
     pub fn from_id(id: String) -> Self {
         MinecraftVersion::new(id.clone(), id)
     }
-    pub fn from_folder(directory: PathBuf) -> Result<MinecraftVersion, AppError> {
 
-        let file: PathBuf = directory
-            .read_dir()
-            .unwrap()
-            .map(|x| x.unwrap().path())
-            .find(|x| {
-                x.is_file() && (x.extension().unwrap() == "json") &&
-                    serde_json::from_str::<MinecraftManifestVersion>(fs::read_to_string(x).unwrap().as_str()).is_ok()
-            })
-            .ok_or(AppError::DirNotFound("Directory not found".to_string()))?;
-        let json: MinecraftManifestVersion = serde_json::from_str(fs::read_to_string(file)
-            .map_err(|x| AppError::UnknownError("some unknown error to be fixed later".to_string()))?.as_str())
-            .map_err(|x| AppError::JsonParseFailed("Parsing json failed".to_string()))?;
-        let name = json.id;
+    pub fn from_folder(directory: PathBuf) -> Result<MinecraftVersion, AppError> {
+        let mut target_file = None;
+
+        if let Ok(entries) = directory.read_dir() {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_file() {
+                    if let Some(ext) = path.extension() {
+                        if ext == "json" {
+                            if let Ok(content) = fs::read_to_string(&path) {
+                                if serde_json::from_str::<MinecraftManifestVersion>(&content).is_ok() {
+                                    target_file = Some(path);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        let file = target_file.ok_or_else(|| AppError::DirNotFound("Directory not found".to_string()))?;
+
+        let content = fs::read_to_string(&file)
+            .map_err(|_| AppError::UnknownError("File read error".to_string()))?;
+
+        let json: MinecraftManifestVersion = serde_json::from_str(&content)
+            .map_err(|_| AppError::JsonParseFailed("Parsing json failed".to_string()))?;
+
         Ok(Self {
-            id: name,
-            version_path: directory.as_path().to_str().unwrap().to_string(),
+            id: json.id,
+            version_path: directory.to_string_lossy().into_owned(),
         })
     }
+
     pub fn is_forge(&self) -> bool {
         self.id.contains("forge")
     }
+
     pub fn load_json(&self) -> Value {
         if !self.is_installed() {
-            Value::from("")
+            Value::String("".to_string())
         } else {
-            let content = fs::read_to_string(PathBuf::from(self.get_json())).unwrap();
-            serde_json::from_str(&content).unwrap()
+            fs::read_to_string(PathBuf::from(self.get_json()))
+                .ok()
+                .and_then(|content| serde_json::from_str(&content).ok())
+                .unwrap_or(Value::Null)
         }
     }
+
     pub fn get_inherited(&self) -> MinecraftVersion {
         let json = self.load_json();
-        if json.get("inheritsFrom").is_none() {
-            let id = json["id"].as_str().unwrap().to_string();
-            if id.to_lowercase().contains("forge") {
-                let id = id.split("-").collect::<Vec<&str>>()[0].to_string();
-                if id.as_str() != "forge" {
-                    return MinecraftVersion::from_id(id);
+        if json.get("inheritsFrom").is_none() || json["inheritsFrom"].is_null() {
+            if let Some(id) = json.get("id").and_then(|i| i.as_str()) {
+                if id.to_lowercase().contains("forge") {
+                    if let Some(first_part) = id.split('-').next() {
+                        if first_part != "forge" {
+                            return MinecraftVersion::from_id(first_part.to_string());
+                        }
+                    }
                 }
             }
             self.clone()
         } else {
-            let inherited = json["inheritsFrom"].as_str().unwrap().to_string();
-            MinecraftVersion::from_id(inherited)
+            if let Some(inherited) = json["inheritsFrom"].as_str() {
+                MinecraftVersion::from_id(inherited.to_string())
+            } else {
+                self.clone()
+            }
         }
     }
+
     pub fn is_fabric(&self) -> bool {
         self.id.contains("fabric")
     }
+
     fn get_library_paths(&self) -> Vec<String> {
         let value = &self.load_json()["libraries"];
-
         let libraries_path = get_libraries_directory();
         let mut libraries = vec![];
-        for library in value.as_array().unwrap() {
+
+        let Some(library_array) = value.as_array() else {
+            return libraries;
+        };
+
+        for library in library_array {
             if library.get("downloads").is_none() || library["downloads"].is_null() {
-                let library_name = library["name"].as_str().unwrap();
-                let Ok(mut library_path_str) = parse_library_name_to_path(library_name.to_string()) else {
-                    continue; // TODO: Should make this function return AppError and Vec both and return the possible error instead of ignoring it.
+                if let Some(library_name) = library.get("name").and_then(|n| n.as_str()) {
+                    if let Ok(mut library_path_str) = parse_library_name_to_path(library_name.to_string()) {
+                        library_path_str = library_path_str.replace("/", MAIN_SEPARATOR_STR);
+                        let library_path = PathBuf::from(&library_path_str);
 
-                };
-                library_path_str = library_path_str.replace("/", MAIN_SEPARATOR_STR);
-                let library_path = PathBuf::from(&library_path_str);
-                if !library_path.exists() {
-
-                }
-                if library_path.exists() && !libraries.contains(&library_path_str) {
-                    libraries.push(library_path_str);
+                        if library_path.exists() && !libraries.contains(&library_path_str) {
+                            libraries.push(library_path_str);
+                        }
+                    }
                 }
                 continue;
-            } else if library["downloads"].get("artifact").is_none() {
-                let classifiers = &library["downloads"].get("classifiers");
-                let os = get_current_os();
-                match classifiers {
-                    None => {}
-                    Some(val) => {
-                        let natives = val.get(format!("natives-{os}"));
-                        match natives {
-                            None => {}
-                            Some(natives) => {
-                                let p = if natives.get("path").is_none() {
-                                    let url = natives["url"].as_str().unwrap();
-                                    let url_https_less =
-                                        url.replace("https://", "").replace("http://", "");
-                                    let url_args = url_https_less.split("/").collect::<Vec<&str>>();
-                                    let path = url_https_less.replace(url_args[0], "");
-                                    path
+            } else if library["downloads"].get("artifact").is_none() || library["downloads"]["artifact"].is_null() {
+                if let Some(classifiers) = library["downloads"].get("classifiers") {
+                    let os = get_current_os();
+                    if let Some(natives) = classifiers.get(format!("natives-{os}")) {
+                        let p = if natives.get("path").is_none() || natives["path"].is_null() {
+                            if let Some(url) = natives.get("url").and_then(|u| u.as_str()) {
+                                let url_https_less = url.replace("https://", "").replace("http://", "");
+                                let mut url_args = url_https_less.split('/');
+                                if let Some(first_arg) = url_args.next() {
+                                    url_https_less.replacen(first_arg, "", 1)
                                 } else {
-                                    natives.get("path").unwrap().as_str().unwrap().to_string()
-                                };
-                                let path = libraries_path.join(p).to_str().unwrap().to_string();
-                                libraries
-                                    .push(path.replace("/", MAIN_SEPARATOR.to_string().as_str()));
+                                    "".to_string()
+                                }
+                            } else {
+                                "".to_string()
+                            }
+                        } else {
+                            natives["path"].as_str().unwrap_or("").to_string()
+                        };
+
+                        if !p.is_empty() {
+                            let path = libraries_path.join(p).to_string_lossy().into_owned();
+                            let formatted_path = path.replace("/", MAIN_SEPARATOR_STR);
+                            if !libraries.contains(&formatted_path) {
+                                libraries.push(formatted_path);
                             }
                         }
                     }
                 }
                 continue;
             }
+
+            // Assuming library_from_value_legacy accepts a JSON Value directly
             let library_info = downloader::library_from_value_legacy(library);
             let os = get_current_os();
 
             let path = libraries_path
-                .join(&library_info.path.as_str().replace("\\", MAIN_SEPARATOR_STR))
-                .to_str()
-                .unwrap()
+                .join(&library_info.path.replace("\\", MAIN_SEPARATOR_STR))
+                .to_string_lossy()
+                .into_owned()
                 .replace("\\", MAIN_SEPARATOR_STR);
+
             if !libraries.contains(&path) {
                 libraries.push(path);
             }
@@ -165,42 +197,35 @@ impl MinecraftVersion {
 
         libraries
     }
+
     pub fn get_libraries(&self) -> Vec<String> {
         let mut libraries = self.get_library_paths();
         let libraries_2 = self.get_inherited().get_library_paths();
+
         libraries = libraries
             .into_iter()
             .filter(|x| {
                 let path = PathBuf::from(x);
 
-                let parent = path.parent().unwrap();
-                let artifact = parent
+                let artifact = path
                     .parent()
-                    .unwrap()
-                    .file_name()
-                    .unwrap()
-                    .to_str()
-                    .unwrap();
+                    .and_then(|p| p.parent())
+                    .and_then(|p| p.file_name())
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("");
 
-                !libraries_2
-                    .iter()
-                    .map(|x| {
-                        PathBuf::from(x)
-                            .parent()
-                            .unwrap()
-                            .parent()
-                            .unwrap()
-                            .file_name()
-                            .unwrap()
-                            .to_str()
-                            .unwrap()
-                            .to_lowercase()
-                            .to_string()
-                    })
-                    .collect::<Vec<String>>()
-                    .contains(&artifact.to_string())
+                !libraries_2.iter().any(|lib2| {
+                    PathBuf::from(lib2)
+                        .parent()
+                        .and_then(|p| p.parent())
+                        .and_then(|p| p.file_name())
+                        .and_then(|n| n.to_str())
+                        .map(|n| n.to_lowercase())
+                        .unwrap_or_default() == artifact.to_lowercase()
+                })
             })
             .collect::<Vec<String>>();
+
         libraries = extend_once(libraries, libraries_2);
         libraries
     }

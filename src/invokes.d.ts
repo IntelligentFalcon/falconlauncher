@@ -37,6 +37,12 @@ export type Invokes = WithDefaultError<{
     args: undefined;
     returns: ModInfo[];
   };
+  open_mods_folder:{
+    args: {
+      version: string;
+    },
+    returns: void;
+  };
   debug: {
     args: {
       text: string;
@@ -111,6 +117,10 @@ export type Invokes = WithDefaultError<{
       versionLoader: VersionLoader;
       name: string;
     };
+    returns: void;
+  };
+  reload_version_manifest: {
+    args: undefined;
     returns: void;
   };
   toggle_mod: {

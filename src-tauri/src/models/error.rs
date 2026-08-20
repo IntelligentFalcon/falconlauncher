@@ -31,8 +31,8 @@ pub enum AppError {
     #[error("Version Not Found")]
     VersionNotFound,
 
-    #[error("Launch Arguments Missing")]
-    LaunchArgsNotFound,
+    #[error("Launch Arguments Missing: {0}")]
+    LaunchArgsNotFound(String),
 
     #[error("Buffer Error: {0}")]
     BufferReadFailed(String),
@@ -94,14 +94,21 @@ pub enum AppError {
     #[error("Directory Not Found: {0}")]
     DirNotFound(String),
 
-    #[error("Failed to load a mod")]
-    ModLoadingFailed,
+    #[error("Failed to load a mod: {0}")]
+    ModLoadingFailed(String),
 
+    /// Required argument is the path name or the exact path directory.
     #[error("Invalid Path: {0}")]
     InvalidPath(String),
 
     #[error("Unknown Error: {0}")]
     UnknownError(String),
+
+    #[error("Failed to open path: {0}")]
+    OpenPathFailed(String),
+
+    #[error("Internal error has occured: {0}")]
+    Internal(String),
 }
 
 // Since frontend expects `{ "code": "...", "data": "..." }`:
@@ -116,7 +123,7 @@ impl Serialize for AppError {
         let (code, data) = match self {
             AppError::ManifestNotFound => ("ERROR_MANIFEST_NOT_FOUND", None),
             AppError::VersionNotFound => ("ERROR_VERSION_NOT_FOUND", None),
-            AppError::LaunchArgsNotFound => ("ERROR_LAUNCH_ARGS_NOT_FOUND", None),
+            AppError::LaunchArgsNotFound(e) => ("ERROR_LAUNCH_ARGS_NOT_FOUND", Some(e.to_string())),
             AppError::FileNotFound(_) => ("ERROR_FILE_NOT_FOUND", None),
             AppError::FileCreateFailed(e) => ("ERROR_FILE_CREATE_FAILED", Some(e.to_string())),
             AppError::FileRenameFailed(e) => ("ERROR_FILE_RENAME_FAILED", Some(e.to_string())),
@@ -145,8 +152,10 @@ impl Serialize for AppError {
             AppError::DirCreateFailed(e) => ("ERROR_DIR_CREATE_FAILED", Some(e.to_string())),
             AppError::MirrorConnectionFailed(e) => ("ERROR_MIRROR_CONNECTION_FAILED", Some(e.to_string())),
             AppError::DirNotFound(e) => ("ERROR_DIR_NOT_FOUND", Some(e.to_string())),
-            AppError::ModLoadingFailed => ("ERROR_MOD_LOAD_FAILED", None),
+            AppError::ModLoadingFailed(e) => ("ERROR_MOD_LOAD_FAILED", Some(e.to_string())),
             AppError::InvalidPath(path) => ("ERROR_INVALID_PATH", Some(format!("The {path} is invalid."))),
+            AppError::OpenPathFailed(e) => ("ERROR_OPEN_PATH", Some(e.to_string())),
+            AppError::Internal(e) => ("ERROR_INTERNAL", Some(e.to_string())),
             AppError::UnknownError(e) => ("ERROR_UNKNOWN", Some(e.to_string())),
         };
 

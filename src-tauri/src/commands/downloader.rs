@@ -1,5 +1,5 @@
-use crate::models::downloader::{VersionInfo, VersionLoader};
-use crate::models::error::AppError;
+use crate::models::downloader::{Manifest, VersionInfo, VersionLoader};
+use crate::models::error::{AppError, Void};
 use crate::models::versions::VersionBase::{FABRIC, FORGE};
 use crate::models::versions::{MinecraftVersion, VersionBase, VersionCategory, VersionType};
 use crate::services::game_downloader::{
@@ -7,23 +7,24 @@ use crate::services::game_downloader::{
     get_available_forge_versions,
 };
 use crate::services::utils::update_download_status;
-use crate::services::version_manager::load_version_manifest;
+use crate::services::version_manager::{download_version_manifest, load_version_manifest, load_version_manifest_local};
 use crate::services::{game_downloader, version_manager};
 use crate::{AppState, GLOBAL_CACHE};
 use log::info;
 use tauri::{command, AppHandle, State};
 use tauri_plugin_dialog::DialogExt;
+use crate::models::mirror::Mirror;
 
 #[command]
 pub async fn get_vanilla_versions(
     app_handle: AppHandle,
     state: State<'_, AppState>,
 ) -> Result<Vec<VersionCategory>, AppError> {
-    let manifest = version_manager::load_version_manifest_local().map_err(|x| {
-        AppError::ManifestParseFailed("Failed to parse version manifest".to_string())
-    })?;
     let cfg = state.config.read().await;
+    let mirror = &cfg.download_settings.mirror;
     let mut result: Vec<VersionCategory> = Vec::new();
+
+    let manifest = load_version_manifest(mirror).await?;
     let versions: Vec<&VersionInfo> = manifest
         .versions
         .iter()
@@ -99,13 +100,11 @@ pub async fn get_forge_versions(
     app_handle: AppHandle,
     state: State<'_, AppState>,
 ) -> Result<Vec<VersionCategory>, AppError> {
-    let manifest = version_manager::load_version_manifest_local().map_err(|x| {
-        AppError::ManifestParseFailed("Failed to parse version manifest".to_string())
-    })?;
 
     let cfg = state.config.read().await;
     let mirror = &cfg.download_settings.mirror;
 
+    let manifest = load_version_manifest(mirror).await?;
     let mut result: Vec<VersionCategory> = Vec::new();
     let versions: Vec<&VersionInfo> = manifest
         .versions
@@ -126,20 +125,20 @@ pub async fn get_forge_versions(
                     name: category.clone(),
                 };
                 result.push(c);
-                result.last_mut().unwrap()
+                result.last_mut().ok_or(AppError::UnknownError(
+                    "Couldn't get the last item of a vector which is kinda guaranteed to exist!"
+                        .to_string(),
+                ))?
             }
         };
         let forge_versions = get_available_forge_versions(&id, mirror).await?;
 
-        cat.versions.extend(
-            forge_versions
-                .into_iter()
-                .map(|x| VersionLoader {
-                    id: x,
-                    base: FORGE,
-                    date: "FORGE".to_string(),
-                })
-        );
+        cat.versions
+            .extend(forge_versions.into_iter().map(|x| VersionLoader {
+                id: x,
+                base: FORGE,
+                date: "FORGE".to_string(),
+            }));
     }
 
     Ok(result)
@@ -149,12 +148,10 @@ pub async fn get_fabric_versions(
     app_handle: AppHandle,
     state: State<'_, AppState>,
 ) -> Result<Vec<VersionCategory>, AppError> {
-    let manifest = version_manager::load_version_manifest_local().map_err(|x| {
-        AppError::ManifestParseFailed("Failed to parse version manifest".to_string())
-    })?;
 
     let cfg = state.config.read().await;
     let mirror = &cfg.download_settings.mirror;
+    let manifest = load_version_manifest(mirror).await?;
 
     let mut result: Vec<VersionCategory> = Vec::new();
     let versions: Vec<&VersionInfo> = manifest
@@ -177,20 +174,20 @@ pub async fn get_fabric_versions(
                     name: category.clone(),
                 };
                 result.push(c);
-                result.last_mut().unwrap()
+                result.last_mut().ok_or(AppError::UnknownError(
+                    "Couldn't get the last item of a vector which is kinda guaranteed to exist!"
+                        .to_string(),
+                ))?
             }
         };
         let fabric_versions = get_available_fabric_versions(&id).await?;
 
-        cat.versions.extend(
-            fabric_versions
-                .into_iter()
-                .map(|x| VersionLoader {
-                    id: x,
-                    base: FABRIC,
-                    date: "FABRIC".to_string(),
-                })
-        );
+        cat.versions
+            .extend(fabric_versions.into_iter().map(|x| VersionLoader {
+                id: x,
+                base: FABRIC,
+                date: "FABRIC".to_string(),
+            }));
     }
 
     Ok(result)
@@ -281,4 +278,11 @@ pub async fn get_installed_versions() -> Result<Vec<String>, AppError> {
         .filter(|x| x.is_installed())
         .map(|x| x.id.clone())
         .collect())
+}
+#[command]
+/// Downloads the latest version manifest available through the given mirror whether it already exists or not.
+pub async fn reload_version_manifest(app_handle: AppHandle, state: State<'_, AppState>) -> Void{
+    let cfg = state.config.read().await;
+    let mirror = &cfg.download_settings.mirror;
+    download_version_manifest(mirror).await
 }

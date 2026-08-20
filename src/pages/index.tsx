@@ -42,7 +42,8 @@ export default function IndexPage() {
   const version = useConfig((state) => state.version);
 
   return (
-      <div className="h-full">
+      // Added select-none to the root container so no text on the page can be highlighted
+      <div className="h-full select-none">
         {/* Main Content Area */}
         <div className="relative flex h-full flex-1 flex-col overflow-hidden rounded-xl bg-black">
           {/* Animated 3D Panorama */}
@@ -51,7 +52,9 @@ export default function IndexPage() {
               {[0, 1, 2, 3].map((face) => (
                   <img
                       alt=""
-                      className="h-screen object-cover"
+                      // Added pointer-events-none and draggable={false} to completely stop image ghost dragging
+                      className="pointer-events-none h-screen object-cover"
+                      draggable={false}
                       height={1080}
                       key={face}
                       src={getPanoramaUrl(version, face)}
@@ -77,13 +80,12 @@ export default function IndexPage() {
           </div>
 
           {/* Bottom Action Bar */}
-          <div className="relative z-10 flex h-24 items-center justify-between border-[#333] border-t bg-[#232323] px-8 shadow-[0_-10px_30px_rgba(0,0,0,0.5)]">
-            <div className="w-64">
+          <div className="relative z-10 flex min-h-24 flex-wrap items-center justify-between gap-4 border-[#333] border-t bg-[#232323] px-8 py-4 shadow-[0_-10px_30px_rgba(0,0,0,0.5)]">
+            <div className="w-full sm:w-64">
               <VersionSelect />
             </div>
 
-            {/* Increased width from w-64 to w-96 to fit both buttons comfortably */}
-            <div className="w-96">
+            <div className="w-full sm:w-96">
               <PlayButton />
             </div>
           </div>
@@ -105,7 +107,8 @@ function VersionSelect() {
     return (
         <Empty className="h-12 w-full flex-row justify-start gap-2 rounded-xl border border-destructive/20 bg-destructive/5 p-2">
           <HugeiconsIcon
-              className="text-destructive"
+              // Added pointer-events-none shrink-0 to prevent icon dragging
+              className="pointer-events-none shrink-0 text-destructive"
               icon={Alert01Icon}
               size={20}
           />
@@ -124,7 +127,8 @@ function VersionSelect() {
           value={version}
       >
         <ComboboxInput
-            className="h-12 w-full border-[#333] bg-[#1a1a1a] text-white"
+            // Added select-text here to override the parent's select-none, ensuring the user can still highlight/edit their search query!
+            className="h-12 w-full select-text border-[#333] bg-[#1a1a1a] text-white"
             placeholder="Select a Version"
         />
         <ComboboxContent className="border-[#333] bg-[#1a1a1a] text-white">
@@ -163,13 +167,13 @@ function PlayButton() {
   });
 
   return (
-      <div className="flex w-full items-center gap-3">
+      <div className="flex w-full flex-wrap items-center gap-3">
         {/* Repair Mode Toggle */}
         <button
             type="button"
             title="Downloads required files if they're not installed/corrupted. this option is only recommended to use if the selected version crashes."
             onClick={() => setRepairMode((prev) => !prev)}
-            className={`flex h-14 shrink-0 items-center justify-center rounded-xl border px-4 font-bold text-sm transition-colors ${
+            className={`flex h-14 flex-1 sm:flex-none items-center justify-center rounded-xl border px-4 font-bold text-sm transition-colors ${
                 repairMode
                     ? "border-amber-500 bg-amber-500/10 text-amber-500"
                     : "border-[#333] bg-[#1a1a1a] text-gray-400 hover:bg-[#333] hover:text-white"

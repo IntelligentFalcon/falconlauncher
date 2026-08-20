@@ -104,12 +104,20 @@
     "description": "The specified directory could not be found."
   },
   "ERROR_MOD_LOAD_FAILED": {
-    "title": "Mod loading failed",
+    "title": "Mod Loading Failed",
     "description": "Failed to load a mod"
   },
   "ERROR_INVALID_PATH": {
-    "title": "Invalid path detected",
+    "title": "Invalid Path Detected",
     "description": "Failed to get a path due to invalidation"
+  },
+  "ERROR_OPEN_PATH": {
+    "title": "Open Path Failed",
+    "description": "Failed to open the specified directory"
+  },
+  "ERROR_INTERNAL": {
+    "title": "Internal Error",
+    "description": "An internal error has occurred."
   },
   "ERROR_UNKNOWN": {
     "title": "Unknown",
