@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, Copy, Files, Trash2 } from "lucide-react";
+import { useTranslation } from "react-i18next"; // <-- Import added
 import { LoadingSwap } from "@/components/ui/animated/swapper";
 import { useConsoleActions, useConsoleState } from "@/context/console-context";
 
 export function ConsoleViewer() {
+  const { t } = useTranslation(); // <-- Initialize translation hook
   const { filterChannel, filterLevel, filteredLogs, isLoading, searchQuery } =
       useConsoleState();
   const { onClearLogs } = useConsoleActions();
@@ -109,11 +111,11 @@ export function ConsoleViewer() {
             ) : (
                 <div className="flex h-full items-center justify-center p-4 text-center text-muted-foreground italic">
                   <div className="max-w-xs">
-                    No logs match your current criteria.
+                    {t("consoleViewer.noLogsMatch")} {/* <-- Translated */}
                     <br />
                     <span className="mt-1 block break-words text-[10px] opacity-70 sm:text-[11px]">
-                  (Level: "{filterLevel}" | Channel: "{filterChannel}"{" "}
-                      {searchQuery && `| Query: "${searchQuery}"`})
+                  ({t("consoleViewer.filterLevel")}: "{filterLevel}" | {t("consoleViewer.filterChannel")}: "{filterChannel}"{" "}
+                      {searchQuery && `| ${t("consoleViewer.filterQuery")}: "${searchQuery}"`}) {/* <-- Translated labels */}
                 </span>
                   </div>
                 </div>
@@ -142,7 +144,7 @@ export function ConsoleViewer() {
                     ) : (
                         <Copy className="h-3.5 w-3.5 text-muted-foreground" />
                     )}
-                    {copiedType === "selected" ? "Copied!" : "Copy Selected"}
+                    {copiedType === "selected" ? t("consoleViewer.copied") : t("consoleViewer.copySelected")} {/* <-- Translated */}
                   </button>
               )}
 
@@ -155,7 +157,7 @@ export function ConsoleViewer() {
                 ) : (
                     <Files className="h-3.5 w-3.5 text-muted-foreground" />
                 )}
-                {copiedType === "all" ? "Copied All!" : "Copy All Logs"}
+                {copiedType === "all" ? t("consoleViewer.copiedAll") : t("consoleViewer.copyAllLogs")} {/* <-- Translated */}
               </button>
 
               <div className="mx-1 my-0.5 h-px bg-border/50" />
@@ -165,7 +167,7 @@ export function ConsoleViewer() {
                   className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10"
               >
                 <Trash2 className="h-3.5 w-3.5" />
-                Clear Logs
+                {t("consoleViewer.clearLogs")} {/* <-- Translated */}
               </button>
             </div>
         )}

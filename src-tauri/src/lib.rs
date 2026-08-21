@@ -188,6 +188,12 @@ pub fn run() {
             commands::mirrors::import_mirror,
             commands::process_manager::get_processes,
             commands::process_manager::kill_process,
+            commands::modrinth_helper::search_for_modrinth_project,
+            commands::modrinth_helper::get_modrinth_projects,
+            commands::modrinth_helper::list_modrinth_mod_versions,
+            commands::modrinth_helper::get_modrinth_mod_dependencies,
+            commands::modrinth_helper::get_modrinth_mod_version_by_id,
+            commands::modrinth_helper::download_modrinth_mod_version,
             error
         ])
         .run(tauri::generate_context!())

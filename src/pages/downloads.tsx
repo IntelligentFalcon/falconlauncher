@@ -70,7 +70,6 @@ export default function InstallerWizard() {
       <div className="flex h-full min-h-0 w-full items-center justify-center bg-background p-4">
         <div className="relative flex min-h-[450px] w-full max-w-2xl flex-col rounded-2xl border border-border/50 bg-secondary/20 p-6 shadow-xl backdrop-blur-md">
 
-          {/* Only render on Step 1 so it doesn't clash with Step 2's header or Step 3's centered layout */}
           {step === 1 && (
               <button
                   onClick={handleRefresh}

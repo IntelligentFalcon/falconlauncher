@@ -4,7 +4,7 @@ use crate::models::logger::{error, info};
 use crate::models::platform::get_current_os;
 use crate::models::profiles::get_profile;
 use crate::services::directory_manager::{
-    get_assets_directory, get_minecraft_directory, get_natives_folder,
+    get_assets_directory, get_minecraft_directory, get_natives_directory,
 };
 use crate::services::game_downloader::download_version;
 use crate::services::game_launcher::{get_jvm_args, get_launch_args};
@@ -72,6 +72,14 @@ pub async fn play(
 
     if repair_mode {
         download_version(
+        &inherited_version,
+        &"".to_string(),
+        &app_handle,
+        &state.log_tx,
+        &config,
+    )
+        .await?;
+        download_version(
             &version,
             &"".to_string(),
             &app_handle,
@@ -79,14 +87,7 @@ pub async fn play(
             &config,
         )
         .await?;
-        download_version(
-            &inherited_version,
-            &"".to_string(),
-            &app_handle,
-            &state.log_tx,
-            &config,
-        )
-        .await?;
+
     }
 
     let java = services::jdk_manager::get_java(java_component.to_string())?;
@@ -125,7 +126,7 @@ pub async fn play(
         .to_string_lossy()
         .into_owned();
 
-    let natives = get_natives_folder(&inherited_version.id)
+    let natives = get_natives_directory(&inherited_version.id)
         .to_string_lossy()
         .into_owned();
 
@@ -208,7 +209,7 @@ pub async fn play(
             child_cmd.arg(
                 arg.replace(
                     "${natives_directory}",
-                    &get_natives_folder(&version_id.to_string()).to_string_lossy(),
+                    &get_natives_directory(&version_id.to_string()).to_string_lossy(),
                 )
                 .replace("${launcher_name}", &state.launcher_details.name)
                 .replace("${launcher_version}", &state.launcher_details.version)
@@ -264,7 +265,7 @@ pub async fn play(
     ));
 
 
-    if config.launcher_settings.exit_on_launch.boolean() {  // FIXME: closes the process if launcher exists
+    if config.launcher_settings.exit_on_launch.boolean() {
         #[cfg(target_family = "unix")]
         use std::os::unix::process::CommandExt;
         #[cfg(target_os = "windows")]

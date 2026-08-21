@@ -18,12 +18,14 @@ interface ModsState {
     modsList: ModItem[];
     selectedVersion: string;
     versionsError: InvokeError<Invokes["get_versions"]["custom_error"]> | null;
+    isDownloadModalOpen: boolean; // <-- Kept as State
 }
 
 interface ModsActions {
     onDeleteMod: (mod: ModItem) => Promise<void>;
     onImportMod: () => Promise<void>;
     onOpenDownloadModal: () => void;
+    handleCloseDownloadModal: () => void; // <-- Added as Action exactly as you named it
     onOpenFolder: () => void;
     onToggleMod: (mod: ModItem) => Promise<void>;
     setSelectedVersion: (val: string) => void;
@@ -52,6 +54,8 @@ export function ModsProvider({ children }: { children: React.ReactNode }) {
     const [localSelectedVersion, setLocalSelectedVersion] = useState<
         string | null
     >(null);
+
+    const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
 
     const {
         data: installedVersions,
@@ -158,17 +162,21 @@ export function ModsProvider({ children }: { children: React.ReactNode }) {
         }
     }, [importModBackend, refreshMods]);
 
-    // Hooked up the backend mutation here
     const handleOpenFolder = useCallback(async () => {
         try {
-            await openModsFolderBackend({version: selectedVersion});
+            await openModsFolderBackend({ version: selectedVersion });
         } catch (e) {
             console.error("Failed to open mods folder:", e);
         }
-    }, [openModsFolderBackend]);
+    }, [openModsFolderBackend, selectedVersion]);
 
     const handleOpenDownloadModal = useCallback(
-        () => console.log("Open download modal..."),
+        () => setIsDownloadModalOpen(true),
+        []
+    );
+
+    const handleCloseDownloadModal = useCallback(
+        () => setIsDownloadModalOpen(false),
         []
     );
 
@@ -177,6 +185,7 @@ export function ModsProvider({ children }: { children: React.ReactNode }) {
             onDeleteMod: handleDeleteMod,
             onImportMod: handleImportMod,
             onOpenDownloadModal: handleOpenDownloadModal,
+            handleCloseDownloadModal, // <-- Correctly exported as an action here
             onOpenFolder: handleOpenFolder,
             onToggleMod: handleToggleMod,
             setSelectedVersion: setLocalSelectedVersion,
@@ -185,6 +194,7 @@ export function ModsProvider({ children }: { children: React.ReactNode }) {
             handleDeleteMod,
             handleImportMod,
             handleOpenDownloadModal,
+            handleCloseDownloadModal, // <-- Added to dependency array
             handleOpenFolder,
             handleToggleMod,
         ]
@@ -200,6 +210,7 @@ export function ModsProvider({ children }: { children: React.ReactNode }) {
             modsList,
             selectedVersion,
             versionsError,
+            isDownloadModalOpen,
         }),
         [
             installedVersions,
@@ -210,6 +221,7 @@ export function ModsProvider({ children }: { children: React.ReactNode }) {
             modsList,
             selectedVersion,
             versionsError,
+            isDownloadModalOpen,
         ]
     );
 

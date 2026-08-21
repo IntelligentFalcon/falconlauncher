@@ -4,22 +4,22 @@ fn default_true() -> bool {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
+#[serde(rename_all = "camelCase")]
 pub struct McModInfo {
     #[serde(rename = "modid")]
     pub mod_id: String,
     pub name: String,
     pub description: String,
-    #[serde(rename = "logoFile")]
     pub logo_file: Option<String>,
     pub url: String,
-    pub mcversion: String,
+    pub mcversion: Option<String>,
     pub version: String,
+    #[serde(default)]
     pub screenshots: Vec<String>,
+    #[serde(default)]
     pub dependencies: Vec<String>,
-    #[serde(rename = "authorList")]
+    #[serde(alias = "authors")]
     pub author_list: Vec<String>,
-    #[serde(rename = "updateUrl")]
     pub update_url: Option<String>,
     pub credits: Option<String>,
 }
@@ -36,6 +36,7 @@ pub struct FabricModInfo {
     pub contact: Option<FabricModInfoContact>,
     pub version: String,
     #[serde(rename = "authors")]
+    #[serde(default)]
     pub author_list: Vec<String>,
     #[serde(rename = "updateUrl")]
     pub update_url: Option<String>,

@@ -1,6 +1,6 @@
 use crate::models::error::{AppError, Void};
 use crate::models::mods::ModInfo;
-use crate::services::directory_manager::get_mods_folder;
+use crate::services::directory_manager::get_mods_directory;
 use crate::services::mod_manager;
 use crate::services::mod_manager::{load_mod, set_mod_enabled};
 use log::info;
@@ -23,7 +23,7 @@ pub async fn toggle_mod(mod_info: ModInfo, toggle: bool) -> Result<(), AppError>
 #[command]
 pub async fn get_mods() -> Result<Vec<ModInfo>, AppError> {
     let mut mods_vec: Vec<ModInfo> = Vec::new();
-    let mods_directory = get_mods_folder();
+    let mods_directory = get_mods_directory();
     let allowed_ext = vec!["jar", "jar.disabled", "disabled"];
     let mod_list = mods_directory
         .read_dir()
@@ -55,7 +55,7 @@ pub async fn import_mod_from_local(app: AppHandle) -> Result<(), AppError> {
         let Some(file_name) = path.file_name() else {
             continue;
         };
-        let new_path = get_mods_folder().join(file_name);
+        let new_path = get_mods_directory().join(file_name);
         copy(path, new_path)
             .await
             .map_err(|x| AppError::FileCopyFailed(x.to_string()))?;
@@ -71,7 +71,7 @@ pub async fn delete_mod(mod_info: ModInfo) -> Result<(), AppError> {
 
 #[command]
 pub async fn open_mods_folder(app: AppHandle,version: String) -> Void{
-    let mods_dir = get_mods_folder();
+    let mods_dir = get_mods_directory();
     let mods_dir_str = mods_dir.to_str().ok_or(InvalidPath(format!("{version}'s mod directory")))?;
     app.opener().open_path(mods_dir_str, None::<&str>)
         .map_err(|e| AppError::OpenPathFailed(format!("failed to open the {version}'s mod directory: {e}")))

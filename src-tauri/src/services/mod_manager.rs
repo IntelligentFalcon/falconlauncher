@@ -1,4 +1,4 @@
-use crate::services::directory_manager::get_mods_folder;
+use crate::services::directory_manager::get_mods_directory;
 use crate::models::error::AppError;
 use crate::models::mods::{FabricModInfo, McModInfo};
 use crate::models::mods::ModInfo;
@@ -134,3 +134,5 @@ fn load_from_toml(toml: &Value, path: String) -> Result<ModInfo, AppError> {
 
     Ok(ModInfo::new(path, mod_id, display_name, version, desc))
 }
+
+// TODO: Some of forge mods it seems are not getting initialized correctly.

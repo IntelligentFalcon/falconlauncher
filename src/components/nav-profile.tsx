@@ -8,6 +8,7 @@ import {
 import { HugeiconsIcon } from "@hugeicons/react";
 import type React from "react";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next"; // <-- Import added
 import {
     Dialog,
     DialogClose,
@@ -41,6 +42,7 @@ import { Label } from "./ui/label";
 import { useConfig } from "@/stores/config.ts";
 
 export function NavProfile() {
+    const { t } = useTranslation(); // <-- Initialize translation hook
     const { isMobile } = useSidebar();
 
     const { profile, setProfile } = useConfig();
@@ -105,7 +107,7 @@ export function NavProfile() {
                                 <SidebarMenuButton
                                     className="data-open:bg-sidebar-accent data-open:text-sidebar-accent-foreground group-data-[state=collapsed]:rounded-full select-none"
                                     size="lg"
-                                    tooltip="Switch Profile"
+                                    tooltip={t("navProfile.switchProfile")} // <-- Translated
                                 />
                             }
                         >
@@ -135,7 +137,7 @@ export function NavProfile() {
                         >
                             <DropdownMenuGroup>
                                 <DropdownMenuLabel className="text-muted-foreground text-xs">
-                                    Profiles
+                                    {t("navProfile.profilesLabel")} {/* <-- Translated */}
                                 </DropdownMenuLabel>
                                 {profiles?.map((p) => (
                                     <DropdownMenuItem
@@ -159,7 +161,7 @@ export function NavProfile() {
                                         <button
                                             className="hidden shrink-0 items-center justify-center rounded p-1 transition-colors hover:bg-destructive/10 hover:text-destructive group-hover:flex"
                                             onClick={(e) => handleRemoveProfile(p, e)}
-                                            title="Remove profile"
+                                            title={t("navProfile.removeProfile")} // <-- Translated
                                             type="button"
                                         >
                                             <HugeiconsIcon
@@ -184,7 +186,7 @@ export function NavProfile() {
                                         />
                                     </div>
                                     <div className="font-medium text-muted-foreground">
-                                        Add Profile
+                                        {t("navProfile.addProfile")} {/* <-- Translated */}
                                     </div>
                                 </DropdownMenuItem>
                             </DropdownMenuGroup>
@@ -197,18 +199,18 @@ export function NavProfile() {
                 <DialogContent className="sm:max-w-sm">
                     <form className="space-y-4" onSubmit={handleCreateProfile}>
                         <DialogHeader>
-                            <DialogTitle>Create profile</DialogTitle>
-                            <DialogDescription>Make Offline Profile</DialogDescription>
+                            <DialogTitle>{t("navProfile.createProfile")}</DialogTitle> {/* <-- Translated */}
+                            <DialogDescription>{t("navProfile.makeOfflineProfile")}</DialogDescription> {/* <-- Translated */}
                         </DialogHeader>
                         <FieldGroup>
                             <Field>
-                                <Label htmlFor="username">Username</Label>
+                                <Label htmlFor="username">{t("navProfile.usernameLabel")}</Label> {/* <-- Translated */}
                                 <Input
                                     autoFocus
                                     id="username"
                                     name="username"
                                     onChange={(e) => setNewUsername(e.target.value)}
-                                    placeholder="Enter offline username"
+                                    placeholder={t("navProfile.usernamePlaceholder")} // <-- Translated
                                     required
                                     value={newUsername}
                                 />
@@ -218,7 +220,7 @@ export function NavProfile() {
                             <DialogClose
                                 render={
                                     <Button type="button" variant="outline">
-                                        Cancel
+                                        {t("navProfile.cancel")} {/* <-- Translated */}
                                     </Button>
                                 }
                             />
@@ -226,7 +228,7 @@ export function NavProfile() {
                                 disabled={isCreating || !newUsername.trim()}
                                 type="submit"
                             >
-                                {isCreating ? "Creating..." : "Create Profile"}
+                                {isCreating ? t("navProfile.creating") : t("navProfile.createProfileBtn")} {/* <-- Translated */}
                             </Button>
                         </DialogFooter>
                     </form>

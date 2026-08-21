@@ -1,0 +1,169 @@
+{
+  "index": {
+    "welcome": "Welcome to Falcon",
+    "subtitle": "The most advanced launcher.",
+    "selectVersion": "Select a Version",
+    "noItems": "No items found.",
+    "repairTooltip": "Downloads required files if they're not installed/corrupted. This option is only recommended to use if the selected version crashes.",
+    "repairMode": "Repair Mode: {{state}}",
+    "on": "ON",
+    "off": "OFF",
+    "play": "PLAY",
+    "stop": "STOP"
+  },
+  "settings": {
+    "title": "Launcher Preferences",
+    "description": "Modify interface languages and general application settings.",
+    "interfaceLanguage": "Interface Language",
+    "interfaceLanguageDesc": "Swaps system core language string values.",
+    "exitOnLaunch": "Exit Launcher on Launch",
+    "exitOnLaunchDesc": "Kills the application runtime once the subprocess completes assembly boot."
+  },
+  "gameOptions": {
+    "runtimePreferences": "Runtime Preferences",
+    "runtimePreferencesDesc": "Modify game execution and hardware behavior.",
+    "useDedicatedGpu": "Use Dedicated GPU",
+    "useDedicatedGpuDesc": "Forces the game to run on the dedicated graphics card if available (e.g., Linux Optimus systems).",
+    "memoryAllocation": "Memory Allocation (RAM)",
+    "memoryAllocationDesc": "Adjust system memory parameters provisioned for game executions.",
+    "minAllocation": "Min allocation",
+    "maxAllocation": "Max allocation",
+    "ramDisplay": "{{ram}} MB (~{{gb}} GB)"
+  },
+  "mirrorSettings": {
+    "title": "Asset Repository Mirrors",
+    "description": "Select or drop explicit index maps to bypass primary servers.",
+    "dropzoneTitle": "Drag & Drop Mirror JSON configuration manifest",
+    "dropzoneSubtitle": "Inject files directly into your filesystem architecture configurations",
+    "dropzoneAriaLabel": "Drag & drop mirror JSON configuration manifest",
+    "errorPrefix": "Error",
+    "invalidJsonError": "Invalid JSON format or missing required properties",
+    "invalidFileTypeError": "Please drop a valid file ending in .json format"
+  },
+  "settingsLayout": {
+    "launcherTab": "Launcher Settings",
+    "gameTab": "Game Options",
+    "mirrorTab": "Mirrors"
+  },
+  "modsHeader": {
+    "selectVersionPlaceholder": "Select Game Version",
+    "noVersionsFound": "No installed versions found.",
+    "openFolderTitle": "Open Mods Folder",
+    "folderLabel": "Folder",
+    "importModTitle": "Import .jar file",
+    "importingLabel": "Importing...",
+    "importModLabel": "Import Mod",
+    "getModsLabel": "Get Mods"
+  },
+  "modsList": {
+    "emptyTitle": "No mods installed",
+    "emptyDescription": "No mods installed for {{version}}. Click \"Get Mods\" or \"Import Mod\" to add some!",
+    "thisVersion": "this version",
+    "noDescription": "No description provided.",
+    "disableMod": "Disable Mod",
+    "enableMod": "Enable Mod",
+    "deleteMod": "Delete Mod"
+  },
+  "stepSelectLoader": {
+    "title": "Choose Environment",
+    "subtitle": "Select the mod loader you want to install.",
+    "vanillaLabel": "Vanilla",
+    "vanillaDesc": "Standard Minecraft",
+    "fabricLabel": "Fabric",
+    "fabricDesc": "Lightweight & fast",
+    "forgeLabel": "Forge",
+    "forgeDesc": "Heavy modpack support"
+  },
+  "stepInstalling": {
+    "completeTitle": "Installation Complete!",
+    "installingTitle": "Installing...",
+    "successMessage": "Successfully installed {{name}}",
+    "initializing": "Initializing download...",
+    "finishButton": "Finish & Go Back"
+  },
+  "consoleFilters": {
+    "allLogs": "All Logs",
+    "info": "Info",
+    "warnings": "Warnings",
+    "errors": "Errors",
+    "channels": "Channels",
+    "allChannels": "ALL Channels",
+    "allChannelsTooltip": "All Channels",
+    "all": "All",
+    "clearChannel": "Clear {{channel}}",
+    "searchPlaceholder": "Search console logs...",
+    "clearSearch": "Clear"
+  },
+  "consoleViewer": {
+    "noLogsMatch": "No logs match your current criteria.",
+    "filterLevel": "Level",
+    "filterChannel": "Channel",
+    "filterQuery": "Query",
+    "copied": "Copied!",
+    "copySelected": "Copy Selected",
+    "copiedAll": "Copied All!",
+    "copyAllLogs": "Copy All Logs",
+    "clearLogs": "Clear Logs"
+  },
+  "modrinthModal": {
+    "sources": "Sources",
+    "searchTitle": "Search {{provider}}",
+    "reviewDependencies": "Review Dependencies",
+    "curseforgeTitle": "CurseForge Support",
+    "curseforgeDesc": "We are actively working on integrating the CurseForge API. Check back in a future update!",
+    "searchPlaceholder": "Search for Minecraft {{version}} mods...",
+    "sortBy": "Sort By...",
+    "noOptions": "No options found.",
+    "sort": {
+      "relevance": "Relevance",
+      "downloads": "Downloads",
+      "follows": "Follows",
+      "newest": "Newest",
+      "updated": "Updated"
+    },
+    "noModsFound": "No mods found.",
+    "adjustQuery": "Try adjusting your search query.",
+    "by": "By",
+    "downloads": "{{count}} Downloads",
+    "links": {
+      "source": "Source",
+      "wiki": "Wiki",
+      "discord": "Discord",
+      "issues": "Issues"
+    },
+    "gallery": "Gallery",
+    "aboutMod": "About this Mod",
+    "availableVersions": "Available Versions for {{version}}",
+    "select": "Select",
+    "noVersionsFound": "No compatible versions found for Minecraft {{version}}.",
+    "dependenciesIntro": "The mod requires the following dependencies. Check the ones you want to download.",
+    "noDependencies": "No additional dependencies required. You're ready to download!",
+    "dependencyType": "Type: {{type}}",
+    "downloading": "Downloading Files...",
+    "downloadSelected": "Download Selected Mods",
+    "fullscreenAlt": "Fullscreen view"
+  },
+  "navMenu": {
+    "platform": "Platform",
+    "items": {
+      "main": "Main",
+      "download": "Download",
+      "mods": "Mods",
+      "settings": "Settings",
+      "console": "Console"
+    }
+  },
+  "navProfile": {
+    "switchProfile": "Switch Profile",
+    "profilesLabel": "Profiles",
+    "removeProfile": "Remove profile",
+    "addProfile": "Add Profile",
+    "createProfile": "Create profile",
+    "makeOfflineProfile": "Make Offline Profile",
+    "usernameLabel": "Username",
+    "usernamePlaceholder": "Enter offline username",
+    "cancel": "Cancel",
+    "creating": "Creating...",
+    "createProfileBtn": "Create Profile"
+  }
+}

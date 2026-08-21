@@ -10,6 +10,7 @@ use std::io::Read;
 use std::path::Path;
 use log::info;
 use sha1::{Digest, Sha1};
+use sha1::digest::FixedOutput;
 use tauri::{AppHandle, Emitter};
 use uuid::{Builder, Uuid};
 
@@ -55,7 +56,8 @@ pub fn verify_file_existence_with_sha<P: AsRef<Path>>(
         hasher.update(&buffer[..bytes_read]);
     }
 
-    let computed_hash = format!("{:x}", hasher.finalize());
+    let result = hasher.finalize();
+    let computed_hash = result.iter().map(|b| format!("{:02x}", b)).collect::<String>();
 
     Ok(computed_hash.eq_ignore_ascii_case(expected_sha))
 }

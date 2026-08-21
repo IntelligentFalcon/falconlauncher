@@ -1,0 +1,13 @@
+{
+  "defaultLocale": "en",
+  "locales": [
+    "fa"
+  ],
+  "files": {
+    "json": {
+      "include": [
+        "src/lib/locales/[locale].json"
+      ]
+    }
+  }
+}

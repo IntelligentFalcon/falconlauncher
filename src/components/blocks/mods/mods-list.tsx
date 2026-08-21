@@ -1,6 +1,7 @@
 import { Alert01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Power, Trash2 } from "lucide-react";
+import { useTranslation } from "react-i18next"; // <-- Import added
 import { ActionButton } from "@/components/ui/action-button";
 import { LoadingSwap } from "@/components/ui/animated/swapper";
 import {
@@ -13,6 +14,8 @@ import { useModsActions, useModsState } from "@/context/mods-context";
 import { errorText } from "@/messages";
 
 export function ModsList() {
+    const { t } = useTranslation(); // <-- Initialize translation hook
+
     const { isLoadingMods, modsError, modsList, selectedVersion } =
         useModsState();
     const { onDeleteMod, onToggleMod } = useModsActions();
@@ -23,7 +26,6 @@ export function ModsList() {
                 <div className="flex flex-1 items-center justify-center">
                     <Empty>
                         <EmptyMedia variant="icon">
-                            {/* Added pointer-events-none to prevent icon dragging */}
                             <HugeiconsIcon className="pointer-events-none shrink-0" icon={Alert01Icon} size={24} />
                         </EmptyMedia>
                         <EmptyTitle>{errorText(modsError.code).title}</EmptyTitle>
@@ -39,10 +41,12 @@ export function ModsList() {
             return (
                 <div className="flex flex-1 items-center justify-center">
                     <Empty>
-                        <EmptyTitle>No mods installed</EmptyTitle>
+                        <EmptyTitle>{t("modsList.emptyTitle")}</EmptyTitle> {/* <-- Translated */}
                         <EmptyDescription>
-                            No mods installed for {selectedVersion || "this version"}. Click
-                            "Get Mods" or "Import Mod" to add some!
+                            {/* <-- Translated with dynamic fallback version */}
+                            {t("modsList.emptyDescription", {
+                                version: selectedVersion || t("modsList.thisVersion")
+                            })}
                         </EmptyDescription>
                     </Empty>
                 </div>
@@ -74,8 +78,8 @@ export function ModsList() {
                                     />
                                 ) : (
                                     <span className="font-bold text-muted-foreground text-xs uppercase">
-                    {mod.name?.slice(0, 2) ?? "MD"}
-                  </span>
+                                        {mod.name?.slice(0, 2) ?? "MD"}
+                                    </span>
                                 )}
                             </div>
 
@@ -85,11 +89,11 @@ export function ModsList() {
                                         {mod.name}
                                     </h4>
                                     <span className="rounded bg-secondary px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
-                    v{mod.version}
-                  </span>
+                                        v{mod.version}
+                                    </span>
                                 </div>
                                 <p className="mt-0.5 max-w-md truncate text-[11px] text-muted-foreground">
-                                    {mod.description || "No description provided."}
+                                    {mod.description || t("modsList.noDescription")} {/* <-- Translated */}
                                 </p>
                             </div>
                         </div>
@@ -103,7 +107,7 @@ export function ModsList() {
                                         : "bg-muted text-muted-foreground hover:bg-secondary"
                                 }`}
                                 size="icon"
-                                title={mod.enabled ? "Disable Mod" : "Enable Mod"}
+                                title={mod.enabled ? t("modsList.disableMod") : t("modsList.enableMod")} // <-- Translated
                                 variant="outline"
                             >
                                 {/* Added pointer-events-none shrink-0 */}
@@ -114,7 +118,7 @@ export function ModsList() {
                                 action={() => onDeleteMod(mod)}
                                 className="h-8 w-8 rounded-lg border-none p-2 text-muted-foreground transition-all hover:bg-destructive/10 hover:text-destructive"
                                 size="icon"
-                                title="Delete Mod"
+                                title={t("modsList.deleteMod")} // <-- Translated
                                 variant="outline"
                             >
                                 {/* Added pointer-events-none shrink-0 */}

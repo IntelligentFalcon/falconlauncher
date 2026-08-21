@@ -1,17 +1,21 @@
-import i18n from "i18next";
-import { initReactI18next } from "react-i18next";
-import { useLocale } from "@/stores/locale";
-import enJSON from "./locale/en.json";
-import faJSON from "./locale/fa.json";
+import i18n from 'i18next';
+import { initReactI18next } from 'react-i18next';
 
-i18n.use(initReactI18next).init({
-  lng: useLocale.getState().locale, // Set the initial language of the App
-  resources: {
-    en: { translation: enJSON },
-    fa: { translation: faJSON },
-  }, // Where we're gonna put translations' files
-});
+import enTranslation from './locales/en.json';
+import faTranslation from './locales/fa.json';
 
-useLocale.subscribe(({ locale }) => {
-  i18n.changeLanguage(locale);
-});
+i18n
+    .use(initReactI18next)
+    .init({
+        resources: {
+            en: { translation: enTranslation },
+            fa: { translation: faTranslation }
+        },
+        lng: 'en',
+        fallbackLng: 'en',
+        interpolation: {
+            escapeValue: false
+        }
+    });
+
+export default i18n;

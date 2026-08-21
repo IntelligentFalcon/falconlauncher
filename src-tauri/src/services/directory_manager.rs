@@ -35,7 +35,7 @@ pub fn get_version_directory(version: &String) -> PathBuf {
     get_versions_directory().join(version)
 }
 
-pub fn get_natives_folder(version: &String) -> PathBuf {
+pub fn get_natives_directory(version: &String) -> PathBuf {
     get_version_directory(version).join("natives")
 }
 
@@ -47,7 +47,7 @@ pub fn get_falcon_launcher_directory() -> PathBuf {
     get_minecraft_directory().join("falconlauncher")
 }
 
-pub fn get_mods_folder() -> PathBuf {
+pub fn get_mods_directory() -> PathBuf {
     get_minecraft_directory().join("mods")
 }
 
@@ -61,7 +61,7 @@ pub fn get_temp_directory() -> PathBuf {
 
 pub async fn create_necessary_dirs() -> Void {
     create_dir_all(get_versions_directory()).await.map_err(|x| AppError::DirCreateFailed(x.to_string()))?;
-    create_dir_all(get_mods_folder()).await.map_err(|x| AppError::DirCreateFailed(x.to_string()))?;
+    create_dir_all(get_mods_directory()).await.map_err(|x| AppError::DirCreateFailed(x.to_string()))?;
     create_dir_all(get_falcon_launcher_directory())
         .await
         .map_err(|x| AppError::DirCreateFailed(x.to_string()))?;

@@ -3,7 +3,7 @@
 use crate::models::versions::MinecraftVersion;
 use crate::services::directory_manager::{
     get_assets_directory, get_falcon_launcher_directory, get_libraries_directory,
-    get_minecraft_directory, get_natives_folder, get_temp_directory, get_version_directory,
+    get_minecraft_directory, get_natives_directory, get_temp_directory, get_version_directory,
     get_version_manifest, get_versions_directory,
 };
 use crate::services::utils::{
@@ -56,15 +56,6 @@ pub async fn download_version(
     info!("Downloading version {} with name of {name}", &version.id);
 
     let manifest = load_version_manifest(&mirror).await?;
-    download_from_manifest(id, &manifest, &mirror)
-        .await
-        .or_else(|x| {
-            if get_version_manifest(id).exists() {
-                Ok(())
-            } else {
-                Err(x)
-            }
-        })?;
 
     let content = fs::read_to_string(PathBuf::from(version.get_json()))
         .map_err(|x| AppError::FileReadFailed(format!("Failed to read version JSON: {}", x)))?;
@@ -198,7 +189,7 @@ pub async fn download_file_if_not_exists(
     Ok(())
 }
 
-pub(crate) async fn download_from_manifest(
+pub async fn download_from_manifest(
     id: &String,
     manifest: &Manifest,
     mir: &Mirror,
@@ -356,7 +347,7 @@ async fn download_classifiers(
 
         let file_path = full_path.to_string_lossy().into_owned();
         let file = File::open(&file_path).map_err(|e| AppError::FileReadFailed(format!("Failed to open classifier: {}", e)))?;
-        let natives_path = get_natives_folder(version);
+        let natives_path = get_natives_directory(version);
 
         if !exists(&natives_path).unwrap_or(false) {
             create_dir_all(&natives_path).map_err(|e| AppError::DirCreateFailed(e.to_string()))?;

@@ -6,3 +6,4 @@ pub mod settings;
 pub mod mods;
 pub mod game_launcher;
 pub mod process_manager;
+pub mod modrinth_helper;

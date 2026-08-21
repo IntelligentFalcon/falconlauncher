@@ -1,0 +1,169 @@
+{
+  "consoleFilters": {
+    "all": "همه",
+    "allChannels": "همهٔ کانال‌ها",
+    "allChannelsTooltip": "همهٔ کانال‌ها",
+    "allLogs": "همهٔ گزارش‌ها",
+    "channels": "کانال‌ها",
+    "clearChannel": "پاک کردن {{channel}}",
+    "clearSearch": "پاک کردن",
+    "errors": "خطاها",
+    "info": "اطلاعات",
+    "searchPlaceholder": "جست‌وجو در گزارش‌های کنسول...",
+    "warnings": "هشدارها"
+  },
+  "consoleViewer": {
+    "clearLogs": "پاک کردن گزارش‌ها",
+    "copied": "کپی شد!",
+    "copiedAll": "همه کپی شدند!",
+    "copyAllLogs": "کپی همهٔ گزارش‌ها",
+    "copySelected": "کپی انتخاب‌شده‌ها",
+    "filterChannel": "کانال",
+    "filterLevel": "سطح",
+    "filterQuery": "عبارت جست‌وجو",
+    "noLogsMatch": "هیچ گزارشی با معیارهای فعلی شما مطابقت ندارد."
+  },
+  "gameOptions": {
+    "maxAllocation": "حداکثر حافظهٔ تخصیص‌یافته",
+    "memoryAllocation": "تخصیص حافظه (RAM)",
+    "memoryAllocationDesc": "میزان حافظهٔ سیستم اختصاص‌یافته به اجرای بازی را تنظیم کنید.",
+    "minAllocation": "حداقل حافظهٔ تخصیص‌یافته",
+    "ramDisplay": "{{ram}} مگابایت (~{{gb}} گیگابایت)",
+    "runtimePreferences": "تنظیمات محیط اجرا",
+    "runtimePreferencesDesc": "اجرای بازی و عملکرد سخت‌افزار را تغییر دهید.",
+    "useDedicatedGpu": "استفاده از پردازندهٔ گرافیکی مجزا",
+    "useDedicatedGpuDesc": "در صورت وجود، بازی را وادار می‌کند با کارت گرافیک مجزا اجرا شود (برای مثال، در سیستم‌های Linux Optimus)."
+  },
+  "index": {
+    "noItems": "موردی یافت نشد.",
+    "off": "خاموش",
+    "on": "روشن",
+    "play": "اجرا",
+    "repairMode": "حالت تعمیر: {{state}}",
+    "repairTooltip": "اگر فایل‌های لازم نصب نشده باشند یا خراب شده باشند، آن‌ها را دانلود می‌کند. استفاده از این گزینه فقط زمانی توصیه می‌شود که نسخهٔ انتخاب‌شده از کار بیفتد.",
+    "selectVersion": "یک نسخه انتخاب کنید",
+    "stop": "توقف",
+    "subtitle": "پیشرفته‌ترین لانچر.",
+    "welcome": "به فالکن خوش آمدید"
+  },
+  "mirrorSettings": {
+    "description": "نقشه‌های ایندکسِ مشخص را انتخاب کنید یا اینجا رها کنید تا از سرورهای اصلی استفاده نشود.",
+    "dropzoneAriaLabel": "مانیفست پیکربندی JSON آینه را بکشید و رها کنید",
+    "dropzoneSubtitle": "فایل‌ها را مستقیماً به پیکربندی‌های ساختار سیستم‌فایل خود اضافه کنید",
+    "dropzoneTitle": "مانیفست پیکربندی JSON آینه را بکشید و رها کنید",
+    "errorPrefix": "خطا",
+    "invalidFileTypeError": "لطفاً یک فایل معتبر با پسوند .json رها کنید",
+    "invalidJsonError": "قالب JSON نامعتبر است یا ویژگی‌های لازم وجود ندارند",
+    "title": "آینه‌های مخزن منابع"
+  },
+  "modrinthModal": {
+    "aboutMod": "درباره این ماد",
+    "adjustQuery": "عبارت جست‌وجوی خود را تغییر دهید.",
+    "availableVersions": "نسخه‌های موجود برای {{version}}",
+    "by": "توسط",
+    "curseforgeDesc": "در حال یکپارچه‌سازی API ‏CurseForge هستیم. در به‌روزرسانی‌های آینده دوباره سر بزنید!",
+    "curseforgeTitle": "پشتیبانی CurseForge",
+    "dependenciesIntro": "این ماد به وابستگی‌های زیر نیاز دارد. مواردی را که می‌خواهید دانلود کنید تیک بزنید.",
+    "dependencyType": "نوع: {{type}}",
+    "downloadSelected": "دانلود مادهای انتخاب‌شده",
+    "downloading": "در حال دانلود فایل‌ها...",
+    "downloads": "{{count}} دانلود",
+    "fullscreenAlt": "نمای تمام‌صفحه",
+    "gallery": "گالری",
+    "links": {
+      "discord": "Discord",
+      "issues": "مشکلات",
+      "source": "منبع",
+      "wiki": "ویکی"
+    },
+    "noDependencies": "به وابستگی اضافی نیاز نیست. آماده دانلود هستید!",
+    "noModsFound": "هیچ مادی پیدا نشد.",
+    "noOptions": "هیچ گزینه‌ای پیدا نشد.",
+    "noVersionsFound": "هیچ نسخه سازگاری برای Minecraft {{version}} پیدا نشد.",
+    "reviewDependencies": "بررسی وابستگی‌ها",
+    "searchPlaceholder": "جستجوی مادهای Minecraft {{version}}...",
+    "searchTitle": "جستجو در {{provider}}",
+    "select": "انتخاب",
+    "sort": {
+      "downloads": "تعداد دانلود",
+      "follows": "تعداد دنبال‌کنندگان",
+      "newest": "جدیدترین",
+      "relevance": "مرتبط‌ترین",
+      "updated": "آخرین به‌روزرسانی"
+    },
+    "sortBy": "مرتب‌سازی بر اساس...",
+    "sources": "منابع"
+  },
+  "modsHeader": {
+    "folderLabel": "پوشه",
+    "getModsLabel": "دریافت مادها",
+    "importModLabel": "وارد کردن ماد",
+    "importModTitle": "وارد کردن فایل .jar",
+    "importingLabel": "در حال وارد کردن...",
+    "noVersionsFound": "هیچ نسخهٔ نصب‌شده‌ای یافت نشد.",
+    "openFolderTitle": "باز کردن پوشهٔ مادها",
+    "selectVersionPlaceholder": "نسخهٔ بازی را انتخاب کنید"
+  },
+  "modsList": {
+    "deleteMod": "حذف ماد",
+    "disableMod": "غیرفعال کردن ماد",
+    "emptyDescription": "هیچ مادی برای {{version}} نصب نشده است. برای افزودن ماد، روی «دریافت مادها» یا «وارد کردن ماد» کلیک کنید!",
+    "emptyTitle": "هیچ مادی نصب نشده است",
+    "enableMod": "فعال کردن ماد",
+    "noDescription": "توضیحی ارائه نشده است.",
+    "thisVersion": "این نسخه"
+  },
+  "navMenu": {
+    "items": {
+      "console": "کنسول",
+      "download": "دانلود",
+      "main": "اصلی",
+      "mods": "مادها",
+      "settings": "تنظیمات"
+    },
+    "platform": "پلتفرم"
+  },
+  "navProfile": {
+    "addProfile": "افزودن پروفایل",
+    "cancel": "لغو",
+    "createProfile": "ایجاد پروفایل",
+    "createProfileBtn": "ایجاد پروفایل",
+    "creating": "در حال ایجاد...",
+    "makeOfflineProfile": "ساخت پروفایل آفلاین",
+    "profilesLabel": "پروفایل‌ها",
+    "removeProfile": "حذف پروفایل",
+    "switchProfile": "تغییر پروفایل",
+    "usernameLabel": "نام کاربری",
+    "usernamePlaceholder": "نام کاربری آفلاین را وارد کنید"
+  },
+  "settings": {
+    "description": "زبان رابط کاربری و تنظیمات عمومی برنامه را تغییر دهید.",
+    "exitOnLaunch": "خروج از لانچر هنگام اجرا",
+    "exitOnLaunchDesc": "پس از تکمیل راه‌اندازی اسمبلی توسط زیرفرایند، زمان اجرای برنامه را پایان می‌دهد.",
+    "interfaceLanguage": "زبان رابط کاربری",
+    "interfaceLanguageDesc": "مقادیر رشته‌های زبان هستهٔ سیستم را تغییر می‌دهد.",
+    "title": "تنظیمات لانچر"
+  },
+  "settingsLayout": {
+    "gameTab": "گزینه‌های بازی",
+    "launcherTab": "تنظیمات لانچر",
+    "mirrorTab": "آینه‌ها"
+  },
+  "stepInstalling": {
+    "completeTitle": "نصب کامل شد!",
+    "finishButton": "پایان و بازگشت",
+    "initializing": "در حال آماده‌سازی دانلود...",
+    "installingTitle": "در حال نصب...",
+    "successMessage": "{{name}} با موفقیت نصب شد"
+  },
+  "stepSelectLoader": {
+    "fabricDesc": "سبک و سریع",
+    "fabricLabel": "Fabric",
+    "forgeDesc": "پشتیبانی از مودپک‌های سنگین",
+    "forgeLabel": "Forge",
+    "subtitle": "بارگذار ماد موردنظر برای نصب را انتخاب کنید.",
+    "title": "محیط را انتخاب کنید",
+    "vanillaDesc": "ماینکرفت استاندارد",
+    "vanillaLabel": "Vanilla"
+  }
+}

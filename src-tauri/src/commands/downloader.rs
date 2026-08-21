@@ -1,5 +1,6 @@
 use crate::models::downloader::{Manifest, VersionInfo, VersionLoader};
 use crate::models::error::{AppError, Void};
+use crate::models::mirror::Mirror;
 use crate::models::versions::VersionBase::{FABRIC, FORGE};
 use crate::models::versions::{MinecraftVersion, VersionBase, VersionCategory, VersionType};
 use crate::services::game_downloader::{
@@ -7,13 +8,14 @@ use crate::services::game_downloader::{
     get_available_forge_versions,
 };
 use crate::services::utils::update_download_status;
-use crate::services::version_manager::{download_version_manifest, load_version_manifest, load_version_manifest_local};
+use crate::services::version_manager::{
+    download_version_manifest, load_version_manifest, load_version_manifest_local,
+};
 use crate::services::{game_downloader, version_manager};
 use crate::{AppState, GLOBAL_CACHE};
 use log::info;
 use tauri::{command, AppHandle, State};
 use tauri_plugin_dialog::DialogExt;
-use crate::models::mirror::Mirror;
 
 #[command]
 pub async fn get_vanilla_versions(
@@ -100,7 +102,6 @@ pub async fn get_forge_versions(
     app_handle: AppHandle,
     state: State<'_, AppState>,
 ) -> Result<Vec<VersionCategory>, AppError> {
-
     let cfg = state.config.read().await;
     let mirror = &cfg.download_settings.mirror;
 
@@ -131,8 +132,8 @@ pub async fn get_forge_versions(
                 ))?
             }
         };
-        let forge_versions = get_available_forge_versions(&id, mirror).await?;
-
+        let mut forge_versions = get_available_forge_versions(&id, mirror).await?;
+        forge_versions.reverse();
         cat.versions
             .extend(forge_versions.into_iter().map(|x| VersionLoader {
                 id: x,
@@ -148,7 +149,6 @@ pub async fn get_fabric_versions(
     app_handle: AppHandle,
     state: State<'_, AppState>,
 ) -> Result<Vec<VersionCategory>, AppError> {
-
     let cfg = state.config.read().await;
     let mirror = &cfg.download_settings.mirror;
     let manifest = load_version_manifest(mirror).await?;
@@ -235,17 +235,33 @@ pub async fn download_version(
     info!("Downloading {version_id}.json");
 
     let manifest = load_version_manifest(mir).await?;
-    game_downloader::download_from_manifest(&version_id, &manifest, mir).await?;
+    if version_loader.base == VersionBase::VANILLA {
+        game_downloader::download_from_manifest(&version_id, &manifest, mir).await?;
+    }
     let version = MinecraftVersion::from_id(version_id);
 
     let inherited_version = version.get_inherited();
+    info!("Detected inherited version is {}", inherited_version.id);
     update_download_status("Downloading version...", &app_handle);
     let cfg = &state.config.read().await;
+    let downloadable_version = if version_loader.base == VersionBase::VANILLA {
+        &version
+    } else {
+        &inherited_version
+    };
+
+    game_downloader::download_version(
+        &downloadable_version,
+        &name,
+        &app_handle,
+        logger,
+        &*cfg,
+    )
+    .await?;
     if inherited_version.id != version.id {
-        game_downloader::download_version(&inherited_version, &name, &app_handle, logger, &*cfg)
+        game_downloader::download_version(&version, &name, &app_handle, logger, &*cfg)
             .await?;
     }
-    game_downloader::download_version(&version, &name, &app_handle, logger, &*cfg).await?;
     update_download_status("", &app_handle);
     app_handle
         .dialog()
@@ -281,7 +297,7 @@ pub async fn get_installed_versions() -> Result<Vec<String>, AppError> {
 }
 #[command]
 /// Downloads the latest version manifest available through the given mirror whether it already exists or not.
-pub async fn reload_version_manifest(app_handle: AppHandle, state: State<'_, AppState>) -> Void{
+pub async fn reload_version_manifest(app_handle: AppHandle, state: State<'_, AppState>) -> Void {
     let cfg = state.config.read().await;
     let mirror = &cfg.download_settings.mirror;
     download_version_manifest(mirror).await

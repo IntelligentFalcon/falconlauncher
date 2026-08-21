@@ -8,21 +8,23 @@ import {
   ViewIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
+import { useTranslation } from "react-i18next"; // <-- Import added
 import { ActionButton } from "@/components/ui/action-button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useConsoleActions, useConsoleState } from "@/context/console-context";
 
 export function ConsoleFilters() {
+  const { t } = useTranslation(); // <-- Initialize translation hook
   const { channels, filterChannel, filterLevel, searchQuery } =
       useConsoleState();
   const { onClearLogs, setFilterChannel, setFilterLevel, setSearchQuery } =
       useConsoleActions();
 
   const logLevels = [
-    { icon: ViewIcon, label: "All Logs", name: "all" },
-    { icon: InformationCircleIcon, label: "Info", name: "info" },
-    { icon: Alert01Icon, label: "Warnings", name: "warn" },
-    { icon: AlertCircleIcon, label: "Errors", name: "error" },
+    { icon: ViewIcon, label: t("consoleFilters.allLogs"), name: "all" },
+    { icon: InformationCircleIcon, label: t("consoleFilters.info"), name: "info" },
+    { icon: Alert01Icon, label: t("consoleFilters.warnings"), name: "warn" },
+    { icon: AlertCircleIcon, label: t("consoleFilters.errors"), name: "error" },
   ];
 
   return (
@@ -35,7 +37,7 @@ export function ConsoleFilters() {
             <div className="hidden shrink-0 items-center gap-1.5 px-2 font-bold text-[10px] text-muted-foreground uppercase tracking-wider sm:flex">
               {/* Added pointer-events-none to prevent icon ghost dragging */}
               <HugeiconsIcon className="pointer-events-none" icon={LayersIcon} size={12} strokeWidth={2.5} />
-              Channels
+              {t("consoleFilters.channels")} {/* <-- Translated */}
             </div>
 
             <div className="scrollbar-none min-w-0 flex-1 overflow-x-auto">
@@ -48,14 +50,14 @@ export function ConsoleFilters() {
                       <TabsTrigger
                           className="capitalize md:max-w-[200px]"
                           key={chan}
-                          title={chan === "all" ? "All Channels" : chan}
+                          title={chan === "all" ? t("consoleFilters.allChannelsTooltip") : chan} // <-- Translated
                           value={chan}
                       >
                         <div
                             className={`h-2 w-2 shrink-0 rounded-full ${chan === "all" ? "bg-primary" : "bg-zinc-400"}`}
                         />
                         <span className="max-w-[120px] truncate">
-                      {chan === "all" ? "ALL Channels" : chan}
+                      {chan === "all" ? t("consoleFilters.allChannels") : chan} {/* <-- Translated */}
                     </span>
                       </TabsTrigger>
                   ))}
@@ -71,7 +73,10 @@ export function ConsoleFilters() {
           >
             <HugeiconsIcon className="pointer-events-none" icon={Delete02Icon} size={14} strokeWidth={2} />
             <span className="inline">
-            Clear {filterChannel === "all" ? "All" : filterChannel}
+            {/* <-- Translated with dynamic channel variable */}
+              {t("consoleFilters.clearChannel", {
+                channel: filterChannel === "all" ? t("consoleFilters.all") : filterChannel
+              })}
           </span>
           </ActionButton>
         </div>
@@ -114,7 +119,7 @@ export function ConsoleFilters() {
                 // Added select-text here so the input field itself remains selectable!
                 className="w-full min-w-0 border-none bg-transparent p-0 font-sans text-foreground text-xs outline-none placeholder:text-muted-foreground/60 focus:ring-0 select-text"
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search console logs..."
+                placeholder={t("consoleFilters.searchPlaceholder")} // <-- Translated
                 type="text"
                 value={searchQuery}
             />
@@ -124,7 +129,7 @@ export function ConsoleFilters() {
                     onClick={() => setSearchQuery("")}
                     type="button"
                 >
-                  Clear
+                  {t("consoleFilters.clearSearch")} {/* <-- Translated */}
                 </button>
             )}
           </div>

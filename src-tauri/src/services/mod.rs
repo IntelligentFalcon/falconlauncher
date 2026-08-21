@@ -6,4 +6,3 @@ pub mod version_manager;
 pub(crate) mod jdk_manager;
 pub mod utils;
 pub mod mod_manager;
-pub mod modrinth_helper;
