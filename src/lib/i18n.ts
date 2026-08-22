@@ -9,7 +9,7 @@ i18n.use(initReactI18next).init({
     resources: {
         en: {translation: enJSON},
         fa: {translation: faJSON},
-    }, // Where we're gonna put translations' files
+    }, 
 });
 useLocale.subscribe(({locale}) => {
     i18n.changeLanguage(locale);
