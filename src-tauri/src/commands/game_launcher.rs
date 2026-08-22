@@ -12,7 +12,6 @@ use crate::services::utils;
 use crate::services::utils::{extend_once, patch_java_permission_linux, vec_to_string};
 use crate::{services, AppState, GLOBAL_CACHE};
 use serde_json::Value;
-use std::ffi::OsStr;
 use std::io::{BufRead, BufReader, Stdin};
 use std::path::{PathBuf, MAIN_SEPARATOR_STR};
 use std::process::{Command, Stdio};
@@ -20,7 +19,7 @@ use std::str::FromStr;
 use std::sync::Mutex;
 use tauri::{command, AppHandle, Manager, State};
 use uuid::Uuid;
-
+use log::info;
 #[command]
 pub async fn play(
     app_handle: AppHandle,
@@ -30,12 +29,15 @@ pub async fn play(
     profile: &str,
 ) -> Void {
     log::info!("Launching minecraft {selected_version} ");
-
     let global_cache = &*GLOBAL_CACHE.lock().await;
+
     let tx_err = state.log_tx.clone();
     let tx_out = state.log_tx.clone();
+
+    info!("Fetching the selected profile: {profile}");
     let uid = Uuid::from_str(profile)
         .map_err(|e| ProfileNotFound(format!("Failed to parse uid {profile}: {e}")))?;
+
 
     let config = state.config.read().await;
     let launch_options = &config.launch_options;
@@ -45,20 +47,25 @@ pub async fn play(
     let xms = launch_options.ram_usage_min.to_string() + "M";
     let xmx = launch_options.ram_usage_max.to_string() + "M";
 
+    info!("Fetching selected version from global cache.");
     let mut versions = global_cache
         .versions
         .iter()
         .filter(|x| x.id == selected_version);
     let version = versions.next().ok_or(AppError::VersionNotFound)?;
+
     let version_id = &version.id;
     let version_id_err_clone = version_id.clone();
     let version_id_out_clone = version_id.clone();
 
+    info!("Reading {version_id}'s json file");
     let json: Value = version.load_json();
+
 
     let inherited_version = version.get_inherited();
     let inherited_json = inherited_version.load_json();
     let inherited_id = &inherited_version.id;
+    info!("detected inherited version is {inherited_id} (Might be the version id itself)");
 
     let java_component = inherited_json
         .pointer("/javaVersion/component")
@@ -71,6 +78,7 @@ pub async fn play(
         })?;
 
     if repair_mode {
+        info!("Repair mode is enabled. attempting to download/check version files");
         download_version(
         &inherited_version,
         &"".to_string(),
@@ -89,19 +97,26 @@ pub async fn play(
         .await?;
 
     }
-
+    info!("Fetching the appropriate java version: {java_component}");
     let java = services::jdk_manager::get_java(java_component.to_string())?;
 
     let version_directory = PathBuf::from(&inherited_version.version_path);
+    info!("Version Directory is {}", version_directory.display().to_string());
     let game_directory = get_minecraft_directory().display().to_string();
+    info!("Game Directory is {}", game_directory);
     let asset_directory = get_assets_directory().display().to_string();
+    info!("Asset Directory is {}", asset_directory);
     let resources_directory = get_minecraft_directory()
         .join("resources")
         .display()
         .to_string();
+    info!("Resources Directory is {}", resources_directory.to_string());
 
+    info!("Fetching libraries.");
     let libraries = version.get_libraries();
 
+
+    info!("Fetching asset_index.");
     let asset_index = inherited_json
         .get("assets")
         .and_then(|v| v.as_str())
@@ -120,6 +135,7 @@ pub async fn play(
                 "Missing 'mainClass' in manifest. The JSON might be corrupted.".to_string(),
             )
         })?;
+    info!("Detected main class: {main_class}");
 
     let class_path = version_directory
         .join(format!("{inherited_id}.jar"))
@@ -129,17 +145,21 @@ pub async fn play(
     let natives = get_natives_directory(&inherited_version.id)
         .to_string_lossy()
         .into_owned();
+    info!("Detect natives: {natives}");
 
     let typ = json.get("type").and_then(|v| v.as_str()).ok_or_else(|| {
         AppError::ManifestParseFailed(
             "Missing 'type' in manifest. The JSON might be corrupted.".to_string(),
         )
     })?;
+    info!("Version type: {typ}");
 
     let run_args_iter = get_launch_args(&json)?;
+    info!("Fetching jvm args");
     let mut jvm_args = get_jvm_args(&json);
     let jvm_args_inherited = get_jvm_args(&inherited_json);
     jvm_args = extend_once(jvm_args_inherited, jvm_args);
+    info!("Fetching runtime arguments.");
     let run_args_iter_inherited = get_launch_args(&inherited_json)?;
     let run_args_iter_sum = extend_once(run_args_iter, run_args_iter_inherited);
 
@@ -162,6 +182,7 @@ pub async fn play(
         })
         .collect::<Vec<String>>();
 
+    info!("Fetching client's logger arguments.");
     if let Some(argument) = json
         .pointer("/logging/client/argument")
         .and_then(|v| v.as_str())
@@ -188,6 +209,7 @@ pub async fn play(
 
     patch_java_permission_linux(&java)?;
 
+    info!("Creating client's process.");
     let mut child_cmd = Command::new(java.get_bin_file());
     child_cmd
         .current_dir(&game_directory)
@@ -195,6 +217,7 @@ pub async fn play(
         .arg(format!("-Xmx{xmx}"));
 
     if utils::is_wayland() {
+        info!("Wayland session detected. adding required arguments");
         child_cmd
             .env("XDG_SESSION_TYPE", "x11")
             .env("GDK_BACKEND", "x11")
@@ -202,8 +225,11 @@ pub async fn play(
     }
 
     if config.launch_options.use_dedicated_gpu.boolean() {
+        info!("use_dedicated_gpu is enabled. applying dedicated_gpu options to the child cmd.");
         services::game_launcher::apply_dedicated_gpu_env(&mut child_cmd);
     }
+
+    info!("Applying default jvm args if required.");
     if !jvm_args.is_empty() {
         for arg in jvm_args.clone() {
             child_cmd.arg(
@@ -225,7 +251,7 @@ pub async fn play(
             .arg("-cp")
             .arg(format!("{}{}{}", class_path, separator, libraries_str));
     };
-
+    info!("Applying main_class and run arguments.");
     child_cmd
         .arg(main_class)
         .args(&run_args);
@@ -266,6 +292,7 @@ pub async fn play(
 
 
     if config.launcher_settings.exit_on_launch.boolean() {
+        info!("exit on launch is enabled. exiting launcher...");
         #[cfg(target_family = "unix")]
         use std::os::unix::process::CommandExt;
         #[cfg(target_os = "windows")]
@@ -289,7 +316,7 @@ pub async fn play(
         .stderr(Stdio::piped())
         .spawn()
         .map_err(|e| AppError::Internal(format!("Failed to spawn java process: {}", e)))?;
-
+    info!("Setting up stdout and stderr.");
     let stdout = child
         .stdout
         .take()
@@ -313,7 +340,7 @@ pub async fn play(
             let _ = tx_out.send(info(line, version_id_out_clone.clone()));
         }
     });
-
+    info!("Caching process on global cache.");
     let proc_manager = &state.process_manager;
     let mut processes = proc_manager
         .active_processes

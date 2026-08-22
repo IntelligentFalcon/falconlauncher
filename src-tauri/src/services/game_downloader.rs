@@ -54,7 +54,6 @@ pub async fn download_version(
     let name = if name == "" { &version.id } else { name };
 
     info!("Downloading version {} with name of {name}", &version.id);
-
     let manifest = load_version_manifest(&mirror).await?;
 
     let content = fs::read_to_string(PathBuf::from(version.get_json()))
@@ -176,7 +175,7 @@ pub async fn download_file_if_not_exists(
 ) -> Result<(), AppError> {
     let path_str = path.to_string_lossy().into_owned();
     if hash != "" {
-        info!("SHA1 was detected. performing file check!");
+        info!("SHA1 was detected. performing file chek!");
         if !verify_file_existence_with_sha(path, hash)? {
             info!("Invalid hash was found!");
             download_file(url, &path_str).await?;
