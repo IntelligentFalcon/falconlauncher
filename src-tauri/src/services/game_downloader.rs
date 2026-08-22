@@ -176,7 +176,7 @@ pub async fn download_file_if_not_exists(
 ) -> Result<(), AppError> {
     let path_str = path.to_string_lossy().into_owned();
     if hash != "" {
-        info!("Found sha1 let's go!");
+        info!("SHA1 was detected. performing file check!");
         if !verify_file_existence_with_sha(path, hash)? {
             info!("Invalid hash was found!");
             download_file(url, &path_str).await?;

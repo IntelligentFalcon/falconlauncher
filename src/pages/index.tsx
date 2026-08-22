@@ -232,7 +232,7 @@ function PlayButton({ runningProcesses }: { runningProcesses: string[] }) {
                 }`}
                 disabled={version === null || profile === null}
             >
-                {isRunning ? t("index.stop") : t("index.play")} {/* <-- Translated Play/Stop */}
+                {isRunning ? t("index.stop") : t("index.play")}
             </ActionButton>
         </div>
     );
