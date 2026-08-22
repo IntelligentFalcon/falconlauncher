@@ -15,6 +15,7 @@ import {
   ComboboxItem,
   ComboboxList,
 } from "@/components/ui/combobox";
+import {useLocale} from "@/stores/locale.ts";
 
 const LANGUAGES = {
   en: "English (US)",
@@ -26,7 +27,8 @@ const LANGUAGE_KEYS = Object.keys(LANGUAGES) as LanguageKey[];
 
 export function LauncherSettings() {
   const { t, i18n } = useTranslation();
-
+  const currentLocale = useLocale((state) => state.locale);
+  const setLocale = useLocale((state) => state.setLocale);
   // Strictly typed state
   const [localLanguage, setLocalLanguage] = useState<LanguageKey | null>(null);
   const [localExitOnLaunch, setLocalExitOnLaunch] = useState<boolean | null>(null);
@@ -54,12 +56,11 @@ export function LauncherSettings() {
   const exitOnLaunch = localExitOnLaunch ?? (exitOnLaunchQuery.data as boolean) ?? false;
 
   const handleLanguageChange = async (lang: LanguageKey | null) => {
-    if (!lang) return;
 
+    if (!lang) return;
     setLocalLanguage(lang);
-    await i18n.changeLanguage(lang);
-    await setLangMutation({ lang });
-    await saveMutation(undefined);
+
+    setLocale(lang);
   };
 
   const handleExitToggle = async () => {
