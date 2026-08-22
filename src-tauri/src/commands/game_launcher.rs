@@ -11,6 +11,7 @@ use crate::services::game_launcher::{get_jvm_args, get_launch_args};
 use crate::services::utils;
 use crate::services::utils::{extend_once, patch_java_permission_linux, vec_to_string};
 use crate::{services, AppState, GLOBAL_CACHE};
+use log::info;
 use serde_json::Value;
 use std::io::{BufRead, BufReader, Stdin};
 use std::path::{PathBuf, MAIN_SEPARATOR_STR};
@@ -19,7 +20,6 @@ use std::str::FromStr;
 use std::sync::Mutex;
 use tauri::{command, AppHandle, Manager, State};
 use uuid::Uuid;
-use log::info;
 #[command]
 pub async fn play(
     app_handle: AppHandle,
@@ -37,7 +37,6 @@ pub async fn play(
     info!("Fetching the selected profile: {profile}");
     let uid = Uuid::from_str(profile)
         .map_err(|e| ProfileNotFound(format!("Failed to parse uid {profile}: {e}")))?;
-
 
     let config = state.config.read().await;
     let launch_options = &config.launch_options;
@@ -61,7 +60,6 @@ pub async fn play(
     info!("Reading {version_id}'s json file");
     let json: Value = version.load_json();
 
-
     let inherited_version = version.get_inherited();
     let inherited_json = inherited_version.load_json();
     let inherited_id = &inherited_version.id;
@@ -80,12 +78,12 @@ pub async fn play(
     if repair_mode {
         info!("Repair mode is enabled. attempting to download/check version files");
         download_version(
-        &inherited_version,
-        &"".to_string(),
-        &app_handle,
-        &state.log_tx,
-        &config,
-    )
+            &inherited_version,
+            &"".to_string(),
+            &app_handle,
+            &state.log_tx,
+            &config,
+        )
         .await?;
         download_version(
             &version,
@@ -95,13 +93,15 @@ pub async fn play(
             &config,
         )
         .await?;
-
     }
     info!("Fetching the appropriate java version: {java_component}");
     let java = services::jdk_manager::get_java(java_component.to_string())?;
 
     let version_directory = PathBuf::from(&inherited_version.version_path);
-    info!("Version Directory is {}", version_directory.display().to_string());
+    info!(
+        "Version Directory is {}",
+        version_directory.display().to_string()
+    );
     let game_directory = get_minecraft_directory().display().to_string();
     info!("Game Directory is {}", game_directory);
     let asset_directory = get_assets_directory().display().to_string();
@@ -114,7 +114,6 @@ pub async fn play(
 
     info!("Fetching libraries.");
     let libraries = version.get_libraries();
-
 
     info!("Fetching asset_index.");
     let asset_index = inherited_json
@@ -203,10 +202,12 @@ pub async fn play(
     };
 
     let mut libraries_str = vec_to_string(libraries, separator.to_string());
-    while libraries_str.contains("\\") {
-        libraries_str = libraries_str.replace("\\", MAIN_SEPARATOR_STR);
+    #[cfg(unix)]
+    {
+        while libraries_str.contains("\\") {
+            libraries_str = libraries_str.replace("\\", MAIN_SEPARATOR_STR);
+        }
     }
-
     patch_java_permission_linux(&java)?;
 
     info!("Creating client's process.");
@@ -252,9 +253,7 @@ pub async fn play(
             .arg(format!("{}{}{}", class_path, separator, libraries_str));
     };
     info!("Applying main_class and run arguments.");
-    child_cmd
-        .arg(main_class)
-        .args(&run_args);
+    child_cmd.arg(main_class).args(&run_args);
 
     let run_args_str = run_args.join(" ");
     let jvm_args_str = jvm_args.join(" ");
@@ -290,7 +289,6 @@ pub async fn play(
         version_id_out_clone.clone(),
     ));
 
-
     if config.launcher_settings.exit_on_launch.boolean() {
         info!("exit on launch is enabled. exiting launcher...");
         #[cfg(target_family = "unix")]
@@ -302,13 +300,14 @@ pub async fn play(
         #[cfg(target_os = "windows")]
         child_cmd.creation_flags(0x00000008);
 
-        child_cmd.stdout(Stdio::null())
-            .stderr(Stdio::null()).stdin(Stdio::null())
+        child_cmd
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .stdin(Stdio::null())
             .spawn()
             .map_err(|e| AppError::Internal(format!("Failed to spawn java process: {}", e)))?;
 
         std::process::exit(0x0);
-
     }
 
     let mut child = child_cmd
