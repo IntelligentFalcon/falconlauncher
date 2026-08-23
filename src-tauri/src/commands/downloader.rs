@@ -4,14 +4,12 @@ use crate::models::mirror::Mirror;
 use crate::models::versions::VersionBase::{FABRIC, FORGE};
 use crate::models::versions::{MinecraftVersion, VersionBase, VersionCategory, VersionType};
 use crate::services::game_downloader::{
-    download_fabric, download_forge_version, get_available_fabric_versions,
+    download_fabric, download_forge_version, download_from_manifest, get_available_fabric_versions,
     get_available_forge_versions,
 };
 use crate::services::utils::update_download_status;
-use crate::services::version_manager::{
-    download_version_manifest, load_version_manifest, load_version_manifest_local,
-};
-use crate::services::{game_downloader, version_manager};
+use crate::services::version_manager::{download_version_manifest, load_version_manifest};
+use crate::services::game_downloader;
 use crate::{AppState, GLOBAL_CACHE};
 use log::info;
 use tauri::{command, AppHandle, State};
@@ -19,7 +17,7 @@ use tauri_plugin_dialog::DialogExt;
 
 #[command]
 pub async fn get_vanilla_versions(
-    app_handle: AppHandle,
+    _app_handle: AppHandle,
     state: State<'_, AppState>,
 ) -> Result<Vec<VersionCategory>, AppError> {
     let cfg = state.config.read().await;
@@ -32,6 +30,7 @@ pub async fn get_vanilla_versions(
         .iter()
         .filter(|x| matches!(x.version_type, VersionType::Release))
         .collect();
+
     let snapshots: Vec<VersionLoader> = manifest
         .versions
         .iter()
@@ -42,6 +41,7 @@ pub async fn get_vanilla_versions(
             date: x.time.to_string(),
         })
         .collect();
+
     let old_beta: Vec<VersionLoader> = manifest
         .versions
         .iter()
@@ -52,6 +52,7 @@ pub async fn get_vanilla_versions(
             date: x.time.to_string(),
         })
         .collect();
+
     let old_alpha: Vec<VersionLoader> = manifest
         .versions
         .iter()
@@ -65,23 +66,28 @@ pub async fn get_vanilla_versions(
 
     for ver in versions {
         let id = ver.id.clone();
-        let id_args: Vec<&str> = id.split(".").collect();
+        let id_args: Vec<&str> = id.split('.').collect();
+        if id_args.len() < 2 {
+            continue;
+        }
         let category = format!("{}.{}", id_args[0], id_args[1]);
-        if result.iter_mut().find(|x| x.name == category).is_none() {
+
+        if !result.iter().any(|x| x.name == category) {
             result.push(VersionCategory {
                 name: category.clone(),
                 versions: Vec::new(),
             });
         }
-        let Some(cat) = result.iter_mut().find(|x| x.name == category) else {
-            continue;
-        };
-        cat.versions.push(VersionLoader {
-            id: id.clone(),
-            base: VersionBase::VANILLA,
-            date: ver.release_time.clone(),
-        });
+
+        if let Some(cat) = result.iter_mut().find(|x| x.name == category) {
+            cat.versions.push(VersionLoader {
+                id: id.clone(),
+                base: VersionBase::VANILLA,
+                date: ver.release_time.clone(),
+            });
+        }
     }
+
     result.push(VersionCategory {
         name: "Snapshot".to_string(),
         versions: snapshots,
@@ -94,12 +100,13 @@ pub async fn get_vanilla_versions(
         name: "Alpha".to_string(),
         versions: old_alpha,
     });
+
     Ok(result)
 }
 
 #[command]
 pub async fn get_forge_versions(
-    app_handle: AppHandle,
+    _app_handle: AppHandle,
     state: State<'_, AppState>,
 ) -> Result<Vec<VersionCategory>, AppError> {
     let cfg = state.config.read().await;
@@ -116,7 +123,11 @@ pub async fn get_forge_versions(
     for ver in versions {
         let id = ver.id.clone();
         let id_args: Vec<&str> = id.split('.').collect();
+        if id_args.len() < 2 {
+            continue;
+        }
         let category = format!("{}.{}", id_args[0], id_args[1]);
+
         let pos = result.iter().position(|x| x.name == category);
         let cat = match pos {
             Some(idx) => &mut result[idx],
@@ -126,12 +137,12 @@ pub async fn get_forge_versions(
                     name: category.clone(),
                 };
                 result.push(c);
-                result.last_mut().ok_or(AppError::UnknownError(
-                    "Couldn't get the last item of a vector which is kinda guaranteed to exist!"
-                        .to_string(),
-                ))?
+                result.last_mut().ok_or_else(|| {
+                    AppError::Internal("Vector state corrupted during category creation".to_string())
+                })?
             }
         };
+
         let mut forge_versions = get_available_forge_versions(&id, mirror).await?;
         forge_versions.reverse();
         cat.versions
@@ -144,9 +155,10 @@ pub async fn get_forge_versions(
 
     Ok(result)
 }
+
 #[command]
 pub async fn get_fabric_versions(
-    app_handle: AppHandle,
+    _app_handle: AppHandle,
     state: State<'_, AppState>,
 ) -> Result<Vec<VersionCategory>, AppError> {
     let cfg = state.config.read().await;
@@ -163,6 +175,9 @@ pub async fn get_fabric_versions(
     for ver in versions {
         let id = ver.id.clone();
         let id_args: Vec<&str> = id.split('.').collect();
+        if id_args.len() < 2 {
+            continue;
+        }
         let category = format!("{}.{}", id_args[0], id_args[1]);
 
         let pos = result.iter().position(|x| x.name == category);
@@ -174,12 +189,12 @@ pub async fn get_fabric_versions(
                     name: category.clone(),
                 };
                 result.push(c);
-                result.last_mut().ok_or(AppError::UnknownError(
-                    "Couldn't get the last item of a vector which is kinda guaranteed to exist!"
-                        .to_string(),
-                ))?
+                result.last_mut().ok_or_else(|| {
+                    AppError::Internal("Vector state corrupted during category creation".to_string())
+                })?
             }
         };
+
         let fabric_versions = get_available_fabric_versions(&id).await?;
 
         cat.versions
@@ -192,6 +207,7 @@ pub async fn get_fabric_versions(
 
     Ok(result)
 }
+
 #[command]
 pub async fn download_version(
     app_handle: AppHandle,
@@ -200,50 +216,56 @@ pub async fn download_version(
     name: String,
 ) -> Result<(), AppError> {
     let mut version_id = version_loader.get_installed_id();
-    let cfg = &state.config.read().await;
+    let cfg = state.config.read().await;
     let mir = &cfg.download_settings.mirror;
     let logger = &state.log_tx;
+
     info!(
         "DEBUG: Downloading version {} from {} mirror",
         version_loader.id, mir.name
     );
+
     if version_loader.base == FORGE {
         info!(
-            "DEBUG: Forge version detected! {} installing it rn!",
+            "DEBUG: Forge version detected! {} installing now!",
             version_loader.id
         );
         let t = download_forge_version(
             &version_loader.id,
             &app_handle,
             logger,
-            &mir,
+            mir,
             &mut version_id,
+            None,
         )
-        .await;
+            .await;
+
         if let Err(e) = &t {
-            info!("{:?}", e);
+            info!("Forge installation error: {:?}", e);
         }
-    };
+    }
+
     if version_loader.base == FABRIC {
         info!(
-            "DEBUG: Fabric version detected! {} installing it rn!",
+            "DEBUG: Fabric version detected! {} installing now!",
             version_loader.id
         );
-        download_fabric(&version_loader, logger, &mir).await?;
+        download_fabric(&version_loader, logger, mir, None).await?;
     }
 
     info!("Downloading {version_id}.json");
 
     let manifest = load_version_manifest(mir).await?;
     if version_loader.base == VersionBase::VANILLA {
-        game_downloader::download_from_manifest(&version_id, &manifest, mir).await?;
+        download_from_manifest(&version_id, &manifest, mir, None).await?;
     }
-    let version = MinecraftVersion::from_id(version_id);
 
+    let version = MinecraftVersion::from_id(version_id);
     let inherited_version = version.get_inherited();
     info!("Detected inherited version is {}", inherited_version.id);
+
     update_download_status("Downloading version...", &app_handle);
-    let cfg = &state.config.read().await;
+
     let downloadable_version = if version_loader.base == VersionBase::VANILLA {
         &version
     } else {
@@ -251,29 +273,33 @@ pub async fn download_version(
     };
 
     game_downloader::download_version(
-        &downloadable_version,
+        downloadable_version,
         &name,
         &app_handle,
         logger,
         &*cfg,
     )
-    .await?;
+        .await?;
+
     if inherited_version.id != version.id {
-        game_downloader::download_version(&version, &name, &app_handle, logger, &*cfg)
-            .await?;
+        game_downloader::download_version(&version, &name, &app_handle, logger, &*cfg).await?;
     }
+
     update_download_status("", &app_handle);
+
     app_handle
         .dialog()
-        .message("Successfully installed the selected version you can now play it")
+        .message("Successfully installed the selected version! You can now play it.")
         .title("Done!")
         .blocking_show();
+
     let mut global = GLOBAL_CACHE.lock().await;
-    global.versions.push(version);
+    if !global.versions.iter().any(|x| x.id == version.id) {
+        global.versions.push(version);
+    }
     Ok(())
 }
 
-/// Gives the available versions to download
 #[command]
 pub async fn get_versions() -> Result<Vec<String>, AppError> {
     let global = GLOBAL_CACHE.lock().await;
@@ -281,23 +307,22 @@ pub async fn get_versions() -> Result<Vec<String>, AppError> {
         .versions
         .iter()
         .map(|x| x.id.to_string())
-        .clone()
         .collect())
 }
 
 #[command]
 pub async fn get_installed_versions() -> Result<Vec<String>, AppError> {
     let global = GLOBAL_CACHE.lock().await;
-    let versions = global.versions.clone();
-    Ok(versions
+    Ok(global
+        .versions
         .iter()
         .filter(|x| x.is_installed())
         .map(|x| x.id.clone())
         .collect())
 }
+
 #[command]
-/// Downloads the latest version manifest available through the given mirror whether it already exists or not.
-pub async fn reload_version_manifest(app_handle: AppHandle, state: State<'_, AppState>) -> Void {
+pub async fn reload_version_manifest(_app_handle: AppHandle, state: State<'_, AppState>) -> Void {
     let cfg = state.config.read().await;
     let mirror = &cfg.download_settings.mirror;
     download_version_manifest(mirror).await

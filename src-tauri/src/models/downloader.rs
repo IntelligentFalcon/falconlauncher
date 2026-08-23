@@ -1,10 +1,11 @@
-use serde::{Deserialize, Deserializer, Serialize};
-use std::collections::HashMap;
-use std::fmt::Display;
-use serde_json::Value;
-use crate::models::versions::VersionType;
 use crate::models::versions::VersionBase;
 use crate::models::versions::VersionBase::{FABRIC, FORGE};
+use crate::models::versions::VersionType;
+use serde::{Deserialize, Deserializer, Serialize};
+use serde_json::Value;
+use std::collections::HashMap;
+use std::fmt::Display;
+use tauri::{AppHandle, Emitter};
 
 #[derive(Deserialize, Debug)]
 pub struct Manifest {
@@ -47,13 +48,12 @@ pub struct LibraryRules {
     pub disallowed_oses: Vec<String>,
 }
 
-
 #[derive(Serialize, Deserialize, Debug)]
 pub struct LoggingClient {
     pub argument: String,
     pub file: LoggingFile,
     #[serde(rename = "type")]
-    pub _type: String
+    pub _type: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -85,7 +85,9 @@ where
 
     match opt_value {
         Some(Value::Object(map)) if map.is_empty() => Ok(None),
-        Some(value) => T::deserialize(value).map(Some).map_err(serde::de::Error::custom),
+        Some(value) => T::deserialize(value)
+            .map(Some)
+            .map_err(serde::de::Error::custom),
         None => Ok(None),
     }
 }
@@ -159,7 +161,7 @@ pub struct VersionInfo {
     pub release_time: String,
 }
 
-#[derive(Debug, Serialize, Deserialize,Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct VersionLoader {
     pub id: String,
     pub base: VersionBase,
@@ -236,7 +238,6 @@ pub struct ForgeVersionJsonInfo {
     pub libraries: Vec<ForgeLibrary>,
 }
 
-
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct ForgeLibrary {
     pub name: String,
@@ -259,27 +260,19 @@ pub struct ForgeArtifact {
 
 // helper converter to adapter from Library struct
 pub fn library_from_value_legacy(value: &Value) -> LibraryInfo {
-
     let library_name = value
-
         .get("name")
-
         .expect("Parsing library_name failed")
-
         .as_str()
-
         .expect("Parsing library_name failed");
 
     let library_downloads = value.get("downloads").unwrap();
 
     let library_artifact = library_downloads
-
         .get("artifact")
-
         .expect("Parsing library_downloads failed");
 
     let library_path = if library_artifact.get("path").is_none() {
-
         let args = library_name.split(":").collect::<Vec<&str>>();
 
         let group_id = args[0].replace(".", "/");
@@ -291,34 +284,22 @@ pub fn library_from_value_legacy(value: &Value) -> LibraryInfo {
         let artifact_version = format!("{artifact}-{version}.jar");
 
         format!("{group_id}/{artifact}/{version}/{artifact_version}")
-
     } else {
-
         library_artifact["path"].as_str().unwrap().to_string()
-
     };
 
-
     let library_url = library_artifact
-
         .get("url")
-
         .expect("Parsing library_url failed")
-
         .as_str();
 
     let library_size = library_artifact
-
         .get("size")
-
         .expect("Parsing library_size failed")
-
         .as_u64()
-
         .expect("Parsing library_size failed");
 
     LibraryInfo {
-
         name: library_name.to_string(),
 
         size: library_size,
@@ -326,7 +307,141 @@ pub fn library_from_value_legacy(value: &Value) -> LibraryInfo {
         path: library_path.to_string(),
 
         url: library_url.unwrap().to_string(),
+    }
+}
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DownloadStage {
+    Manifest,
+    Java,
+    Libraries,
+    Client,
+    Assets,
+    Logging,
+    ForgeInstaller,
+    FabricInstaller,
+    Done,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DownloadProgress {
+    pub stage: DownloadStage,
+    pub stage_name: String,
+    pub current_file: usize,
+    pub total_files: usize,
+    pub current_bytes: u64,
+    pub total_bytes: u64,
+    pub file_name: String,
+    pub global_percentage: f32,
+    pub stage_percentage: f32,
+}
+
+#[derive(Clone)]
+struct StageSpan {
+    pub start: f32,
+    pub end: f32,
+}
+
+#[derive(Clone)]
+pub struct PipelineProgressTracker {
+    pub app_handle: AppHandle,
+    pub stages: HashMap<DownloadStage, StageSpan>,
+    pub current_stage: DownloadStage,
+    pub current_file: usize,
+    pub total_files: usize,
+}
+
+impl PipelineProgressTracker {
+    pub fn new(app_handle: AppHandle, stage_weights: &[(DownloadStage, f32)]) -> Self {
+        let total_weight: f32 = stage_weights.iter().map(|(_, w)| w).sum();
+        let mut stages = HashMap::new();
+        let mut accumulated = 0.0;
+
+        for (stage, weight) in stage_weights {
+            let portion = (weight / total_weight) * 100.0;
+            stages.insert(
+                *stage,
+                StageSpan {
+                    start: accumulated,
+                    end: accumulated + portion,
+                },
+            );
+            accumulated += portion;
+        }
+
+        let initial_stage = stage_weights
+            .first()
+            .map(|(s, _)| *s)
+            .unwrap_or(DownloadStage::Done);
+
+        Self {
+            app_handle,
+            stages,
+            current_stage: initial_stage,
+            current_file: 0,
+            total_files: 1,
+        }
     }
 
+    pub fn start_stage(&mut self, stage: DownloadStage, total_files: usize) {
+        self.current_stage = stage;
+        self.total_files = total_files.max(1);
+        self.current_file = 0;
+        self.report("", 0, 0);
+    }
+
+    pub fn next_file(&mut self) {
+        self.current_file = (self.current_file + 1).min(self.total_files);
+    }
+
+    pub fn report(&self, file_name: &str, current_bytes: u64, total_bytes: u64) {
+        let span = self
+            .stages
+            .get(&self.current_stage)
+            .cloned()
+            .unwrap_or(StageSpan {
+                start: 0.0,
+                end: 100.0,
+            });
+
+        let file_ratio = (self.current_file as f32) / (self.total_files as f32);
+        let chunk_ratio = if total_bytes > 0 {
+            (current_bytes as f32 / total_bytes as f32) * (1.0 / self.total_files as f32)
+        } else {
+            0.0
+        };
+
+        let stage_progress_ratio = (file_ratio + chunk_ratio).clamp(0.0, 1.0);
+        let stage_percentage = stage_progress_ratio * 100.0;
+
+        let global_percentage = span.start + (stage_progress_ratio * (span.end - span.start));
+
+        let stage_name = match self.current_stage {
+            DownloadStage::Manifest => "Reading Manifest",
+            DownloadStage::Java => "Downloading Java Runtime",
+            DownloadStage::Libraries => "Downloading Libraries",
+            DownloadStage::Client => "Downloading Game Client",
+            DownloadStage::Assets => "Downloading Game Assets",
+            DownloadStage::Logging => "Configuring Logging",
+            DownloadStage::ForgeInstaller => "Installing Forge",
+            DownloadStage::FabricInstaller => "Installing Fabric",
+            DownloadStage::Done => "Completed",
+        }
+        .to_string();
+
+        let progress = DownloadProgress {
+            stage: self.current_stage,
+            stage_name,
+            current_file: self.current_file,
+            total_files: self.total_files,
+            current_bytes,
+            total_bytes,
+            file_name: file_name.to_string(),
+            global_percentage: global_percentage.clamp(0.0, 100.0),
+            stage_percentage: stage_percentage.clamp(0.0, 100.0),
+        };
+
+        let _ = self.app_handle.emit("download-progress", progress);
+    }
 }

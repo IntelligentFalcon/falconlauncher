@@ -1,3 +1,4 @@
+use crate::models::downloader::{DownloadStage, PipelineProgressTracker};
 use crate::models::error::AppError;
 use crate::models::java::Java;
 use crate::models::logger::LogLine;
@@ -6,11 +7,11 @@ use crate::models::platform::get_current_os_with_architecture;
 use crate::services::directory_manager::get_java_dir;
 use crate::services::game_downloader::download_file_if_not_exists;
 use crate::services::utils::load_json_url;
+use log::info;
 use serde_json::Value;
 use std::fs;
 use std::fs::create_dir_all;
 use tokio::sync::mpsc::UnboundedSender;
-use log::info;
 
 pub fn get_java(java: String) -> Result<Java, AppError> {
     let runtime_dir = get_java_dir().join(&java);
@@ -22,25 +23,35 @@ pub async fn download_java(
     version: &String,
     _logger: &UnboundedSender<LogLine>,
     mirror: &Mirror,
+    mut tracker: Option<&mut PipelineProgressTracker>,
 ) -> Result<(), AppError> {
-    let runtime_dir = get_java_dir().join(&java);
+    let runtime_dir = get_java_dir().join(java);
 
     if !mirror.is_connected().await {
-        return Err(AppError::MirrorConnectionFailed("Mirror is not connected to download".to_string()));
+        return Err(AppError::MirrorConnectionFailed(
+            "Mirror is not connected to download".to_string(),
+        ));
     }
 
     let url = mirror.parse_url(&"https://launchermeta.mojang.com/v1/products/java-runtime/2ec0cc96c44e5a76b9c8b7c39df7210883d12871/all.json".to_string());
     let current_os = get_current_os_with_architecture();
 
-    let json: Value = load_json_url(&url.to_string())
-        .await
-        .ok_or_else(|| AppError::NetworkRequestFailed("Couldn't get or read the runtime json manifest file.".to_string()))?;
+    let json: Value = load_json_url(&url.to_string()).await.ok_or_else(|| {
+        AppError::NetworkRequestFailed(
+            "Couldn't get or read the runtime json manifest file.".to_string(),
+        )
+    })?;
 
     let runtime_arr = json
         .get(&current_os)
         .and_then(|os_data| os_data.get(java))
         .and_then(|java_data| java_data.as_array())
-        .ok_or_else(|| AppError::ManifestParseFailed(format!("Missing Java runtime data for OS {} and component {}", current_os, java)))?;
+        .ok_or_else(|| {
+            AppError::ManifestParseFailed(format!(
+                "Missing Java runtime data for OS {} and component {}",
+                current_os, java
+            ))
+        })?;
 
     let runtime_v = runtime_arr
         .iter()
@@ -56,7 +67,9 @@ pub async fn download_java(
     let runtime_manifest_url_str = runtime_v
         .pointer("/manifest/url")
         .and_then(|u| u.as_str())
-        .ok_or_else(|| AppError::ManifestParseFailed("Missing manifest URL for Java runtime".to_string()))?;
+        .ok_or_else(|| {
+            AppError::ManifestParseFailed("Missing manifest URL for Java runtime".to_string())
+        })?;
 
     let runtime_manifest_url = mirror.parse_url(&runtime_manifest_url_str.to_string());
 
@@ -70,7 +83,21 @@ pub async fn download_java(
     let files_map = runtime_manifest
         .get("files")
         .and_then(|f| f.as_object())
-        .ok_or_else(|| AppError::ManifestParseFailed("Missing 'files' object in Java runtime manifest".to_string()))?;
+        .ok_or_else(|| {
+            AppError::ManifestParseFailed(
+                "Missing 'files' object in Java runtime manifest".to_string(),
+            )
+        })?;
+
+    // Count actual files to accurately configure the tracker
+    let total_download_files = files_map
+        .values()
+        .filter(|v| v.get("type").and_then(|t| t.as_str()) == Some("file"))
+        .count();
+
+    if let Some(t) = tracker.as_deref_mut() {
+        t.start_stage(DownloadStage::Java, total_download_files);
+    }
 
     for (k, v) in files_map {
         let file_type = v.get("type").and_then(|t| t.as_str()).unwrap_or("");
@@ -92,7 +119,18 @@ pub async fn download_java(
             create_dir_all(&runtime_dir).map_err(|e| AppError::DirCreateFailed(e.to_string()))?;
 
             info!("Downloading {} ({} bytes)", file_url, size);
-            download_file_if_not_exists(&runtime_dir.join(k), file_url.to_string(), sha1, size).await?;
+            download_file_if_not_exists(
+                &runtime_dir.join(k),
+                file_url.to_string(),
+                sha1,
+                size,
+                tracker.as_deref(),
+            )
+                .await?;
+
+            if let Some(t) = tracker.as_deref_mut() {
+                t.next_file();
+            }
         } else {
             create_dir_all(runtime_dir.join(k))
                 .map_err(|e| AppError::DirCreateFailed(format!("Failed to create directory {}: {}", k, e)))?;

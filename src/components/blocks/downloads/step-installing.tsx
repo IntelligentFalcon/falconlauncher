@@ -5,9 +5,21 @@ import {
 import { HugeiconsIcon } from "@hugeicons/react";
 import { listen } from "@tauri-apps/api/event";
 import { useEffect, useState } from "react";
-import { useTranslation } from "react-i18next"; // <-- Import added
+import { useTranslation } from "react-i18next";
 import { ActionButton } from "@/components/ui/action-button";
 import type { VersionLoader } from "@/invokes";
+
+export interface DownloadProgress {
+    stage: string;
+    stage_name: string;
+    current_file: number;
+    total_files: number;
+    current_bytes: number;
+    total_bytes: number;
+    file_name: string;
+    global_percentage: number;
+    stage_percentage: number;
+}
 
 export function StepInstalling({
                                    activeVersion,
@@ -18,33 +30,33 @@ export function StepInstalling({
     instanceName: string;
     onReset: () => void;
 }) {
-    const { t } = useTranslation(); // <-- Initialize translation hook
+    const { t } = useTranslation();
 
-    const [progress, setProgress] = useState<number | null>(0);
-    // Set default to null so the translation hook handles the initial string dynamically
-    const [statusText, setStatusText] = useState<string | null>(null);
+    const [progress, setProgress] = useState<DownloadProgress | null>(null);
     const [isDone, setIsDone] = useState<boolean>(false);
 
     useEffect(() => {
-        const unlistenProgressPromise = listen<string>("progress", (event) => {
-            setStatusText(event.payload);
-        });
-
-        const unlistenProgressBarPromise = listen<number>(
-            "progressBar",
+        const unlistenPromise = listen<DownloadProgress>(
+            "download-progress",
             (event) => {
-                setProgress(event.payload);
-                if (event.payload >= 100) {
+                const payload = event.payload;
+                setProgress(payload);
+
+                if (payload.global_percentage >= 100 || payload.stage === "done") {
                     setIsDone(true);
                 }
             }
         );
 
         return () => {
-            unlistenProgressPromise.then((unlisten) => unlisten());
-            unlistenProgressBarPromise.then((unlisten) => unlisten());
+            unlistenPromise.then((unlisten) => unlisten());
         };
     }, []);
+
+    const percentage = Math.min(
+        Math.max(Number(progress?.global_percentage) || 0, 0),
+        100
+    );
 
     return (
         <div className="zoom-in-95 flex h-full animate-in flex-col items-center justify-center duration-300">
@@ -65,29 +77,37 @@ export function StepInstalling({
             </div>
 
             <h2 className="mb-2 font-bold text-2xl text-foreground tracking-tight">
-                {/* <-- Translated Titles */}
                 {isDone ? t("stepInstalling.completeTitle") : t("stepInstalling.installingTitle")}
             </h2>
 
-            <p className="mb-8 max-w-[80%] truncate text-center text-muted-foreground text-sm">
+            <p className="mb-4 max-w-[85%] truncate text-center text-muted-foreground text-sm">
                 {isDone
-                    // <-- Translated Success Message with Dynamic Name
                     ? t("stepInstalling.successMessage", { name: instanceName || activeVersion.id })
-                    // <-- Translated Fallback Initializing State
-                    : (statusText || t("stepInstalling.initializing"))}
+                    : (progress?.stage_name || t("stepInstalling.initializing"))}
+                {!isDone && progress && progress.total_files > 1 && (
+                    <span className="ml-1.5 opacity-70">
+                        ({progress.current_file}/{progress.total_files})
+                    </span>
+                )}
             </p>
 
             <div className="mb-8 w-full max-w-md space-y-2">
                 <div className="h-3.5 w-full overflow-hidden rounded-full border border-border/60 bg-background p-0.5 shadow-inner">
                     <div
-                        className={`h-full rounded-full transition-all duration-300 ease-out ${isDone ? "bg-emerald-500" : "bg-primary"}`}
-                        style={{
-                            width: `${Math.min(Math.max(Number(progress) || 0, 0), 100)}%`,
-                        }}
+                        className={`h-full rounded-full transition-all duration-300 ease-out ${
+                            isDone ? "bg-emerald-500" : "bg-primary"
+                        }`}
+                        style={{ width: `${percentage}%` }}
                     />
                 </div>
-                <div className="text-right font-bold text-muted-foreground text-xs">
-                    {String(progress ?? 0)}%
+
+                <div className="flex items-center justify-between text-xs">
+                    <span className="max-w-[70%] truncate font-mono text-muted-foreground/80">
+                        {!isDone && progress?.file_name ? progress.file_name : ""}
+                    </span>
+                    <span className="font-bold text-muted-foreground">
+                        {percentage.toFixed(0)}%
+                    </span>
                 </div>
             </div>
 
@@ -97,7 +117,7 @@ export function StepInstalling({
                     className="px-8"
                     variant="secondary"
                 >
-                    {t("stepInstalling.finishButton")} {/* <-- Translated */}
+                    {t("stepInstalling.finishButton")}
                 </ActionButton>
             )}
         </div>

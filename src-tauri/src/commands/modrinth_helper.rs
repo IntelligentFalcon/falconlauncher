@@ -82,7 +82,7 @@ pub async fn download_modrinth_mod_version(version: ModrinthVersion, name: Strin
         let url = file.url;
         let full_path = mods_dir.join(file.file_name);
         info!("Downloading from {url} to {}", full_path.to_string_lossy());
-        download_file_if_not_exists(&full_path, url, sha1.as_str(), size as u64).await?;
+        download_file_if_not_exists(&full_path, url, sha1.as_str(), size as u64, None).await?; // TODO: track progress
     }
     Ok(())
 }
