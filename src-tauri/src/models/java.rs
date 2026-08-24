@@ -29,7 +29,7 @@ impl Java {
         if os == "windows" {
             self.path
                 .join("bin")
-                .join("javaw.exe")
+                .join("java.exe")
         } else {
                 self.path
                 .join("bin")
