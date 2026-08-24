@@ -14,14 +14,47 @@ pub fn parse_os(os: String) -> String {
 pub fn get_current_os() -> String {
     parse_os(sys_info::os_type().expect("Unsupported Operating System"))
 }
-pub fn get_current_os_with_architecture() -> String{
-    let mut os = parse_os(sys_info::os_release().expect("Unsupported Operating System"));
-     if os == "windows" {
-         "windows-x64".to_string() //FOR NOW "
-    }else if os == "osx" {
-         "mac-os".to_string() // FOR NOW
-    }else {
-         "linux".to_string()  // FOR NOW
+pub fn get_current_os_with_architecture() -> String {
+    let os = get_current_os();
 
+    match os.as_str() {
+        "windows" => {
+            #[cfg(target_arch = "x86")]
+            {
+                "windows-x86".to_string()
+            }
+            #[cfg(target_arch = "x86_64")]
+            {
+                "windows-x64".to_string()
+            }
+            #[cfg(target_arch = "aarch64")]
+            {
+                "windows-arm64".to_string()
+            }
+            #[cfg(not(any(target_arch = "x86", target_arch = "x86_64", target_arch = "aarch64")))]
+            {
+                "windows-x64".to_string() // safe fallback
+            }
+        }
+        "osx" => {
+            #[cfg(target_arch = "aarch64")]
+            {
+                "mac-os-arm64".to_string()
+            }
+            #[cfg(not(target_arch = "aarch64"))]
+            {
+                "mac-os".to_string()
+            }
+        }
+        "linux" | _ => {
+            #[cfg(target_arch = "x86")]
+            {
+                "linux-i386".to_string()
+            }
+            #[cfg(not(target_arch = "x86"))]
+            {
+                "linux".to_string()
+            }
+        }
     }
 }

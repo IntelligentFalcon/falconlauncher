@@ -35,7 +35,7 @@ pub async fn download_java(
 
     let url = mirror.parse_url(&"https://launchermeta.mojang.com/v1/products/java-runtime/2ec0cc96c44e5a76b9c8b7c39df7210883d12871/all.json".to_string());
     let current_os = get_current_os_with_architecture();
-
+    info!("Detected os and architecture is: {current_os}");
     let json: Value = load_json_url(&url.to_string()).await.ok_or_else(|| {
         AppError::NetworkRequestFailed(
             "Couldn't get or read the runtime json manifest file.".to_string(),

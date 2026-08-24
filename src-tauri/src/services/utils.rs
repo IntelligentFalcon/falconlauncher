@@ -188,7 +188,7 @@ pub fn check_os_rule(rule_map: &Map<String, Value>) -> bool {
 }
 
 pub fn update_download_bar(progress: i64, app_handle: &AppHandle) {
-    app_handle.emit("progressBar", progress)
+    app_handle.emit("chek", progress)
         .unwrap_or_else(|x| info!("Failed to emit progress to progressBar event. detailed error: \n {x}"));
 }
 
