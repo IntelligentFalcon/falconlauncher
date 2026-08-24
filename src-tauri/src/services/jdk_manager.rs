@@ -29,7 +29,7 @@ pub async fn download_java(
 
     if !mirror.is_connected().await {
         return Err(AppError::MirrorConnectionFailed(
-            "Mirror is not connected to download".to_string(),
+            format!("Mirror {} is not connected to download", mirror.name),
         ));
     }
 

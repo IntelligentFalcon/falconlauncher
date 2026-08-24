@@ -12,12 +12,15 @@
     "stop": "STOP"
   },
   "settings": {
-    "title": "Launcher Preferences",
-    "description": "Modify interface languages and general application settings.",
+    "title": "Launcher Settings",
+    "description": "Configure preferences, network connections, and behavior.",
     "interfaceLanguage": "Interface Language",
-    "interfaceLanguageDesc": "Swaps system core language string values.",
+    "interfaceLanguageDesc": "Select the display language for the launcher.",
     "exitOnLaunch": "Exit Launcher on Launch",
-    "exitOnLaunchDesc": "Kills the application runtime once the subprocess completes assembly boot."
+    "exitOnLaunchDesc": "Closes the launcher window after the game starts.",
+    "useProxy": "Enable Proxy",
+    "useProxyDesc": "Route launcher downloads and network traffic through a proxy server.",
+    "proxyAddress": "Proxy Server (e.g. http://127.0.0.1:8080 or socks5://127.0.0.1:1080)"
   },
   "gameOptions": {
     "runtimePreferences": "Runtime Preferences",
@@ -79,7 +82,11 @@
     "installingTitle": "Installing...",
     "successMessage": "Successfully installed {{name}}",
     "initializing": "Initializing download...",
-    "finishButton": "Finish & Go Back"
+    "finishButton": "Finish & Go Back",
+    "errorTitle": "Failed to Download Version",
+    "defaultError": "An unexpected error occurred while downloading the required version files.",
+    "retryButton": "Try Again",
+    "cancelButton": "Cancel"
   },
   "consoleFilters": {
     "allLogs": "All Logs",

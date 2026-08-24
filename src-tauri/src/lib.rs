@@ -83,7 +83,7 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(
-            tauri_plugin_log::Builder::new()
+            tauri_plugin_log::Builder::new().max_file_size(u128::MAX)
                 .targets([
                     Target::new(TargetKind::Folder {
                         path: get_falcon_launcher_directory(),
@@ -163,6 +163,10 @@ pub fn run() {
             commands::settings::save,
             commands::settings::set_config,
             commands::settings::get_total_ram,
+            commands::settings::should_use_proxy,
+            commands::settings::set_use_proxy,
+            commands::settings::get_proxy,
+            commands::settings::set_proxy,
             commands::mods::toggle_mod,
             commands::mods::delete_mod,
             commands::mods::get_mods,

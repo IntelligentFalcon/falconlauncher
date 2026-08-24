@@ -45,7 +45,8 @@ impl Default for LaunchOptions {
 pub struct LauncherSettings {
     pub language: String,
     pub exit_on_launch: Bool,
-
+    pub use_proxy: Bool,
+    pub proxy: String,
 }
 
 impl Default for LauncherSettings {
@@ -53,6 +54,8 @@ impl Default for LauncherSettings {
         Self {
             language: "en".to_string(),
             exit_on_launch: Bool::FALSE,
+            use_proxy: FALSE,
+            proxy: "".to_string(),
         }
     }
 }

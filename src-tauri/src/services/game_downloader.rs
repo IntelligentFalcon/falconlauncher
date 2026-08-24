@@ -34,6 +34,9 @@ use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStderr, Command, Stdio};
 use std::time::Duration;
+use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
+use reqwest_retry::policies::ExponentialBackoff;
+use reqwest_retry::RetryTransientMiddleware;
 use tauri::AppHandle;
 use tokio::io::AsyncWriteExt;
 use tokio::sync::mpsc::UnboundedSender;
@@ -384,10 +387,13 @@ pub async fn download_file(
         .file_name()
         .map(|s| s.to_string_lossy().into_owned())
         .unwrap_or_else(|| "unknown".to_string());
+    let retry_policy = ExponentialBackoff::builder().build_with_total_retry_duration_and_max_retries(Duration::from_secs(1),3);
+    let client: ClientWithMiddleware = ClientBuilder::new(reqwest::Client::new())
+        .with(RetryTransientMiddleware::new_with_policy(retry_policy))
+        .build();
 
-    let mut resp = reqwest::get(&url)
-        .await
-        .map_err(|_| AppError::DownloadFailed)?;
+    let mut resp = client.get(&url).timeout(Duration::from_secs(5)).send().await
+        .map_err(|_| AppError::DownloadFailed(format!("Failed to download file {} from {url}",dest.display().to_string())))?;
 
     let total_size = resp.content_length().unwrap_or(0);
 
@@ -403,7 +409,7 @@ pub async fn download_file(
 
     let mut downloaded: u64 = 0;
 
-    while let Some(chunk) = resp.chunk().await.map_err(|_| AppError::DownloadFailed)? {
+    while let Some(chunk) = resp.chunk().await.map_err(|_| AppError::DownloadFailed(format!("Failed to download file {} from {url}",dest.display().to_string())))? {
         out.write_all(&chunk)
             .await
             .map_err(|e| AppError::FileWriteFailed(e.to_string()))?;

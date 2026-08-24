@@ -52,8 +52,8 @@ pub enum AppError {
     #[error("Network Error: {0}")]
     NetworkRequestFailed(String),
 
-    #[error("Download Failed")]
-    DownloadFailed,
+    #[error("Download Failed: {0}")]
+    DownloadFailed(String),
 
     #[error("Not Implemented: {0}")]
     NotImplemented(String),
@@ -143,7 +143,7 @@ impl Serialize for AppError {
             AppError::AccessDenied(e) => ("ERROR_ACCESS_DENIED", Some(e.to_string())),
             AppError::LogHistoryNotFound => ("ERROR_LOG_HISTORY_NOT_FOUND", None),
             AppError::NetworkRequestFailed(e) => ("ERROR_NETWORK_REQUEST_FAILED", Some(e.to_string())),
-            AppError::DownloadFailed => ("ERROR_DOWNLOAD_FAILED", None),
+            AppError::DownloadFailed(e) => ("ERROR_DOWNLOAD_FAILED", Some(e.to_string())),
             AppError::NotImplemented(e) => ("ERROR_NOT_IMPLEMENTED", Some(e.to_string())),
             
             AppError::Io(e) => ("ERROR_FILE_READ_FAILED", Some(e.to_string())), // Fallback mapping

@@ -137,12 +137,15 @@
     "usernamePlaceholder": "نام کاربری آفلاین را وارد کنید"
   },
   "settings": {
-    "description": "زبان رابط کاربری و تنظیمات عمومی برنامه را تغییر دهید.",
-    "exitOnLaunch": "خروج از لانچر هنگام اجرا",
-    "exitOnLaunchDesc": "پس از تکمیل راه‌اندازی اسمبلی توسط زیرفرایند، زمان اجرای برنامه را پایان می‌دهد.",
-    "interfaceLanguage": "زبان رابط کاربری",
-    "interfaceLanguageDesc": "مقادیر رشته‌های زبان هستهٔ سیستم را تغییر می‌دهد.",
-    "title": "تنظیمات لانچر"
+    "description": "پیکربندی ترجیحات، اتصالات شبکه و رفتار برنامه.",
+    "exitOnLaunch": "بستن پس از اجرا",
+    "exitOnLaunchDesc": "بستن پنجره لانچر پس از شروع بازی.",
+    "interfaceLanguage": "زبان محیط کاربری",
+    "interfaceLanguageDesc": "زبان نمایشی لانچر را انتخاب کنید.",
+    "proxyAddress": "آدرس پروکسی (مثال: http://127.0.0.1:8080 یا socks5://127.0.0.1:1080)",
+    "title": "تنظیمات لانچر",
+    "useProxy": "فعال‌سازی پروکسی",
+    "useProxyDesc": "هدایت دانلودها و ترافیک شبکه لانچر از طریق سرور پروکسی."
   },
   "settingsLayout": {
     "gameTab": "گزینه‌های بازی",
@@ -154,7 +157,11 @@
     "finishButton": "پایان و بازگشت",
     "initializing": "در حال آماده‌سازی دانلود...",
     "installingTitle": "در حال نصب...",
-    "successMessage": "{{name}} با موفقیت نصب شد"
+    "successMessage": "{{name}} با موفقیت نصب شد",
+    "errorTitle": "خطا در دانلود نسخه",
+    "defaultError": "هنگام دانلود فایل‌های نسخه خطایی رخ داد.",
+    "retryButton": "تلاش مجدد",
+    "cancelButton": "انصراف"
   },
   "stepSelectLoader": {
     "fabricDesc": "سبک و سریع",

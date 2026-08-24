@@ -213,7 +213,28 @@ export type Invokes = WithDefaultError<{
     returns: Mirror[];
   };
 
-  // --- NEW MODRINTH COMMANDS ---
+  // --- PROXY COMMANDS ---
+  should_use_proxy: {
+    args: undefined;
+    returns: boolean;
+  };
+  set_use_proxy: {
+    args: {
+      toggle: boolean;
+    };
+    returns: void;
+  };
+  get_proxy: {
+    args: undefined;
+    returns: string;
+  };
+  set_proxy: {
+    args: {
+      proxy: string;
+    };
+    returns: void;
+  };
+
   search_for_modrinth_project: {
     args: {
       name: string;
@@ -323,7 +344,7 @@ export interface ModInfo {
   path: string;
   version: string;
 }
-// --- MODRINTH TYPES ---
+
 
 export interface ModrinthSearchResultMod {
   project_id: string;
@@ -348,12 +369,13 @@ export interface ModrinthSearchResultMod {
   slug: string | null;
   author_id: string | null;
   organization: string | null;
-  organization_id: string | null; // <-- ADDED
+  organization_id: string | null;
   featured_gallery: string | null;
   color: number | null;
   client_side: string | null;
   server_side: string | null;
 }
+
 export interface ModrinthLicense {
   id: string | null;
   name: string | null;
@@ -389,11 +411,9 @@ export interface ModrinthMod {
   game_versions: string[];
   loaders: string[];
   versions: string[];
-
   license: ModrinthLicense | null;
   gallery: ModrinthGalleryImage[];
   donation_urls: ModrinthDonationUrl[];
-
   published: string | null;
   updated: string | null;
   downloads: number;
@@ -416,6 +436,7 @@ export interface ModrinthMod {
   body_url: string | null;
   moderator_message: string | null;
 }
+
 export interface ModrinthSearchResult {
   hits: ModrinthSearchResultMod[];
   offset: number;
