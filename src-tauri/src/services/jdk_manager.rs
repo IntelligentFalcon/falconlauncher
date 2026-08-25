@@ -6,12 +6,14 @@ use crate::models::mirror::Mirror;
 use crate::models::platform::get_current_os_with_architecture;
 use crate::services::directory_manager::get_java_dir;
 use crate::services::game_downloader::download_file_if_not_exists;
-use crate::services::utils::load_json_url;
 use log::info;
 use serde_json::Value;
 use std::fs;
 use std::fs::create_dir_all;
+use std::time::Duration;
+use tauri::State;
 use tokio::sync::mpsc::UnboundedSender;
+use crate::AppState;
 
 pub fn get_java(java: String) -> Result<Java, AppError> {
     let runtime_dir = get_java_dir().join(&java);
@@ -19,6 +21,7 @@ pub fn get_java(java: String) -> Result<Java, AppError> {
 }
 
 pub async fn download_java(
+    state: &State<'_,AppState>,
     java: &String,
     version: &String,
     _logger: &UnboundedSender<LogLine>,
@@ -26,21 +29,16 @@ pub async fn download_java(
     mut tracker: Option<&mut PipelineProgressTracker>,
 ) -> Result<(), AppError> {
     let runtime_dir = get_java_dir().join(java);
-
-    if !mirror.is_connected().await {
-        return Err(AppError::MirrorConnectionFailed(
-            format!("Mirror {} is not connected to download", mirror.name),
-        ));
-    }
-
     let url = mirror.parse_url(&"https://launchermeta.mojang.com/v1/products/java-runtime/2ec0cc96c44e5a76b9c8b7c39df7210883d12871/all.json".to_string());
     let current_os = get_current_os_with_architecture();
     info!("Detected os and architecture is: {current_os}");
-    let json: Value = load_json_url(&url.to_string()).await.ok_or_else(|| {
-        AppError::NetworkRequestFailed(
-            "Couldn't get or read the runtime json manifest file.".to_string(),
-        )
-    })?;
+    let client = state.client.lock().await;
+    let json = client.get(&url).timeout(Duration::from_secs(5)).send()
+        .await
+        .map_err(|e| AppError::NetworkRequestFailed(format!("Launcher Meta API request failed: {}", e)))?
+        .json::<Value>()
+        .await
+        .map_err(|e| AppError::JsonParseFailed(format!("Failed to parse JDK results: {}", e)))?;
 
     let runtime_arr = json
         .get(&current_os)
@@ -73,7 +71,7 @@ pub async fn download_java(
 
     let runtime_manifest_url = mirror.parse_url(&runtime_manifest_url_str.to_string());
 
-    let runtime_manifest: Value = reqwest::get(runtime_manifest_url)
+    let runtime_manifest: Value = client.get(&runtime_manifest_url).timeout(Duration::from_secs(5)).send()
         .await
         .map_err(|e| AppError::NetworkRequestFailed(format!("Couldn't get runtime manifest: {}", e)))?
         .json()
@@ -120,6 +118,7 @@ pub async fn download_java(
 
             info!("Downloading {} ({} bytes)", file_url, size);
             download_file_if_not_exists(
+                state,
                 &runtime_dir.join(k),
                 file_url.to_string(),
                 sha1,

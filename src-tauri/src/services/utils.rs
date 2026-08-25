@@ -8,11 +8,18 @@ use serde_json::{Map, Value};
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
+use std::time::Duration;
 use log::info;
+use reqwest::{Client, Proxy};
+use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
+use reqwest_retry::policies::ExponentialBackoff;
+use reqwest_retry::RetryTransientMiddleware;
 use sha1::{Digest, Sha1};
 use sha1::digest::FixedOutput;
 use tauri::{AppHandle, Emitter};
+use tauri::ipc::RuntimeCapability;
 use uuid::{Builder, Uuid};
+use crate::models::config::Config;
 
 pub fn verify_file_existence_with_size(path_str: &String, expected_size: u64) -> Result<bool, AppError> {
     let path = Path::new(&path_str);
@@ -61,13 +68,6 @@ pub fn verify_file_existence_with_sha<P: AsRef<Path>>(
 
     Ok(computed_hash.eq_ignore_ascii_case(expected_sha))
 }
-
-pub async fn load_json_url(url: &String) -> Option<Value> {
-    let result = reqwest::get(url).await.ok()?;
-    let text = result.text().await.ok()?;
-    serde_json::from_str(text.as_str()).ok()
-}
-
 pub fn vec_to_string(vec: Vec<String>, separator: String) -> String {
     if vec.is_empty() {
         return String::new();
@@ -311,4 +311,18 @@ pub(crate) fn is_wayland() -> bool {
         .unwrap_or(false);
 
     wayland_display || session_type
+}
+pub fn create_reqwest_client(cfg: &Config) -> Result<ClientWithMiddleware, AppError> {
+    let retry_policy = ExponentialBackoff::builder().build_with_total_retry_duration_and_max_retries(Duration::from_secs(1),3);
+
+    let client =
+    if cfg.download_settings.proxy != "" {
+        let proxy = cfg.download_settings.proxy.clone();
+        Client::builder().proxy(Proxy::all(proxy).map_err(|x| AppError::Reqwest(x))?).build().map_err(|x| AppError::Reqwest(x))
+    } else {
+        Client::builder().build().map_err(|x| AppError::Reqwest(x))
+    };
+    Ok(ClientBuilder::new(client?)
+        .with(RetryTransientMiddleware::new_with_policy(retry_policy))
+        .build())
 }

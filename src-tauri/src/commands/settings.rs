@@ -3,6 +3,7 @@ use crate::AppState;
 use crate::models::config::{Bool, Config};
 use crate::models::error::AppError;
 use crate::models::profiles::{get_profile, Profile};
+use crate::services::utils::create_reqwest_client;
 
 #[command]
 pub async fn set_maximum_ram_usage(state: State<'_, AppState>, ram_usage: u64) -> Result<(), AppError> {
@@ -61,29 +62,20 @@ pub async fn set_exit_on_launch(state: State<'_, AppState>, toggle: bool) -> Res
     config.launcher_settings.exit_on_launch = Bool::new(toggle);
     Ok(())
 }
-#[command]
-pub async fn should_use_proxy(state: State<'_, AppState>) -> Result<bool, AppError> {
-    let cfg = state.config.read().await;
-    Ok(cfg.launcher_settings.use_proxy.boolean().clone())
-}
-
-#[command]
-pub async fn set_use_proxy(state: State<'_, AppState>, toggle: bool) -> Result<(), AppError> {
-    let mut config = state.config.write().await;
-    config.launcher_settings.use_proxy = Bool::new(toggle);
-    Ok(())
-}
 
 #[command]
 pub async fn get_proxy(state: State<'_, AppState>) -> Result<String, AppError> {
     let cfg = state.config.read().await;
-    Ok(cfg.launcher_settings.proxy.clone())
+    Ok(cfg.download_settings.proxy.clone())
 }
 
 #[command]
 pub async fn set_proxy(state: State<'_, AppState>, proxy: String) -> Result<(), AppError> {
     let mut config = state.config.write().await;
-    config.launcher_settings.proxy = proxy;
+    config.download_settings.proxy = proxy;
+    let mut client = state.client.lock().await;
+    *client = create_reqwest_client(&config)?;
+
     Ok(())
 }
 

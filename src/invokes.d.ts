@@ -214,16 +214,6 @@ export type Invokes = WithDefaultError<{
   };
 
   // --- PROXY COMMANDS ---
-  should_use_proxy: {
-    args: undefined;
-    returns: boolean;
-  };
-  set_use_proxy: {
-    args: {
-      toggle: boolean;
-    };
-    returns: void;
-  };
   get_proxy: {
     args: undefined;
     returns: string;

@@ -78,19 +78,19 @@ pub async fn play(
     if repair_mode {
         info!("Repair mode is enabled. attempting to download/check version files");
         download_version(
+            &state,
             &inherited_version,
             &"".to_string(),
             &app_handle,
             &state.log_tx,
-            &config,
         )
         .await?;
         download_version(
+            &state,
             &version,
             &"".to_string(),
             &app_handle,
             &state.log_tx,
-            &config,
         )
         .await?;
     }

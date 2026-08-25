@@ -322,6 +322,7 @@ pub enum DownloadStage {
     ForgeInstaller,
     FabricInstaller,
     Done,
+    Mod
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -426,6 +427,7 @@ impl PipelineProgressTracker {
             DownloadStage::Logging => "Configuring Logging",
             DownloadStage::ForgeInstaller => "Installing Forge",
             DownloadStage::FabricInstaller => "Installing Fabric",
+            DownloadStage::Mod => "Installing Mods",
             DownloadStage::Done => "Completed",
         }
         .to_string();

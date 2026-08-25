@@ -18,12 +18,15 @@ use std::env;
 use std::process::Child;
 use std::string::ToString;
 use std::sync::{Arc, LazyLock, Mutex};
+use reqwest::Client;
+use reqwest_middleware::ClientWithMiddleware;
 use tauri::async_runtime::{block_on, spawn};
 use tauri::{command, AppHandle, Manager, State};
 use tauri_plugin_deep_link::DeepLinkExt;
 use tauri_plugin_log::{Target, TargetKind, TimezoneStrategy};
 use tokio::sync;
 use tokio::sync::{mpsc, RwLock};
+use crate::services::utils::create_reqwest_client;
 
 pub struct FalconLauncher {
     pub name: String,
@@ -34,7 +37,9 @@ pub struct AppState {
     pub launcher_details: FalconLauncher,
     pub log_tx: mpsc::UnboundedSender<LogLine>,
     pub log_history: Arc<Mutex<VecDeque<LogLine>>>,
-    pub process_manager: ProcessManager
+    pub process_manager: ProcessManager,
+    pub client: tokio::sync::Mutex<ClientWithMiddleware>,
+
 }
 pub struct ProcessManager {
     pub active_processes: Mutex<HashMap<String, Mutex<Child>>>,
@@ -115,6 +120,11 @@ pub fn run() {
 
             let bridge_history = shared_history.clone();
             let log_tx = init_log_bridge(app_handle, bridge_history);
+            let cfg = load();
+            let client = create_reqwest_client(&cfg).unwrap_or_else(|x| {
+                error!("failed to create a normal client. attempting to create a default client: {}",x);
+                return ClientWithMiddleware::default();
+            });
             app.manage(AppState {
                 config: Arc::new(RwLock::new(load())),
                 launcher_details: FalconLauncher {
@@ -124,6 +134,7 @@ pub fn run() {
                 log_tx,
                 log_history: shared_history,
                 process_manager: ProcessManager::new(),
+                client: tokio::sync::Mutex::from(client)
             });
             block_on(async {
                 load_installed_versions().await;
@@ -163,8 +174,6 @@ pub fn run() {
             commands::settings::save,
             commands::settings::set_config,
             commands::settings::get_total_ram,
-            commands::settings::should_use_proxy,
-            commands::settings::set_use_proxy,
             commands::settings::get_proxy,
             commands::settings::set_proxy,
             commands::mods::toggle_mod,

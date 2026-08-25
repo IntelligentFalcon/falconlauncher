@@ -20,7 +20,15 @@
     "exitOnLaunchDesc": "Closes the launcher window after the game starts.",
     "useProxy": "Enable Proxy",
     "useProxyDesc": "Route launcher downloads and network traffic through a proxy server.",
-    "proxyAddress": "Proxy Server (e.g. http://127.0.0.1:8080 or socks5://127.0.0.1:1080)"
+    "proxySettings": "Proxy Settings",
+    "proxySettingsDesc": "Configure network proxy protocol and connection details",
+    "proxyAddress": "Address / Host",
+    "proxyPort": "Port",
+    "proxyAuth": "Authentication",
+    "username": "Username",
+    "password": "Password",
+    "saveProxy": "Save Proxy",
+    "saving": "Saving..."
   },
   "gameOptions": {
     "runtimePreferences": "Runtime Preferences",
@@ -148,7 +156,9 @@
     "dependencyType": "Type: {{type}}",
     "downloading": "Downloading Files...",
     "downloadSelected": "Download Selected Mods",
-    "fullscreenAlt": "Fullscreen view"
+    "fullscreenAlt": "Fullscreen view",
+    "downloadingTitle": "Downloading Mod",
+    "fetchingFiles": "Fetching files..."
   },
   "navMenu": {
     "platform": "Platform",

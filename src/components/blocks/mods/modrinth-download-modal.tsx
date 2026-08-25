@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import {
     Search, X, ChevronLeft, Download, CheckSquare, Square,
-    Package, AlertCircle, Code, Book, MessageSquare, Bug, Heart, Layers
+    Package, AlertCircle, Code, Book, MessageSquare, Bug, Heart, Layers, Loader2
 } from "lucide-react";
-import { useTranslation } from "react-i18next"; // <-- Import added
+import { useTranslation } from "react-i18next";
+import { listen } from "@tauri-apps/api/event";
 import { useModsState } from "@/context/mods-context";
 import { LoadingSwap } from "@/components/ui/animated/swapper";
 import { useBackendMutation } from "@/hooks/use-backend";
@@ -24,6 +25,18 @@ import type {
     ModrinthMod,
     DependencyTuple
 } from "@/invokes";
+
+export interface ModDownloadProgress {
+    stage?: string;
+    stage_name?: string;
+    current_file?: number;
+    total_files?: number;
+    current_bytes?: number;
+    total_bytes?: number;
+    file_name?: string;
+    global_percentage?: number;
+    percentage?: number;
+}
 
 interface DependencyState {
     version: ModrinthVersion;
@@ -57,7 +70,7 @@ export function ModrinthDownloadModal({
     isOpen: boolean;
     onClose: () => void;
 }) {
-    const { t } = useTranslation(); // <-- Initialize translation hook
+    const { t } = useTranslation();
     const { selectedVersion: gameVersion } = useModsState();
 
     const [provider, setProvider] = useState<"modrinth" | "curseforge">("modrinth");
@@ -72,13 +85,30 @@ export function ModrinthDownloadModal({
     const [selectedModVersion, setSelectedModVersion] = useState<ModrinthVersion | null>(null);
     const [dependencies, setDependencies] = useState<DependencyState[]>([]);
 
+    // Download & Progress Tracker State
+    const [downloadProgress, setDownloadProgress] = useState<ModDownloadProgress | null>(null);
+    const [isDownloadingState, setIsDownloadingState] = useState(false);
+
     const [fullscreenImage, setFullscreenImage] = useState<string | undefined>();
 
     const { mutateAsync: searchProjects, isPending: isSearching } = useBackendMutation({ name: "search_for_modrinth_project" });
     const { mutateAsync: fetchVersions, isPending: isLoadingVersions } = useBackendMutation({ name: "list_modrinth_mod_versions" });
     const { mutateAsync: fetchProject, isPending: isLoadingProject } = useBackendMutation({ name: "get_modrinth_projects" });
     const { mutateAsync: fetchDependencies, isPending: isLoadingDependencies } = useBackendMutation({ name: "get_modrinth_mod_dependencies" });
-    const { mutateAsync: downloadVersion, isPending: isDownloading } = useBackendMutation({ name: "download_modrinth_mod_version" });
+    const { mutateAsync: downloadVersion, isPending: isDownloadingMutation } = useBackendMutation({ name: "download_modrinth_mod_version" });
+
+    // Listen to "progress-bar" event from Tauri backend
+    useEffect(() => {
+        if (!isOpen) return;
+
+        const unlistenPromise = listen<ModDownloadProgress>("progress-bar", (event) => {
+            setDownloadProgress(event.payload);
+        });
+
+        return () => {
+            unlistenPromise.then((unlisten) => unlisten());
+        };
+    }, [isOpen]);
 
     const executeSearch = async (currentQuery: string, currentIndexDisplay: string) => {
         if (provider !== "modrinth" || !gameVersion) return;
@@ -114,11 +144,10 @@ export function ModrinthDownloadModal({
         if (isOpen && step === "search" && gameVersion && provider === "modrinth") {
             executeSearch(query, searchIndex);
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isOpen, searchIndex, gameVersion, provider]);
 
     const handleProviderSwitch = (newProvider: "modrinth" | "curseforge") => {
-        if (newProvider === provider) return;
+        if (newProvider === provider || isDownloadingState) return;
         setProvider(newProvider);
         setStep("search");
         setQuery("");
@@ -164,47 +193,110 @@ export function ModrinthDownloadModal({
     };
 
     const toggleDependency = (id: string) => {
+        if (isDownloadingState) return;
         setDependencies((prev) =>
             prev.map((d) => (d.version.id === id ? { ...d, selected: !d.selected } : d))
         );
     };
 
     const handleDownload = async () => {
-        if (!selectedModVersion || !gameVersion) return;
+        if (!selectedModVersion || !gameVersion || isDownloadingState) return;
+
+        setIsDownloadingState(true);
+        setDownloadProgress(null);
 
         try {
+            // Main mod
             await downloadVersion({ version: selectedModVersion, name: gameVersion });
 
+            // Selected dependencies
             const selectedDeps = dependencies.filter((d) => d.selected);
             for (const dep of selectedDeps) {
                 await downloadVersion({ version: dep.version, name: gameVersion });
             }
+
             handleClose();
         } catch (err) {
             console.error("Failed to download mod or dependencies:", err);
+        } finally {
+            setIsDownloadingState(false);
+            setDownloadProgress(null);
         }
     };
 
     const handleClose = () => {
+        if (isDownloadingState) return;
         setStep("search");
         setQuery("");
         setProvider("modrinth");
+        setDownloadProgress(null);
         onClose();
     };
 
     if (!isOpen) return null;
 
+    const isDownloading = isDownloadingState || isDownloadingMutation;
+    const progressPercent = Math.min(
+        Math.max(
+            Number(downloadProgress?.global_percentage ?? downloadProgress?.percentage ?? 0),
+            0
+        ),
+        100
+    );
+
     return (
         <>
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-4 backdrop-blur-sm">
-                <div className="flex h-full max-h-[700px] w-full max-w-5xl overflow-hidden rounded-2xl border border-border/40 bg-card shadow-lg">
+                <div className="relative flex h-full max-h-[700px] w-full max-w-5xl overflow-hidden rounded-2xl border border-border/40 bg-card shadow-lg">
+
+                    {/* PROGRESS TRACKER POPUP OVERLAY */}
+                    {isDownloading && (
+                        <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-background/90 p-6 backdrop-blur-md animate-in fade-in duration-200">
+                            <div className="flex w-full max-w-md flex-col items-center gap-5 rounded-2xl border border-border/60 bg-card/90 p-6 shadow-2xl">
+                                <div className="rounded-full border border-primary/30 bg-primary/10 p-3.5 text-primary">
+                                    <Loader2 size={32} className="animate-spin" />
+                                </div>
+
+                                <div className="w-full text-center">
+                                    <h3 className="font-bold text-lg text-foreground">
+                                        {t("modrinthModal.downloadingTitle", "Downloading Mod")}
+                                    </h3>
+                                    <p className="mt-1 text-xs text-muted-foreground truncate">
+                                        {downloadProgress?.stage_name ||
+                                            downloadProgress?.file_name ||
+                                            selectedModVersion?.name ||
+                                            t("modrinthModal.fetchingFiles", "Fetching files...")}
+                                    </p>
+                                </div>
+
+                                {/* Progress Bar Container */}
+                                <div className="w-full space-y-2">
+                                    <div className="h-2.5 w-full overflow-hidden rounded-full border border-border/40 bg-secondary/50 p-0.5 shadow-inner">
+                                        <div
+                                            className="h-full rounded-full bg-primary transition-all duration-200 ease-out"
+                                            style={{ width: `${progressPercent}%` }}
+                                        />
+                                    </div>
+                                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                        <span className="truncate max-w-[70%] font-mono text-[11px]">
+                                            {downloadProgress?.file_name ?? ""}
+                                        </span>
+                                        <span className="font-bold">{progressPercent.toFixed(0)}%</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     {/* SIDEBAR */}
                     <div className="w-56 shrink-0 border-r border-border/40 bg-secondary/10 p-4 flex flex-col gap-2">
-                        <h3 className="mb-2 px-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">{t("modrinthModal.sources")}</h3>
+                        <h3 className="mb-2 px-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                            {t("modrinthModal.sources")}
+                        </h3>
 
                         <button
                             onClick={() => handleProviderSwitch("modrinth")}
+                            disabled={isDownloading}
                             className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${
                                 provider === "modrinth"
                                     ? "bg-primary text-primary-foreground shadow-sm"
@@ -217,6 +309,7 @@ export function ModrinthDownloadModal({
 
                         <button
                             onClick={() => handleProviderSwitch("curseforge")}
+                            disabled={isDownloading}
                             className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${
                                 provider === "curseforge"
                                     ? "bg-primary text-primary-foreground shadow-sm"
@@ -234,7 +327,11 @@ export function ModrinthDownloadModal({
                         <div className="flex items-center justify-between border-b border-border/40 bg-secondary/20 p-4">
                             <div className="flex items-center gap-3">
                                 {step !== "search" && (
-                                    <button onClick={() => setStep(step === "dependencies" ? "details" : "search")} className="rounded-lg p-1.5 hover:bg-secondary transition-colors">
+                                    <button
+                                        disabled={isDownloading}
+                                        onClick={() => setStep(step === "dependencies" ? "details" : "search")}
+                                        className="rounded-lg p-1.5 hover:bg-secondary transition-colors disabled:opacity-50"
+                                    >
                                         <ChevronLeft size={18} />
                                     </button>
                                 )}
@@ -244,7 +341,11 @@ export function ModrinthDownloadModal({
                                     {step === "dependencies" && t("modrinthModal.reviewDependencies")}
                                 </h2>
                             </div>
-                            <button onClick={handleClose} className="rounded-lg p-1.5 hover:bg-secondary transition-colors">
+                            <button
+                                disabled={isDownloading}
+                                onClick={handleClose}
+                                className="rounded-lg p-1.5 hover:bg-secondary transition-colors disabled:opacity-50"
+                            >
                                 <X size={18} />
                             </button>
                         </div>
@@ -288,7 +389,6 @@ export function ModrinthDownloadModal({
                                                 <ComboboxInput
                                                     className="h-11 w-full rounded-xl border border-border/50 bg-secondary/10 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 cursor-pointer"
                                                     placeholder={t("modrinthModal.sortBy")}
-                                                    // Translating the raw value for display
                                                     value={t(`modrinthModal.sort.${searchIndex.toLowerCase()}`)}
                                                     readOnly
                                                 />
@@ -301,7 +401,6 @@ export function ModrinthDownloadModal({
                                                                 value={item}
                                                                 className="cursor-pointer hover:bg-secondary"
                                                             >
-                                                                {/* Translating the dropdown options */}
                                                                 {t(`modrinthModal.sort.${item.toLowerCase()}`)}
                                                             </ComboboxItem>
                                                         )}
@@ -376,7 +475,6 @@ export function ModrinthDownloadModal({
                                     <LoadingSwap isLoading={isLoadingProject}>
                                         {fullProject && (
                                             <div className="flex flex-col gap-8">
-
                                                 <div className="flex flex-wrap gap-2.5 select-none">
                                                     {fullProject.source_url && (
                                                         <a href={fullProject.source_url} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 rounded-lg border border-border/50 bg-secondary/30 px-3.5 py-1.5 text-xs font-medium text-foreground hover:bg-secondary transition-colors">
@@ -512,7 +610,7 @@ export function ModrinthDownloadModal({
                             )}
                         </div>
 
-                        {/* FOOTER ACTIONS (Only visible in Dependencies step) */}
+                        {/* FOOTER ACTIONS */}
                         {step === "dependencies" && (
                             <div className="border-t border-border/40 bg-secondary/20 p-4">
                                 <button

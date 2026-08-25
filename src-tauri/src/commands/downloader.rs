@@ -24,7 +24,7 @@ pub async fn get_vanilla_versions(
     let mirror = &cfg.download_settings.mirror;
     let mut result: Vec<VersionCategory> = Vec::new();
 
-    let manifest = load_version_manifest(mirror).await?;
+    let manifest = load_version_manifest(&state).await?;
     let versions: Vec<&VersionInfo> = manifest
         .versions
         .iter()
@@ -112,7 +112,7 @@ pub async fn get_forge_versions(
     let cfg = state.config.read().await;
     let mirror = &cfg.download_settings.mirror;
 
-    let manifest = load_version_manifest(mirror).await?;
+    let manifest = load_version_manifest(&state).await?;
     let mut result: Vec<VersionCategory> = Vec::new();
     let versions: Vec<&VersionInfo> = manifest
         .versions
@@ -143,7 +143,7 @@ pub async fn get_forge_versions(
             }
         };
 
-        let mut forge_versions = get_available_forge_versions(&id, mirror).await?;
+        let mut forge_versions = get_available_forge_versions(&id, &state).await?;
         forge_versions.reverse();
         cat.versions
             .extend(forge_versions.into_iter().map(|x| VersionLoader {
@@ -161,9 +161,7 @@ pub async fn get_fabric_versions(
     _app_handle: AppHandle,
     state: State<'_, AppState>,
 ) -> Result<Vec<VersionCategory>, AppError> {
-    let cfg = state.config.read().await;
-    let mirror = &cfg.download_settings.mirror;
-    let manifest = load_version_manifest(mirror).await?;
+    let manifest = load_version_manifest(&state).await?;
 
     let mut result: Vec<VersionCategory> = Vec::new();
     let versions: Vec<&VersionInfo> = manifest
@@ -195,7 +193,7 @@ pub async fn get_fabric_versions(
             }
         };
 
-        let fabric_versions = get_available_fabric_versions(&id).await?;
+        let fabric_versions = get_available_fabric_versions(&state,&id).await?;
 
         cat.versions
             .extend(fabric_versions.into_iter().map(|x| VersionLoader {
@@ -230,7 +228,7 @@ pub async fn download_version(
             "DEBUG: Forge version detected! {} installing now!",
             version_loader.id
         );
-        let t = download_forge_version(
+        let t = download_forge_version(&state,
             &version_loader.id,
             &app_handle,
             logger,
@@ -250,14 +248,14 @@ pub async fn download_version(
             "DEBUG: Fabric version detected! {} installing now!",
             version_loader.id
         );
-        download_fabric(&version_loader, logger, mir, None).await?;
+        download_fabric(&state,&version_loader, logger, mir, None).await?;
     }
 
     info!("Downloading {version_id}.json");
 
-    let manifest = load_version_manifest(mir).await?;
+    let manifest = load_version_manifest(&state).await?;
     if version_loader.base == VersionBase::VANILLA {
-        download_from_manifest(&version_id, &manifest, mir, None).await?;
+        download_from_manifest(&state,&version_id, &manifest, mir, None).await?;
     }
 
     let version = MinecraftVersion::from_id(version_id);
@@ -273,16 +271,16 @@ pub async fn download_version(
     };
 
     game_downloader::download_version(
+        &state,
         downloadable_version,
         &name,
         &app_handle,
         logger,
-        &*cfg,
     )
         .await?;
 
     if inherited_version.id != version.id {
-        game_downloader::download_version(&version, &name, &app_handle, logger, &*cfg).await?;
+        game_downloader::download_version(&state,&version, &name, &app_handle, logger).await?;
     }
 
     update_download_status("", &app_handle);
@@ -325,5 +323,5 @@ pub async fn get_installed_versions() -> Result<Vec<String>, AppError> {
 pub async fn reload_version_manifest(_app_handle: AppHandle, state: State<'_, AppState>) -> Void {
     let cfg = state.config.read().await;
     let mirror = &cfg.download_settings.mirror;
-    download_version_manifest(mirror).await
+    download_version_manifest(&state).await
 }

@@ -24,9 +24,8 @@ use crate::services::utils::{
     fetch_unofficial_library_repos, is_legacy, verify_file_existence_with_sha,
     verify_file_existence_with_size,
 };
-use crate::GLOBAL_CACHE;
+use crate::{AppState, GLOBAL_CACHE};
 use log::info;
-use reqwest::Client;
 use std::collections::HashMap;
 use std::fs;
 use std::fs::{create_dir_all, exists, set_permissions, File};
@@ -34,22 +33,20 @@ use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStderr, Command, Stdio};
 use std::time::Duration;
-use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
-use reqwest_retry::policies::ExponentialBackoff;
-use reqwest_retry::RetryTransientMiddleware;
-use tauri::AppHandle;
+use tauri::{AppHandle, State};
 use tokio::io::AsyncWriteExt;
 use tokio::sync::mpsc::UnboundedSender;
 use zip::ZipArchive;
 use zip_extract::extract;
 
 pub async fn download_version(
+    state: &State<'_, AppState>,
     version: &MinecraftVersion,
     name: &String,
     app_handle: &AppHandle,
     logger: &UnboundedSender<LogLine>,
-    cfg: &Config,
 ) -> Result<(), AppError> {
+    let cfg = state.config.read().await;
     let id = &version.id;
     let mirror = &cfg.download_settings.mirror;
     let _instance_name = if name.is_empty() { &version.id } else { name };
@@ -63,7 +60,12 @@ pub async fn download_version(
     stages_plan.push((DownloadStage::Java, 25.0));
     stages_plan.push((DownloadStage::Libraries, 25.0));
 
-    if json.downloads.as_ref().and_then(|d| d.get("client")).is_some() {
+    if json
+        .downloads
+        .as_ref()
+        .and_then(|d| d.get("client"))
+        .is_some()
+    {
         stages_plan.push((DownloadStage::Client, 10.0));
     }
     if json.asset_index.is_some() {
@@ -87,37 +89,42 @@ pub async fn download_version(
 
         m.java_version
             .ok_or_else(|| {
-                AppError::ManifestParseFailed("Java version missing in inherited manifest".to_string())
+                AppError::ManifestParseFailed(
+                    "Java version missing in inherited manifest".to_string(),
+                )
             })?
             .clone()
     } else {
-        return Err(AppError::ManifestParseFailed("No Java version found in manifest".to_string()));
+        return Err(AppError::ManifestParseFailed(
+            "No Java version found in manifest".to_string(),
+        ));
     };
 
     tracker.start_stage(DownloadStage::Java, 1);
     download_java(
+        state,
         &java_version.component,
         &java_version.major_version.to_string(),
         logger,
         mirror,
         Some(&mut tracker),
     )
-        .await?;
+    .await?;
     tracker.next_file();
 
     tracker.start_stage(DownloadStage::Libraries, json.libraries.len());
-    download_libraries(&json.libraries, id, mirror, &mut tracker).await?;
+    download_libraries(state, &json.libraries, id, mirror, &mut tracker).await?;
 
     if let Some(downloads) = &json.downloads {
         if let Some(client_download) = downloads.get("client") {
             tracker.start_stage(DownloadStage::Client, 1);
-            download_client(client_download, id, mirror, &tracker).await?;
+            download_client(state, client_download, id, mirror, &tracker).await?;
             tracker.next_file();
         }
     }
 
     if let Some(asset_index) = &json.asset_index {
-        download_assets(asset_index, mirror, app_handle, &mut tracker).await?;
+        download_assets(state, asset_index, mirror, app_handle, &mut tracker).await?;
     }
 
     if let Some(logging) = &json.logging {
@@ -132,13 +139,14 @@ pub async fn download_version(
 
         let dest = get_version_directory(id).join(filename);
         download_file_if_not_exists(
+            state,
             &dest,
             logging.client.file.url.clone(),
             logging.client.file.sha1.as_str(),
             logging.client.file.size,
             Some(&tracker),
         )
-            .await?;
+        .await?;
         tracker.next_file();
     }
 
@@ -149,6 +157,7 @@ pub async fn download_version(
 }
 
 async fn download_assets(
+    state: &State<'_, AppState>,
     value: &AssetIndex,
     mirror: &Mirror,
     _app_handle: &AppHandle,
@@ -163,19 +172,21 @@ async fn download_assets(
         .join(format!("{id}.json"));
 
     download_file_if_not_exists(
+        state,
         &asset_index_path,
         url.to_string(),
         hash,
         total_size,
         Some(tracker),
     )
-        .await?;
+    .await?;
 
     let content = fs::read_to_string(&asset_index_path)
         .map_err(|e| AppError::FileReadFailed(format!("Failed to read asset index: {}", e)))?;
 
-    let json: AssetObjects = serde_json::from_str(&content)
-        .map_err(|e| AppError::JsonParseFailed(format!("Asset index isn't well formatted: {}", e)))?;
+    let json: AssetObjects = serde_json::from_str(&content).map_err(|e| {
+        AppError::JsonParseFailed(format!("Asset index isn't well formatted: {}", e))
+    })?;
 
     let url_template = "https://resources.download.minecraft.net/{id}/{hash}";
     tracker.start_stage(DownloadStage::Assets, json.objects.len());
@@ -194,7 +205,8 @@ async fn download_assets(
             .join(prefix_id)
             .join(hash);
 
-        download_file_if_not_exists(&path, obj_url, hash.as_str(), size, Some(tracker)).await?;
+        download_file_if_not_exists(state, &path, obj_url, hash.as_str(), size, Some(tracker))
+            .await?;
         tracker.next_file();
     }
 
@@ -202,13 +214,14 @@ async fn download_assets(
 }
 
 async fn download_libraries(
+    state: &State<'_, AppState>,
     libraries: &[Library],
     version: &String,
     mirror: &Mirror,
     tracker: &mut PipelineProgressTracker,
 ) -> Result<(), AppError> {
     let libraries_path = get_libraries_directory();
-
+    let client = state.client.lock().await;
     for library in libraries {
         if library.downloads.is_none() {
             let name = library.name.replace(':', "/");
@@ -216,15 +229,11 @@ async fn download_libraries(
             if name.starts_with_lower_case("net/minecraft") {
                 let url = mirror.parse_url(&format!("https://libraries.minecraft.net/{path}"));
                 let full_path = libraries_path.join(&path);
-                download_file_if_not_exists(&full_path, url, "", 0, Some(tracker)).await?;
+                download_file_if_not_exists(state, &full_path, url, "", 0, Some(tracker)).await?;
             } else {
                 let urls = fetch_unofficial_library_repos(&path);
                 for url in urls {
                     let full_path = libraries_path.join(&path);
-                    let client = Client::builder()
-                        .connect_timeout(Duration::from_secs(3))
-                        .build()
-                        .map_err(|e| AppError::Internal(e.to_string()))?;
 
                     if client
                         .head(url.clone())
@@ -234,7 +243,8 @@ async fn download_libraries(
                         .status()
                         .is_success()
                     {
-                        download_file_if_not_exists(&full_path, url, "", 0, Some(tracker)).await?;
+                        download_file_if_not_exists(state, &full_path, url, "", 0, Some(tracker))
+                            .await?;
                         break;
                     }
                 }
@@ -249,7 +259,14 @@ async fn download_libraries(
             .ok_or_else(|| AppError::ManifestParseFailed("Downloads missing".to_string()))?;
 
         if downloads.artifact.is_none() {
-            download_classifiers(downloads.classifiers.as_ref(), version, mirror, Some(tracker)).await?;
+            download_classifiers(
+                state,
+                downloads.classifiers.as_ref(),
+                version,
+                mirror,
+                Some(tracker),
+            )
+            .await?;
             tracker.next_file();
             continue;
         }
@@ -274,19 +291,27 @@ async fn download_libraries(
         let os = get_current_os();
         let rules = fetch_rules(library.rules.as_ref());
 
-        download_classifiers(downloads.classifiers.as_ref(), version, mirror, Some(tracker)).await?;
+        download_classifiers(
+            state,
+            downloads.classifiers.as_ref(),
+            version,
+            mirror,
+            Some(tracker),
+        )
+        .await?;
 
         if rules.allowed_oses.contains(&os) && !rules.disallowed_oses.contains(&os) {
             let path = libraries_path.join(&library_path);
             let hash = library_artifact.sha1.clone().unwrap_or_default();
             download_file_if_not_exists(
+                state,
                 &path,
                 mirror.parse_url(&library_artifact.url),
                 hash.as_str(),
                 library_artifact.size.unwrap_or(0),
                 Some(tracker),
             )
-                .await?;
+            .await?;
         }
 
         tracker.next_file();
@@ -295,6 +320,7 @@ async fn download_libraries(
 }
 
 async fn download_client(
+    state: &State<'_, AppState>,
     value: &DownloadDetail,
     version: &String,
     mirror: &Mirror,
@@ -307,10 +333,11 @@ async fn download_client(
         .join(format!("{version}.jar"));
     let hash = value.sha1.as_str();
 
-    download_file_if_not_exists(&path, url, hash, size, Some(tracker)).await
+    download_file_if_not_exists(state, &path, url, hash, size, Some(tracker)).await
 }
 
 async fn download_classifiers(
+    state: &State<'_, AppState>,
     classifiers: Option<&HashMap<String, LibraryArtifact>>,
     version: &String,
     mirror: &Mirror,
@@ -340,7 +367,15 @@ async fn download_classifiers(
         let full_path = get_libraries_directory().join(path);
         let size = val.size.unwrap_or(0);
         let hash = val.sha1.clone().unwrap_or_default();
-        download_file_if_not_exists(&full_path, url.to_string(), hash.as_str(), size, tracker).await?;
+        download_file_if_not_exists(
+            state,
+            &full_path,
+            url.to_string(),
+            hash.as_str(),
+            size,
+            tracker,
+        )
+        .await?;
 
         let file_path = full_path.to_string_lossy().into_owned();
         let file = File::open(&file_path)
@@ -360,6 +395,7 @@ async fn download_classifiers(
 }
 
 pub async fn download_file_if_not_exists(
+    state: &State<'_, AppState>,
     path: &PathBuf,
     url: String,
     hash: &str,
@@ -368,17 +404,18 @@ pub async fn download_file_if_not_exists(
 ) -> Result<(), AppError> {
     if !hash.is_empty() {
         if !verify_file_existence_with_sha(path, hash)? {
-            download_file(url, path, tracker).await?;
+            download_file(state, url, path, tracker).await?;
         }
         return Ok(());
     }
     if !verify_file_existence_with_size(&path.to_string_lossy().to_string(), size)? {
-        download_file(url, path, tracker).await?;
+        download_file(state, url, path, tracker).await?;
     }
     Ok(())
 }
 
 pub async fn download_file(
+    state: &State<'_, AppState>,
     url: String,
     dest: &PathBuf,
     tracker: Option<&PipelineProgressTracker>,
@@ -387,13 +424,18 @@ pub async fn download_file(
         .file_name()
         .map(|s| s.to_string_lossy().into_owned())
         .unwrap_or_else(|| "unknown".to_string());
-    let retry_policy = ExponentialBackoff::builder().build_with_total_retry_duration_and_max_retries(Duration::from_secs(1),3);
-    let client: ClientWithMiddleware = ClientBuilder::new(reqwest::Client::new())
-        .with(RetryTransientMiddleware::new_with_policy(retry_policy))
-        .build();
-
-    let mut resp = client.get(&url).timeout(Duration::from_secs(5)).send().await
-        .map_err(|_| AppError::DownloadFailed(format!("Failed to download file {} from {url}",dest.display().to_string())))?;
+    let client = state.client.lock().await;
+    let mut resp = client
+        .get(&url)
+        .timeout(Duration::from_secs(5))
+        .send()
+        .await
+        .map_err(|_| {
+            AppError::DownloadFailed(format!(
+                "Failed to download file {} from {url}",
+                dest.display().to_string()
+            ))
+        })?;
 
     let total_size = resp.content_length().unwrap_or(0);
 
@@ -409,7 +451,12 @@ pub async fn download_file(
 
     let mut downloaded: u64 = 0;
 
-    while let Some(chunk) = resp.chunk().await.map_err(|_| AppError::DownloadFailed(format!("Failed to download file {} from {url}",dest.display().to_string())))? {
+    while let Some(chunk) = resp.chunk().await.map_err(|_| {
+        AppError::DownloadFailed(format!(
+            "Failed to download file {} from {url}",
+            dest.display().to_string()
+        ))
+    })? {
         out.write_all(&chunk)
             .await
             .map_err(|e| AppError::FileWriteFailed(e.to_string()))?;
@@ -434,6 +481,7 @@ pub async fn download_file(
 }
 
 pub async fn download_from_manifest(
+    state: &State<'_, AppState>,
     id: &String,
     manifest: &Manifest,
     mir: &Mirror,
@@ -450,10 +498,11 @@ pub async fn download_from_manifest(
     let version_url = mir.parse_url(&version.url);
     let dest = get_version_directory(id).join(format!("{}.json", id));
 
-    download_file(version_url.to_string(), &dest, tracker).await
+    download_file(state, version_url.to_string(), &dest, tracker).await
 }
 
 pub async fn download_forge_version(
+    state: &State<'_, AppState>,
     version: &String,
     _app_handle: &AppHandle,
     logger: &UnboundedSender<LogLine>,
@@ -471,7 +520,7 @@ pub async fn download_forge_version(
 
     let installer_path = temp_dir.join(format!("forge-{version}-installer.jar"));
     let installer_path_str = installer_path.to_string_lossy().into_owned();
-    download_file(url, &installer_path, tracker).await?;
+    download_file(state, url, &installer_path, tracker).await?;
 
     let version_args = version.split('-').collect::<Vec<&str>>();
     let _mc_version = version_args
@@ -480,7 +529,15 @@ pub async fn download_forge_version(
 
     if !is_legacy(version) {
         info!("DEBUG: Non legacy version detected!");
-        download_java(&"jre-legacy".to_string(), &"8".to_string(), logger, mirror, None).await?;
+        download_java(
+            state,
+            &"jre-legacy".to_string(),
+            &"8".to_string(),
+            logger,
+            mirror,
+            None,
+        )
+        .await?;
         let jdk_8 = get_java("jre-legacy".to_string())?;
 
         let mut child = Command::new(jdk_8.get_bin_file().display().to_string())
@@ -541,15 +598,15 @@ pub async fn download_forge_version(
         ));
 
         let mirror_list = mirror.parse_url(&install_data.mirror_list);
-        if let Ok(resp) = reqwest::get(mirror_list).await {
+        let client = state.client.lock().await;
+        if let Ok(resp) = client.get(mirror_list).send().await {
             if let Ok(text) = resp.text().await {
                 let _mirrors = fetch_forge_mirrors(text).await;
             }
         }
 
-        create_dir_all(full_path.parent().unwrap_or_else(|| Path::new(""))).map_err(|_| {
-            AppError::DirCreateFailed("Failed to create the path".to_string())
-        })?;
+        create_dir_all(full_path.parent().unwrap_or_else(|| Path::new("")))
+            .map_err(|_| AppError::DirCreateFailed("Failed to create the path".to_string()))?;
 
         let mut file =
             File::create(&full_path).map_err(|e| AppError::FileCreateFailed(e.to_string()))?;
@@ -629,13 +686,14 @@ pub async fn download_forge_version(
                     let hash = artifact.sha1.clone().unwrap_or_default();
                     let size = artifact.size.unwrap_or_default();
                     download_file_if_not_exists(
+                        state,
                         &PathBuf::from(full_path),
                         full_url,
                         hash.as_str(),
                         size,
                         tracker,
                     )
-                        .await?;
+                    .await?;
                 }
             }
         }
@@ -648,7 +706,8 @@ pub async fn download_forge_version(
                 get_libraries_directory().to_string_lossy().into_owned(),
                 &library.name,
             )?;
-            download_file_if_not_exists(&PathBuf::from(full_path), full_url, "", 0, tracker).await?;
+            download_file_if_not_exists(state, &PathBuf::from(full_path), full_url, "", 0, tracker)
+                .await?;
         }
     }
 
@@ -656,16 +715,8 @@ pub async fn download_forge_version(
     Ok(())
 }
 
-fn spawn_thread(stderr: ChildStderr, task_name: String) {
-    std::thread::spawn(move || {
-        let reader = BufReader::new(stderr);
-        for line in reader.lines().flatten() {
-            info!("[{task_name}][stderr] {}", line);
-        }
-    });
-}
-
 pub async fn download_fabric(
+    state: &State<'_, AppState>,
     version_loader: &VersionLoader,
     logger: &UnboundedSender<LogLine>,
     mirror: &Mirror,
@@ -673,15 +724,19 @@ pub async fn download_fabric(
 ) -> Result<(), AppError> {
     let loaders_url = "https://meta.fabricmc.net/v2/versions/loader";
     let installers_url = "https://meta.fabricmc.net/v2/versions/installer";
-
-    let loaders = reqwest::get(loaders_url)
+    let client = state.client.lock().await;
+    let loaders = client
+        .get(loaders_url)
+        .send()
         .await
         .map_err(|e| AppError::NetworkRequestFailed(e.to_string()))?
         .json::<Vec<FabricLoader>>()
         .await
         .map_err(|e| AppError::NetworkRequestFailed(e.to_string()))?;
 
-    let installers = reqwest::get(installers_url)
+    let installers = client
+        .get(installers_url)
+        .send()
         .await
         .map_err(|e| AppError::NetworkRequestFailed(e.to_string()))?
         .json::<Vec<FabricInstaller>>()
@@ -703,9 +758,23 @@ pub async fn download_fabric(
         &stable_installer.maven,
     )?;
 
-    download_file(stable_installer.url.to_string(), &PathBuf::from(&installer_path_download), tracker).await?;
+    download_file(
+        state,
+        stable_installer.url.to_string(),
+        &PathBuf::from(&installer_path_download),
+        tracker,
+    )
+    .await?;
 
-    download_java(&"jre-legacy".to_string(), &"8".to_string(), logger, mirror, None).await?;
+    download_java(
+        state,
+        &"jre-legacy".to_string(),
+        &"8".to_string(),
+        logger,
+        mirror,
+        None,
+    )
+    .await?;
     let jdk_8 = get_java("jre-legacy".to_string())?;
 
     let installer_path_buf = PathBuf::from(&installer_path_download);
@@ -742,7 +811,6 @@ pub async fn download_fabric(
     )?;
     Ok(())
 }
-
 pub fn generate_stdout(child: &mut Child, task_name: String) -> Result<(), AppError> {
     let stdout = child
         .stdout
@@ -757,12 +825,12 @@ pub fn generate_stdout(child: &mut Child, task_name: String) -> Result<(), AppEr
     Ok(())
 }
 
-pub async fn get_available_fabric_versions(version_id: &String) -> Result<Vec<String>, AppError> {
+pub async fn get_available_fabric_versions(state: &State<'_, AppState>,version_id: &String) -> Result<Vec<String>, AppError> {
     let mut global_cache = GLOBAL_CACHE.lock().await;
-
+    let client = state.client.lock().await;
     if global_cache.fabric_mc_versions.is_none() {
         let url = "https://meta.fabricmc.net/v2/versions/game";
-        let map: Vec<FabricMinecraftVersion> = reqwest::get(url)
+        let map: Vec<FabricMinecraftVersion> = client.get(url).send()
             .await
             .map_err(|x| AppError::NetworkRequestFailed(x.to_string()))?
             .json()
@@ -773,7 +841,7 @@ pub async fn get_available_fabric_versions(version_id: &String) -> Result<Vec<St
 
     if global_cache.fabric_installers.is_none() {
         let url = "https://meta.fabricmc.net/v2/versions/installer";
-        let map: Vec<FabricInstaller> = reqwest::get(url)
+        let map: Vec<FabricInstaller> = client.get(url).send()
             .await
             .map_err(|x| AppError::NetworkRequestFailed(x.to_string()))?
             .json()
@@ -784,7 +852,7 @@ pub async fn get_available_fabric_versions(version_id: &String) -> Result<Vec<St
 
     if global_cache.fabric_loaders.is_none() {
         let url = "https://meta.fabricmc.net/v2/versions/loader";
-        let map: Vec<FabricLoader> = reqwest::get(url)
+        let map: Vec<FabricLoader> = client.get(url).send()
             .await
             .map_err(|x| AppError::NetworkRequestFailed(x.to_string()))?
             .json()
@@ -811,14 +879,16 @@ pub async fn get_available_fabric_versions(version_id: &String) -> Result<Vec<St
 
 pub async fn get_available_forge_versions(
     version_id: &String,
-    mirror: &Mirror,
+    state: &State<'_, AppState>
 ) -> Result<Vec<String>, AppError> {
     let mut global_cache = GLOBAL_CACHE.lock().await;
+    let mirror = &state.config.read().await.download_settings.mirror;
+    let client = state.client.lock().await;
     if global_cache.forge.is_none() {
         let url = "https://files.minecraftforge.net/net/minecraftforge/forge/maven-metadata.json"
             .parse_mirror(mirror);
 
-        let map: HashMap<String, Vec<String>> = reqwest::get(url)
+        let map: HashMap<String, Vec<String>> = client.get(url).send()
             .await
             .map_err(|x| AppError::NetworkRequestFailed(x.to_string()))?
             .json()
@@ -847,4 +917,13 @@ pub async fn fetch_forge_mirrors(content: String) -> Vec<String> {
         }
     }
     vec
+}
+fn spawn_thread(stderr: ChildStderr, task_name: String) {
+    std::thread::spawn(move || {
+        let reader = BufReader::new(stderr);
+
+        for line in reader.lines().flatten() {
+            info!("[{task_name}][stderr] {}", line);
+        }
+    });
 }

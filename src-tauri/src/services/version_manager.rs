@@ -1,25 +1,26 @@
 use crate::models::downloader::Manifest;
-use crate::models::error::AppError::FileReadFailed;
+use crate::models::error::AppError::{FileReadFailed, Internal};
 use crate::models::error::{AppError, Void};
 use crate::models::mirror::Mirror;
 use crate::models::versions::MinecraftVersion;
 use crate::services::directory_manager::{get_versions_directory, version_manifest_directory};
 use crate::services::game_downloader::download_file;
-use crate::GLOBAL_CACHE;
+use crate::{AppState, GLOBAL_CACHE};
 use log::debug;
+use tauri::State;
 
 /// Loads the version manifest, will download the file version manifest through the given mirror, if it doesn't exist
-pub async fn load_version_manifest(mirror: &Mirror) -> Result<Manifest, AppError> {
+pub async fn load_version_manifest(state: &State<'_,AppState>) -> Result<Manifest, AppError> {
     if !version_manifest_directory().exists() {
-        download_version_manifest(mirror).await?;
+        download_version_manifest(state).await?;
     }
     load_version_manifest_local()
 }
 
 /// Downloads the latest version manifest available through the given mirror whether it already exists or not.
 /// returns Manifest itself if everything goes well or else an error will be dropped.
-pub async fn refresh_version_manifest(mirror: &Mirror) -> Result<Manifest, AppError> {
-    download_version_manifest(mirror).await?;
+pub async fn refresh_version_manifest(state: &State<'_,AppState>) -> Result<Manifest, AppError> {
+    download_version_manifest(state).await?;
     load_version_manifest_local()
 }
 
@@ -63,10 +64,11 @@ pub async fn load_installed_versions() {
     global.versions = versions;
 }
 
-pub async fn download_version_manifest(mirror: &Mirror) -> Result<(), AppError> {
-    let url = mirror
+pub async fn download_version_manifest(state: &State<'_, AppState>) -> Result<(), AppError> {
+    let url = &state.config.read().await.download_settings.mirror
         .parse_url(&"https://launchermeta.mojang.com/mc/game/version_manifest.json".to_string());
     download_file(
+        state,
         url.to_string(),
         &version_manifest_directory(),
         None
