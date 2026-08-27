@@ -47,6 +47,9 @@
     }
   },
   "bundle": {
+      "resources": [
+        "scripts/**/*"
+      ],
     "active": true,
     "targets": "all",
     "icon": [

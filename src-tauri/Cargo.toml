@@ -32,7 +32,7 @@ tauri-plugin-notification = "2"
 zip = "*"
 toml = "1.1.4+spec-1.1.0"
 sha1 = "*"
-tokio = { version = "1.44.2",features = ["fs", "io-util"] }
+tokio = { version = "1.53.1",features = ["fs", "io-util", "macros", "process"] }
 tauri-plugin-log = { version = "2.9.0" }
 tauri-plugin-dialog = "*"
 dotenvy = "0.15.7"

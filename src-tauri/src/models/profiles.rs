@@ -11,10 +11,7 @@ pub fn create_new_profile(username: String, online: bool) -> Result<(), AppError
     let mut profiles = get_profiles();
     let result = Ok(());
     if !get_profiles_file().exists() {
-        let res = File::create(&get_profiles_file());
-        if res.is_err() {
-            return Err(AppError::FileCreateFailed(res.err().unwrap().to_string()));
-        }
+        let res = File::create(&get_profiles_file()).map_err(|e| AppError::FileCreateFailed(e.to_string()))?;
     }
     let uuid = uuid_from_username(username.as_str());
     // TODO: implement online profile as well (Profile::Microsoft)
@@ -25,11 +22,10 @@ pub fn create_new_profile(username: String, online: bool) -> Result<(), AppError
         uuid,
     });
 
-    let json_string = serde_json::to_string_pretty(&profiles);
-    if json_string.is_err() {
-        return Err(AppError::JsonParseFailed(json_string.err().unwrap().to_string()));
-    }
-    fs::write(get_profiles_file(), json_string.unwrap()).expect("Failed to write the file!");
+    let json_string = serde_json::to_string_pretty(&profiles).map_err(|e| AppError::JsonParseFailed(e.to_string()))?;
+    fs::write(get_profiles_file(), json_string)
+        .map_err(|e| AppError::FileWriteFailed(format!("Failed to write on file {}: {}", get_profiles_file().to_string_lossy(),
+                                                       e.to_string())))?;
     result
 }
 
