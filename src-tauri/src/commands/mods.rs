@@ -1,3 +1,4 @@
+use std::ffi::OsStr;
 use crate::models::error::{AppError, Void};
 use crate::models::mods::ModInfo;
 use crate::services::directory_manager::get_mods_directory;
@@ -27,19 +28,31 @@ pub async fn get_mods() -> Result<Vec<ModInfo>, AppError> {
     let allowed_ext = vec!["jar", "jar.disabled", "disabled"];
     let mod_list = mods_directory
         .read_dir()
-        .unwrap()
-        .map(|x| x.unwrap().path())
+        .map_err(|x| AppError::ModLoadingFailed(format!("Failed to read mods: {}", x)))?
+        .filter_map(|x| x.ok())
+        .map(|x| x.path())
         .filter(|x| {
-            x.as_path().is_file()
-                && allowed_ext.contains(&x.as_path().extension().unwrap().to_str().unwrap())
+            x.is_file()
+                && allowed_ext.contains(&x.extension().unwrap_or(OsStr::new("")).to_str().unwrap_or(""))
         })
         .collect::<Vec<PathBuf>>();
     for jar_file in mod_list {
-        let zip = ZipArchive::new(File::open(jar_file.clone()).unwrap()).unwrap();
-        let Ok(loaded) = load_mod(Mutex::new(zip), jar_file.to_str().unwrap().to_string()) else {
+        let file = File::open(jar_file.clone());
+        if let Err(err) = file {
+            info!("Failed to open mod's jar file {} error: {}",jar_file.to_string_lossy(), err);
             continue;
-        };
-        mods_vec.push(loaded);
+        } else if let Ok(f) = file {
+            let zip = ZipArchive::new(f);
+            if let Err(e) = zip {
+                info!("Failed to load mod's jar file {} error: {}",jar_file.to_string_lossy(), e);
+                continue;
+            } else if let Ok(zip) = zip {
+                let Ok(loaded) = load_mod(Mutex::new(zip), jar_file.to_str().unwrap().to_string()) else {
+                    continue;
+                };
+                mods_vec.push(loaded);
+            }
+        }
     }
     Ok(mods_vec)
 }
@@ -70,7 +83,7 @@ pub async fn delete_mod(mod_info: ModInfo) -> Result<(), AppError> {
 }
 
 #[command]
-pub async fn open_mods_folder(app: AppHandle,version: String) -> Void{
+pub async fn open_mods_folder(app: AppHandle, version: String) -> Void {
     let mods_dir = get_mods_directory();
     let mods_dir_str = mods_dir.to_str().ok_or(InvalidPath(format!("{version}'s mod directory")))?;
     app.opener().open_path(mods_dir_str, None::<&str>)
