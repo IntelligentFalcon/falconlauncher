@@ -258,7 +258,51 @@ async fn download_libraries(
             .as_ref()
             .ok_or_else(|| AppError::ManifestParseFailed("Downloads missing".to_string()))?;
 
-        if downloads.artifact.is_none() {
+;        if let Some(library_artifact) = &downloads.artifact {
+            let library_path = if let Some(path) = &library_artifact.path {
+                path.to_string()
+            } else {
+                let args: Vec<&str> = library.name.split(':').collect();
+                if args.len() < 3 {
+                    return Err(AppError::ManifestParseFailed(format!(
+                        "Invalid library name: {}",
+                        library.name
+                    )));
+                }
+                let group_id = args[0].replace('.', "/");
+                let artifact = args[1];
+                let version = args[2];
+                format!("{group_id}/{artifact}/{version}/{artifact}-{version}.jar")
+            };
+
+            let os = get_current_os();
+            let rules = fetch_rules(library.rules.as_ref());
+
+            download_classifiers(
+                state,
+                downloads.classifiers.as_ref(),
+                version,
+                mirror,
+                Some(tracker),
+            )
+            .await?;
+
+            if rules.allowed_oses.contains(&os) && !rules.disallowed_oses.contains(&os) {
+                let path = libraries_path.join(&library_path);
+                let hash = library_artifact.sha1.clone().unwrap_or_default();
+                download_file_if_not_exists(
+                    state,
+                    &path,
+                    mirror.parse_url(&library_artifact.url),
+                    hash.as_str(),
+                    library_artifact.size.unwrap_or(0),
+                    Some(tracker),
+                )
+                .await?;
+            }
+
+            tracker.next_file();
+        } else {
             download_classifiers(
                 state,
                 downloads.classifiers.as_ref(),
@@ -270,51 +314,6 @@ async fn download_libraries(
             tracker.next_file();
             continue;
         }
-
-        let library_artifact = downloads.artifact.as_ref().unwrap();
-        let library_path = if let Some(path) = &library_artifact.path {
-            path.to_string()
-        } else {
-            let args: Vec<&str> = library.name.split(':').collect();
-            if args.len() < 3 {
-                return Err(AppError::ManifestParseFailed(format!(
-                    "Invalid library name: {}",
-                    library.name
-                )));
-            }
-            let group_id = args[0].replace('.', "/");
-            let artifact = args[1];
-            let version = args[2];
-            format!("{group_id}/{artifact}/{version}/{artifact}-{version}.jar")
-        };
-
-        let os = get_current_os();
-        let rules = fetch_rules(library.rules.as_ref());
-
-        download_classifiers(
-            state,
-            downloads.classifiers.as_ref(),
-            version,
-            mirror,
-            Some(tracker),
-        )
-        .await?;
-
-        if rules.allowed_oses.contains(&os) && !rules.disallowed_oses.contains(&os) {
-            let path = libraries_path.join(&library_path);
-            let hash = library_artifact.sha1.clone().unwrap_or_default();
-            download_file_if_not_exists(
-                state,
-                &path,
-                mirror.parse_url(&library_artifact.url),
-                hash.as_str(),
-                library_artifact.size.unwrap_or(0),
-                Some(tracker),
-            )
-            .await?;
-        }
-
-        tracker.next_file();
     }
     Ok(())
 }
@@ -614,15 +613,13 @@ pub async fn download_forge_version(
             .map_err(|_| AppError::FileCopyFailed("Failed to copy files".to_string()))?;
     }
 
-    let version_json: ForgeVersionJsonInfo = if install_profile_json.version_info.is_none() {
+    let version_json: ForgeVersionJsonInfo = install_profile_json.version_info.clone().unwrap_or({
         let versions_file = zip
             .by_name("version.json")
             .map_err(|e| AppError::ZipParseFailed(e.to_string()))?;
         serde_json::from_reader(versions_file)
             .map_err(|e| AppError::JsonParseFailed(e.to_string()))?
-    } else {
-        install_profile_json.version_info.clone().unwrap()
-    };
+    });
 
     let version_id = &version_json.id;
     *ver = version_id.clone();
@@ -642,6 +639,7 @@ pub async fn download_forge_version(
     if let Some(profile_libraries) = &install_profile_json.libraries {
         for library in profile_libraries {
             if let Some(downloads) = &library.downloads {
+
                 if let Some(artifact) = &downloads.artifact {
                     let url = &artifact.url;
                     if url.is_empty() {
@@ -674,14 +672,12 @@ pub async fn download_forge_version(
                         url.to_string()
                     };
 
-                    let full_path = if artifact.path.is_none() {
+                    let full_path = artifact.path.clone().map(|x| x.to_string()).unwrap_or( {
                         convert_to_full_path(
                             get_libraries_directory().to_string_lossy().into_owned(),
                             &library.name,
                         )?
-                    } else {
-                        artifact.path.as_ref().unwrap().to_string()
-                    };
+                    });
 
                     let hash = artifact.sha1.clone().unwrap_or_default();
                     let size = artifact.size.unwrap_or_default();
@@ -825,12 +821,17 @@ pub fn generate_stdout(child: &mut Child, task_name: String) -> Result<(), AppEr
     Ok(())
 }
 
-pub async fn get_available_fabric_versions(state: &State<'_, AppState>,version_id: &String) -> Result<Vec<String>, AppError> {
+pub async fn get_available_fabric_versions(
+    state: &State<'_, AppState>,
+    version_id: &String,
+) -> Result<Vec<String>, AppError> {
     let mut global_cache = GLOBAL_CACHE.lock().await;
     let client = state.client.lock().await;
     if global_cache.fabric_mc_versions.is_none() {
         let url = "https://meta.fabricmc.net/v2/versions/game";
-        let map: Vec<FabricMinecraftVersion> = client.get(url).send()
+        let map: Vec<FabricMinecraftVersion> = client
+            .get(url)
+            .send()
             .await
             .map_err(|x| AppError::NetworkRequestFailed(x.to_string()))?
             .json()
@@ -841,7 +842,9 @@ pub async fn get_available_fabric_versions(state: &State<'_, AppState>,version_i
 
     if global_cache.fabric_installers.is_none() {
         let url = "https://meta.fabricmc.net/v2/versions/installer";
-        let map: Vec<FabricInstaller> = client.get(url).send()
+        let map: Vec<FabricInstaller> = client
+            .get(url)
+            .send()
             .await
             .map_err(|x| AppError::NetworkRequestFailed(x.to_string()))?
             .json()
@@ -852,7 +855,9 @@ pub async fn get_available_fabric_versions(state: &State<'_, AppState>,version_i
 
     if global_cache.fabric_loaders.is_none() {
         let url = "https://meta.fabricmc.net/v2/versions/loader";
-        let map: Vec<FabricLoader> = client.get(url).send()
+        let map: Vec<FabricLoader> = client
+            .get(url)
+            .send()
             .await
             .map_err(|x| AppError::NetworkRequestFailed(x.to_string()))?
             .json()
@@ -879,7 +884,7 @@ pub async fn get_available_fabric_versions(state: &State<'_, AppState>,version_i
 
 pub async fn get_available_forge_versions(
     version_id: &String,
-    state: &State<'_, AppState>
+    state: &State<'_, AppState>,
 ) -> Result<Vec<String>, AppError> {
     let mut global_cache = GLOBAL_CACHE.lock().await;
     let mirror = &state.config.read().await.download_settings.mirror;
@@ -888,7 +893,9 @@ pub async fn get_available_forge_versions(
         let url = "https://files.minecraftforge.net/net/minecraftforge/forge/maven-metadata.json"
             .parse_mirror(mirror);
 
-        let map: HashMap<String, Vec<String>> = client.get(url).send()
+        let map: HashMap<String, Vec<String>> = client
+            .get(url)
+            .send()
             .await
             .map_err(|x| AppError::NetworkRequestFailed(x.to_string()))?
             .json()

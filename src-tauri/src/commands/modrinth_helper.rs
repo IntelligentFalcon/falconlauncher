@@ -65,7 +65,7 @@ pub async fn get_modrinth_mod_dependencies(
     let mut result = Vec::new();
     for dep in deps.iter().filter(|x| x.version_id.is_some()) {
         let dep_type = dep.dependency_type.clone();
-        let version = _get_modrinth_mod_version_by_id(&state,dep.clone().version_id.unwrap()).await?;
+        let version = _get_modrinth_mod_version_by_id(&state,dep.clone().version_id.unwrap_or("Unnamed Dependency".to_string())).await?;
         result.push((version, dep_type))
     }
     Ok(result)

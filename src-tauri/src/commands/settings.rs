@@ -89,7 +89,7 @@ pub async fn save(state: State<'_, AppState>) -> Result<(), AppError> {
 
 #[command]
 pub async fn get_total_ram() -> Result<u64, AppError> {
-    let ram = sys_info::mem_info().unwrap();
+    let ram = sys_info::mem_info().expect("Failed to find system's total memory! ");
     Ok(ram.total / 1000)
 }
 
