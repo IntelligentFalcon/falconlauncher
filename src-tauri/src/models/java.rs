@@ -36,8 +36,5 @@ impl Java {
                 .join("java")
         }
     }
-    pub fn get_version_id(&self) -> String {
-        self.version.split(".").next().unwrap().to_string()
-    }
     
 }

@@ -47,7 +47,7 @@ pub async fn get_mods() -> Result<Vec<ModInfo>, AppError> {
                 info!("Failed to load mod's jar file {} error: {}",jar_file.to_string_lossy(), e);
                 continue;
             } else if let Ok(zip) = zip {
-                let Ok(loaded) = load_mod(Mutex::new(zip), jar_file.to_str().unwrap().to_string()) else {
+                let Ok(loaded) = load_mod(Mutex::new(zip), jar_file.to_string_lossy().to_string()) else {
                     continue;
                 };
                 mods_vec.push(loaded);
