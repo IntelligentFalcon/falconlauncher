@@ -67,7 +67,9 @@
     "dependencyType": "نوع: {{type}}",
     "downloadSelected": "دانلود مادهای انتخاب‌شده",
     "downloading": "در حال دانلود فایل‌ها...",
+    "downloadingTitle": "در حال دانلود افزونه",
     "downloads": "{{count}} دانلود",
+    "fetchingFiles": "در حال دریافت فایل‌ها...",
     "fullscreenAlt": "نمای تمام‌صفحه",
     "gallery": "گالری",
     "links": {
@@ -113,6 +115,28 @@
     "noDescription": "توضیحی ارائه نشده است.",
     "thisVersion": "این نسخه"
   },
+  "nativeSettings": {
+    "browse": "مرور",
+    "close": "بستن",
+    "custom": "پوشهٔ سفارشی",
+    "customDesc": "مسیر پوشهٔ سفارشی حاوی فایل‌های باینری بومی را وارد کنید.",
+    "errorTitle": "عملیات ناموفق بود",
+    "folderPlaceholder": "/path/to/folder",
+    "glfwDescription": "انتخاب کنید از کتابخانهٔ پنجره‌سازی پیش‌فرض GLFW این نسخه استفاده شود یا پوشه‌ای سفارشی تعیین کنید.",
+    "glfwTitle": "کتابخانهٔ GLFW",
+    "javaRuntimeDescription": "انتخاب کنید از محیط اجرای Java که راه‌انداز مدیریت می‌کند استفاده شود یا پوشه‌ای سفارشی تعیین کنید.",
+    "javaRuntimeTitle": "محیط اجرای Java",
+    "loading": "در حال بارگذاری تنظیمات کتابخانهٔ بومی...",
+    "openalDescription": "انتخاب کنید از کتابخانهٔ صوتی پیش‌فرض OpenAL این نسخه استفاده شود یا پوشه‌ای سفارشی تعیین کنید.",
+    "openalTitle": "کتابخانهٔ OpenAL",
+    "retry": "تلاش مجدد",
+    "selectGlfwFolder": "انتخاب پوشهٔ GLFW",
+    "selectJavaFolder": "انتخاب پوشهٔ Java",
+    "selectOpenalFolder": "انتخاب پوشهٔ OpenAL",
+    "unknownError": "خطای غیرمنتظره‌ای رخ داد.",
+    "versionAssociated": "وابسته به نسخه (خودکار)",
+    "versionAssociatedDesc": "بر اساس نسخهٔ فعال Minecraft به‌طور خودکار مدیریت می‌شود."
+  },
   "navMenu": {
     "items": {
       "console": "کنسول",
@@ -142,10 +166,18 @@
     "exitOnLaunchDesc": "بستن پنجره لانچر پس از شروع بازی.",
     "interfaceLanguage": "زبان محیط کاربری",
     "interfaceLanguageDesc": "زبان نمایشی لانچر را انتخاب کنید.",
-    "proxyAddress": "آدرس پروکسی (مثال: http://127.0.0.1:8080 یا socks5://127.0.0.1:1080)",
+    "password": "گذرواژه",
+    "proxyAddress": "نشانی / میزبان",
+    "proxyAuth": "احراز هویت",
+    "proxyPort": "درگاه",
+    "proxySettings": "تنظیمات پراکسی",
+    "proxySettingsDesc": "پروتکل پراکسی شبکه و جزئیات اتصال را پیکربندی کنید",
+    "saveProxy": "ذخیره پراکسی",
+    "saving": "در حال ذخیره...",
     "title": "تنظیمات لانچر",
     "useProxy": "فعال‌سازی پروکسی",
-    "useProxyDesc": "هدایت دانلودها و ترافیک شبکه لانچر از طریق سرور پروکسی."
+    "useProxyDesc": "هدایت دانلودها و ترافیک شبکه لانچر از طریق سرور پروکسی.",
+    "username": "نام کاربری"
   },
   "settingsLayout": {
     "gameTab": "گزینه‌های بازی",
@@ -153,15 +185,16 @@
     "mirrorTab": "آینه‌ها"
   },
   "stepInstalling": {
+    "abortButton": "لغو",
+    "cancelButton": "انصراف",
     "completeTitle": "نصب کامل شد!",
+    "defaultError": "هنگام دانلود فایل‌های نسخه خطایی رخ داد.",
+    "errorTitle": "خطا در دانلود نسخه",
     "finishButton": "پایان و بازگشت",
     "initializing": "در حال آماده‌سازی دانلود...",
     "installingTitle": "در حال نصب...",
-    "successMessage": "{{name}} با موفقیت نصب شد",
-    "errorTitle": "خطا در دانلود نسخه",
-    "defaultError": "هنگام دانلود فایل‌های نسخه خطایی رخ داد.",
     "retryButton": "تلاش مجدد",
-    "cancelButton": "انصراف"
+    "successMessage": "{{name}} با موفقیت نصب شد"
   },
   "stepSelectLoader": {
     "fabricDesc": "سبک و سریع",
