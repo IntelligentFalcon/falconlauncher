@@ -83,6 +83,7 @@ pub async fn play(
             &"".to_string(),
             &app_handle,
             &state.log_tx,
+            None
         )
         .await?;
         download_version(
@@ -91,6 +92,7 @@ pub async fn play(
             &"".to_string(),
             &app_handle,
             &state.log_tx,
+            None
         )
         .await?;
     }

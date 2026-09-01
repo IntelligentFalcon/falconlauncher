@@ -101,7 +101,7 @@ pub async fn download_modrinth_mod_version(state: State<'_, AppState>,app_handle
         let mut stages = Vec::new();
         stages.push((DownloadStage::Mod, 100f32));
         let pipe = PipelineProgressTracker::new(app_handle.clone(), &stages);
-        download_file_if_not_exists(&state,&full_path, url, sha1.as_str(), size as u64, Some(&pipe)).await?;
+        download_file_if_not_exists(&state,&full_path, url, sha1.as_str(), size as u64, Some(&pipe),None).await?;
     }
     Ok(())
 }

@@ -94,7 +94,8 @@
     "errorTitle": "Failed to Download Version",
     "defaultError": "An unexpected error occurred while downloading the required version files.",
     "retryButton": "Try Again",
-    "cancelButton": "Cancel"
+    "cancelButton": "Cancel",
+    "abortButton": "Abort"
   },
   "consoleFilters": {
     "allLogs": "All Logs",

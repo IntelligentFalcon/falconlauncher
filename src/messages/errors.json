@@ -126,5 +126,9 @@
   "ERROR_UNKNOWN": {
     "title": "Unknown",
     "description": "Unknown error has occurred!~"
+  },
+  "DOWNLOAD_CANCELLED": {
+    "title": "Download Cancelled",
+    "description": "Download process was cancelled by user."
   }
 }

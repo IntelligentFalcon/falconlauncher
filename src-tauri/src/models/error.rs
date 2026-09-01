@@ -114,7 +114,9 @@ pub enum AppError {
     ProcessFetchFailed(String),
 
     #[error("Failed to find the specified process")]
-    ProcessNotFound(String)
+    ProcessNotFound(String),
+    #[error("Download was cancelled")]
+    DownloadCancelled,
 }
 
 // Since frontend expects `{ "code": "...", "data": "..." }`:
@@ -164,6 +166,7 @@ impl Serialize for AppError {
             AppError::Internal(e) => ("ERROR_INTERNAL", Some(e.to_string())),
             AppError::ProcessFetchFailed(e) => ("ERROR_FETCH_PROCESSES", Some(e.to_string())),
             AppError::ProcessNotFound(proc) => ("ERROR_INVALID_PROCESS", Some(format!("{proc} was not found!"))),
+            AppError::DownloadCancelled => ("DOWNLOAD_CANCELLED", Some("Download was cancelled by user.".to_string())),
             AppError::UnknownError(e) => ("ERROR_UNKNOWN", Some(e.to_string())),
         };
 

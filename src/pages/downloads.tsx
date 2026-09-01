@@ -4,22 +4,21 @@ import { StepInstalling } from "@/components/blocks/downloads/step-installing";
 import { StepSelectLoader } from "@/components/blocks/downloads/step-select-loader";
 import { useBackendMutation } from "@/hooks/use-backend";
 import type { VersionLoader } from "@/invokes";
-
-// Using Hugeicons to match your other steps
 import { HugeiconsIcon } from "@hugeicons/react";
-import { RefreshIcon } from "@hugeicons/core-free-icons"; // Swap this if your specific refresh icon is named differently
+import { RefreshIcon } from "@hugeicons/core-free-icons";
+import { useTranslation } from "react-i18next";
 
 export type LoaderType = "vanilla" | "fabric" | "forge";
 export type WizardStep = 1 | 2 | 3;
 
 export default function InstallerWizard() {
+  const { t } = useTranslation();
   const [step, setStep] = useState<WizardStep>(1);
   const [activeLoader, setActiveLoader] = useState<LoaderType>("vanilla");
-  const [activeVersion, setActiveVersion] = useState<VersionLoader | null>(
-      null
-  );
+  const [activeVersion, setActiveVersion] = useState<VersionLoader | null>(null);
   const [instanceName, setInstanceName] = useState<string>("");
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [installError, setInstallError] = useState<string | null>(null);
 
   const { mutateAsync: downloadVersion } = useBackendMutation({
     name: "download_version",
@@ -34,18 +33,39 @@ export default function InstallerWizard() {
     setStep(2);
   };
 
-  const handleStartInstall = async (version: VersionLoader, name: string) => {
-    setActiveVersion(version);
-    setInstanceName(name);
-    setStep(3);
-
+  const executeDownload = async (version: VersionLoader, name: string) => {
+    setInstallError(null);
     try {
       await downloadVersion({
         name,
         versionLoader: version,
       });
-    } catch (error) {
-      console.error("Installation failed:", error);
+    } catch (err: any) {
+      let message = t("stepInstalling.defaultError");
+      if (typeof err === "string") {
+        message = err;
+      } else if (err?.message) {
+        message = err.message;
+      } else if (err?.code) {
+        message = `${err.code}: ${err.data || ""}`;
+      } else if (typeof err === "object") {
+        message = JSON.stringify(err);
+      }
+      setInstallError(message);
+    }
+  };
+
+  const handleStartInstall = async (version: VersionLoader, name: string) => {
+    setActiveVersion(version);
+    setInstanceName(name);
+    setStep(3);
+
+    await executeDownload(version, name);
+  };
+
+  const handleRetry = async () => {
+    if (activeVersion) {
+      await executeDownload(activeVersion, instanceName);
     }
   };
 
@@ -53,6 +73,7 @@ export default function InstallerWizard() {
     setStep(1);
     setActiveVersion(null);
     setInstanceName("");
+    setInstallError(null);
   };
 
   const handleRefresh = async () => {
@@ -69,7 +90,6 @@ export default function InstallerWizard() {
   return (
       <div className="flex h-full min-h-0 w-full items-center justify-center bg-background p-4">
         <div className="relative flex min-h-[450px] w-full max-w-2xl flex-col rounded-2xl border border-border/50 bg-secondary/20 p-6 shadow-xl backdrop-blur-md">
-
           {step === 1 && (
               <button
                   onClick={handleRefresh}
@@ -97,7 +117,9 @@ export default function InstallerWizard() {
               <StepInstalling
                   activeVersion={activeVersion}
                   instanceName={instanceName}
+                  errorMessage={installError}
                   onReset={handleReset}
+                  onRetry={handleRetry}
               />
           )}
         </div>

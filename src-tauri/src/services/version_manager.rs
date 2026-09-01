@@ -71,6 +71,7 @@ pub async fn download_version_manifest(state: &State<'_, AppState>) -> Result<()
         state,
         url.to_string(),
         &version_manifest_directory(),
+        None,
         None
     )
         .await

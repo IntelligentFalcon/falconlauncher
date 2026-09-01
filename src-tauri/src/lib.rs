@@ -26,11 +26,16 @@ use tauri_plugin_deep_link::DeepLinkExt;
 use tauri_plugin_log::{Target, TargetKind, TimezoneStrategy};
 use tokio::sync;
 use tokio::sync::{mpsc, RwLock};
+use tokio::task::JoinHandle;
+use tokio_util::sync::CancellationToken;
 use crate::services::utils::create_reqwest_client;
 
 pub struct FalconLauncher {
     pub name: String,
     pub version: String,
+}
+pub struct DownloadManager {
+    pub cancellation_token: sync::Mutex<Option<CancellationToken>>,
 }
 pub struct AppState {
     pub config: Arc<RwLock<Config>>,
@@ -38,17 +43,22 @@ pub struct AppState {
     pub log_tx: mpsc::UnboundedSender<LogLine>,
     pub log_history: Arc<Mutex<VecDeque<LogLine>>>,
     pub process_manager: ProcessManager,
-    pub client: tokio::sync::Mutex<ClientWithMiddleware>,
-
+    pub client: sync::Mutex<ClientWithMiddleware>,
+    pub download_manager: DownloadManager,
 }
 pub struct ProcessManager {
     pub active_processes: Mutex<HashMap<String, Mutex<Child>>>,
+    pub tokens: Mutex<HashMap<String, CancellationToken>>,
+    pub handles: Mutex<HashMap<String, JoinHandle<()>>>,
 }
 
 impl ProcessManager {
     pub fn new() -> Self {
         Self {
             active_processes: Mutex::new(HashMap::new()),
+            tokens: Mutex::new(HashMap::new()),
+            handles: Mutex::new(HashMap::new()),
+
         }
     }
 }
@@ -134,7 +144,10 @@ pub fn run() {
                 log_tx,
                 log_history: shared_history,
                 process_manager: ProcessManager::new(),
-                client: tokio::sync::Mutex::from(client)
+                client: tokio::sync::Mutex::from(client),
+                download_manager: DownloadManager {
+                    cancellation_token: sync::Mutex::new(None),
+                },
             });
             block_on(async {
                 load_installed_versions().await;
@@ -184,6 +197,7 @@ pub fn run() {
             commands::downloader::get_versions,
             commands::downloader::reload_version_manifest,
             commands::downloader::download_version,
+            commands::downloader::cancel_download,
             commands::downloader::get_installed_versions,
             commands::downloader::get_forge_versions,
             commands::downloader::get_fabric_versions,

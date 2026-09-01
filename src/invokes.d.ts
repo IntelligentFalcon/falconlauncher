@@ -117,6 +117,10 @@ export type Invokes = WithDefaultError<{
     };
     returns: void;
   };
+  cancel_download: {
+    args?: Record<string, never> | undefined;
+    return: void;
+  };
   reload_version_manifest: {
     args: undefined;
     returns: void;

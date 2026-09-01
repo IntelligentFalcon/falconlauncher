@@ -5,7 +5,7 @@ import {
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { listen } from "@tauri-apps/api/event";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ActionButton } from "@/components/ui/action-button";
 import { useBackendMutation } from "@/hooks/use-backend";
@@ -23,66 +23,41 @@ export interface DownloadProgress {
     stage_percentage: number;
 }
 
+interface StepInstallingProps {
+    activeVersion: VersionLoader;
+    instanceName: string;
+    errorMessage: string | null;
+    onReset: () => void;
+    onRetry: () => void;
+}
+
 export function StepInstalling({
                                    activeVersion,
                                    instanceName,
+                                   errorMessage,
                                    onReset,
-                               }: {
-    activeVersion: VersionLoader;
-    instanceName: string;
-    onReset: () => void;
-}) {
+                                   onRetry,
+                               }: StepInstallingProps) {
     const { t } = useTranslation();
 
     const [progress, setProgress] = useState<DownloadProgress | null>(null);
     const [isDone, setIsDone] = useState<boolean>(false);
-    const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-    const { mutateAsync: downloadVersionMutation } = useBackendMutation({
-        name: "download_version",
+    const { mutateAsync: cancelDownloadMutation } = useBackendMutation({
+        name: "cancel_download",
     });
 
-    const isDownloadingRef = useRef(false);
-
-    const startDownload = useCallback(async () => {
-        if (isDownloadingRef.current) return;
-        isDownloadingRef.current = true;
-
-        // Switch view back to installing immediately
-        setErrorMessage(null);
-        setIsDone(false);
-        setProgress(null);
-
+    const handleCancel = async () => {
         try {
-            await downloadVersionMutation({
-                versionLoader: activeVersion,
-                name: instanceName || activeVersion.id,
-            });
-        } catch (err: any) {
-            let message = t("stepInstalling.defaultError");
-
-            if (typeof err === "string") {
-                message = err;
-            } else if (err?.message) {
-                message = err.message;
-            } else if (err?.code) {
-                message = `${err.code}: ${err.data || ""}`;
-            } else if (typeof err === "object") {
-                message = JSON.stringify(err);
-            }
-
-            setErrorMessage(message);
+            await cancelDownloadMutation();
+        } catch {
+            // Ignore backend cancellation errors and return back
         } finally {
-            isDownloadingRef.current = false;
+            onReset();
         }
-    }, [activeVersion, instanceName, downloadVersionMutation, t]);
+    };
 
-    // Initial download on mount
-    useEffect(() => {
-        startDownload();
-    }, [startDownload]);
-
-    // Listen to Tauri progress events
+    // Listen only to incoming progress events from Tauri
     useEffect(() => {
         const unlistenPromise = listen<DownloadProgress>(
             "download-progress",
@@ -135,15 +110,11 @@ export function StepInstalling({
                         {t("stepInstalling.cancelButton")}
                     </ActionButton>
 
-                    {/* Do NOT await the long-running startDownload inside the button handler */}
                     <ActionButton
                         action={() => {
-                            setErrorMessage(null);
-                            setIsDone(false);
                             setProgress(null);
-                            setTimeout(() => {
-                                startDownload();
-                            }, 50);
+                            setIsDone(false);
+                            onRetry();
                         }}
                         className="px-6"
                         variant="default"
@@ -188,8 +159,8 @@ export function StepInstalling({
                     : progress?.stage_name || t("stepInstalling.initializing")}
                 {!isDone && progress && progress.total_files > 1 && (
                     <span className="ml-1.5 opacity-70">
-            ({progress.current_file}/{progress.total_files})
-          </span>
+                        ({progress.current_file}/{progress.total_files})
+                    </span>
                 )}
             </p>
 
@@ -204,22 +175,30 @@ export function StepInstalling({
                 </div>
 
                 <div className="flex items-center justify-between text-xs">
-          <span className="max-w-[70%] truncate font-mono text-muted-foreground/80">
-            {!isDone && progress?.file_name ? progress.file_name : ""}
-          </span>
+                    <span className="max-w-[70%] truncate font-mono text-muted-foreground/80">
+                        {!isDone && progress?.file_name ? progress.file_name : ""}
+                    </span>
                     <span className="font-bold text-muted-foreground">
-            {percentage.toFixed(0)}%
-          </span>
+                        {percentage.toFixed(0)}%
+                    </span>
                 </div>
             </div>
 
-            {isDone && (
+            {isDone ? (
                 <ActionButton
                     action={async () => onReset()}
                     className="px-8"
                     variant="secondary"
                 >
                     {t("stepInstalling.finishButton")}
+                </ActionButton>
+            ) : (
+                <ActionButton
+                    action={handleCancel}
+                    className="px-8"
+                    variant="outline"
+                >
+                    {t("stepInstalling.abortButton")}
                 </ActionButton>
             )}
         </div>

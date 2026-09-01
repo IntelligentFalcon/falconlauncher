@@ -3,18 +3,21 @@ use crate::models::error::{AppError, Void};
 use crate::models::mirror::Mirror;
 use crate::models::versions::VersionBase::{FABRIC, FORGE};
 use crate::models::versions::{MinecraftVersion, VersionBase, VersionCategory, VersionType};
+use crate::services::game_downloader;
 use crate::services::game_downloader::{
     download_fabric, download_forge_version, download_from_manifest, get_available_fabric_versions,
     get_available_forge_versions,
 };
 use crate::services::utils::update_download_status;
 use crate::services::version_manager::{download_version_manifest, load_version_manifest};
-use crate::services::game_downloader;
 use crate::{AppState, GLOBAL_CACHE};
 use log::info;
+use std::thread::JoinHandle;
 use tauri::{command, AppHandle, State};
 use tauri_plugin_dialog::DialogExt;
+use tokio_util::sync::CancellationToken;
 
+const TOKEN_NAME: &str = "download_version";
 #[command]
 pub async fn get_vanilla_versions(
     _app_handle: AppHandle,
@@ -138,7 +141,9 @@ pub async fn get_forge_versions(
                 };
                 result.push(c);
                 result.last_mut().ok_or_else(|| {
-                    AppError::Internal("Vector state corrupted during category creation".to_string())
+                    AppError::Internal(
+                        "Vector state corrupted during category creation".to_string(),
+                    )
                 })?
             }
         };
@@ -188,12 +193,14 @@ pub async fn get_fabric_versions(
                 };
                 result.push(c);
                 result.last_mut().ok_or_else(|| {
-                    AppError::Internal("Vector state corrupted during category creation".to_string())
+                    AppError::Internal(
+                        "Vector state corrupted during category creation".to_string(),
+                    )
                 })?
             }
         };
 
-        let fabric_versions = get_available_fabric_versions(&state,&id).await?;
+        let fabric_versions = get_available_fabric_versions(&state, &id).await?;
 
         cat.versions
             .extend(fabric_versions.into_iter().map(|x| VersionLoader {
@@ -206,12 +213,53 @@ pub async fn get_fabric_versions(
     Ok(result)
 }
 
+#[tauri::command]
+pub async fn cancel_download(
+    state: State<'_, AppState>,
+) -> Result<(), AppError> {
+    let token = state
+        .download_manager
+        .cancellation_token
+        .lock().await;
+
+    if let Some(token) = token.as_ref() {
+        token.cancel();
+    }
+
+    Ok(())
+}
+
 #[command]
 pub async fn download_version(
     app_handle: AppHandle,
     state: State<'_, AppState>,
     version_loader: VersionLoader,
     name: String,
+) -> Result<(), AppError> {
+    let token = CancellationToken::new();
+    info!("Started downloading process");
+    {
+        let mut current_token =
+            state.download_manager.cancellation_token.lock().await;
+
+        if let Some(old_token) = current_token.take() {
+            old_token.cancel();
+        }
+
+        *current_token = Some(token.clone());
+    }
+
+    download_task(&app_handle, &state, &version_loader, name, Some(&token)).await?;
+
+    Ok(())
+}
+
+pub async fn download_task(
+    app_handle: &AppHandle,
+    state: &State<'_, AppState>,
+    version_loader: &VersionLoader,
+    name: String,
+    token: Option<&CancellationToken>,
 ) -> Result<(), AppError> {
     let mut version_id = version_loader.get_installed_id();
     let cfg = state.config.read().await;
@@ -228,15 +276,17 @@ pub async fn download_version(
             "DEBUG: Forge version detected! {} installing now!",
             version_loader.id
         );
-        let t = download_forge_version(&state,
+        let t = download_forge_version(
+            &state,
             &version_loader.id,
             &app_handle,
             logger,
             mir,
             &mut version_id,
             None,
+            token
         )
-            .await;
+        .await;
 
         if let Err(e) = &t {
             info!("Forge installation error: {:?}", e);
@@ -248,14 +298,14 @@ pub async fn download_version(
             "DEBUG: Fabric version detected! {} installing now!",
             version_loader.id
         );
-        download_fabric(&state,&version_loader, logger, mir, None).await?;
+        download_fabric(&state, &version_loader, logger, mir, None,token).await?;
     }
 
     info!("Downloading {version_id}.json");
 
     let manifest = load_version_manifest(&state).await?;
     if version_loader.base == VersionBase::VANILLA {
-        download_from_manifest(&state,&version_id, &manifest, mir, None).await?;
+        download_from_manifest(&state, &version_id, &manifest, mir, None,token).await?;
     }
 
     let version = MinecraftVersion::from_id(version_id);
@@ -270,17 +320,11 @@ pub async fn download_version(
         &inherited_version
     };
 
-    game_downloader::download_version(
-        &state,
-        downloadable_version,
-        &name,
-        &app_handle,
-        logger,
-    )
+    game_downloader::download_version(&state, downloadable_version, &name, &app_handle, logger,token)
         .await?;
 
     if inherited_version.id != version.id {
-        game_downloader::download_version(&state,&version, &name, &app_handle, logger).await?;
+        game_downloader::download_version(&state, &version, &name, &app_handle, logger,token).await?;
     }
 
     update_download_status("", &app_handle);
@@ -297,15 +341,10 @@ pub async fn download_version(
     }
     Ok(())
 }
-
 #[command]
 pub async fn get_versions() -> Result<Vec<String>, AppError> {
     let global = GLOBAL_CACHE.lock().await;
-    Ok(global
-        .versions
-        .iter()
-        .map(|x| x.id.to_string())
-        .collect())
+    Ok(global.versions.iter().map(|x| x.id.to_string()).collect())
 }
 
 #[command]

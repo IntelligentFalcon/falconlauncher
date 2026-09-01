@@ -36,6 +36,7 @@ use std::time::Duration;
 use tauri::{AppHandle, State};
 use tokio::io::AsyncWriteExt;
 use tokio::sync::mpsc::UnboundedSender;
+use tokio_util::sync::CancellationToken;
 use zip::ZipArchive;
 use zip_extract::extract;
 
@@ -45,16 +46,29 @@ pub async fn download_version(
     name: &String,
     app_handle: &AppHandle,
     logger: &UnboundedSender<LogLine>,
+    cancel_token: Option<&CancellationToken>,
 ) -> Result<(), AppError> {
+    check_cancelled(cancel_token)?;
+
     let cfg = state.config.read().await;
+
+    check_cancelled(cancel_token)?;
+
     let id = &version.id;
     let mirror = &cfg.download_settings.mirror;
     let _instance_name = if name.is_empty() { &version.id } else { name };
 
     let content = fs::read_to_string(PathBuf::from(version.get_json()))
-        .map_err(|x| AppError::FileReadFailed(format!("Failed to read version JSON: {}", x)))?;
+        .map_err(|x| AppError::FileReadFailed(format!(
+            "Failed to read version JSON: {}",
+            x
+        )))?;
+
+    check_cancelled(cancel_token)?;
+
     let json: MinecraftManifestVersion =
-        serde_json::from_str(&content).map_err(|x| AppError::JsonParseFailed(x.to_string()))?;
+        serde_json::from_str(&content)
+            .map_err(|x| AppError::JsonParseFailed(x.to_string()))?;
 
     let mut stages_plan = Vec::new();
     stages_plan.push((DownloadStage::Java, 25.0));
@@ -68,39 +82,53 @@ pub async fn download_version(
     {
         stages_plan.push((DownloadStage::Client, 10.0));
     }
+
     if json.asset_index.is_some() {
         stages_plan.push((DownloadStage::Assets, 35.0));
     }
+
     if json.logging.is_some() {
         stages_plan.push((DownloadStage::Logging, 5.0));
     }
 
-    let mut tracker = PipelineProgressTracker::new(app_handle.clone(), &stages_plan);
+    let mut tracker = PipelineProgressTracker::new(
+        app_handle.clone(),
+        &stages_plan,
+    );
 
     let java_version = if let Some(jv) = &json.java_version {
         jv.clone()
     } else if let Some(inherits) = &json.inherits_from {
         let dir = get_version_manifest(inherits);
-        let inherited_content = fs::read_to_string(dir).map_err(|x| {
-            AppError::FileReadFailed(format!("Failed to read inherited JSON: {}", x))
-        })?;
-        let m: MinecraftManifestVersion = serde_json::from_str(&inherited_content)
-            .map_err(|x| AppError::JsonParseFailed(x.to_string()))?;
+
+        let inherited_content = fs::read_to_string(dir)
+            .map_err(|x| {
+                AppError::FileReadFailed(format!(
+                    "Failed to read inherited JSON: {}",
+                    x
+                ))
+            })?;
+
+        let m: MinecraftManifestVersion =
+            serde_json::from_str(&inherited_content)
+                .map_err(|x| AppError::JsonParseFailed(x.to_string()))?;
 
         m.java_version
             .ok_or_else(|| {
                 AppError::ManifestParseFailed(
-                    "Java version missing in inherited manifest".to_string(),
+                    "Java version missing in inherited manifest".to_string()
                 )
             })?
             .clone()
     } else {
         return Err(AppError::ManifestParseFailed(
-            "No Java version found in manifest".to_string(),
+            "No Java version found in manifest".to_string()
         ));
     };
 
-    tracker.start_stage(DownloadStage::Java, 1);
+    check_cancelled(cancel_token)?;
+
+
     download_java(
         state,
         &java_version.component,
@@ -108,27 +136,68 @@ pub async fn download_version(
         logger,
         mirror,
         Some(&mut tracker),
+        cancel_token,
     )
-    .await?;
+        .await?;
+
     tracker.next_file();
 
-    tracker.start_stage(DownloadStage::Libraries, json.libraries.len());
-    download_libraries(state, &json.libraries, id, mirror, &mut tracker).await?;
+    check_cancelled(cancel_token)?;
+
+    tracker.start_stage(
+        DownloadStage::Libraries,
+        json.libraries.len(),
+    );
+
+    download_libraries(
+        state,
+        &json.libraries,
+        id,
+        mirror,
+        &mut tracker,
+        cancel_token,
+    )
+        .await?;
 
     if let Some(downloads) = &json.downloads {
         if let Some(client_download) = downloads.get("client") {
+            check_cancelled(cancel_token)?;
+
             tracker.start_stage(DownloadStage::Client, 1);
-            download_client(state, client_download, id, mirror, &tracker).await?;
+
+            download_client(
+                state,
+                client_download,
+                id,
+                mirror,
+                &tracker,
+                cancel_token,
+            )
+                .await?;
+
             tracker.next_file();
         }
     }
 
     if let Some(asset_index) = &json.asset_index {
-        download_assets(state, asset_index, mirror, app_handle, &mut tracker).await?;
+        check_cancelled(cancel_token)?;
+
+        download_assets(
+            state,
+            asset_index,
+            mirror,
+            app_handle,
+            &mut tracker,
+            cancel_token,
+        )
+            .await?;
     }
 
     if let Some(logging) = &json.logging {
+        check_cancelled(cancel_token)?;
+
         tracker.start_stage(DownloadStage::Logging, 1);
+
         let filename = logging
             .client
             .file
@@ -138,6 +207,7 @@ pub async fn download_version(
             .unwrap_or("logging.xml");
 
         let dest = get_version_directory(id).join(filename);
+
         download_file_if_not_exists(
             state,
             &dest,
@@ -145,28 +215,35 @@ pub async fn download_version(
             logging.client.file.sha1.as_str(),
             logging.client.file.size,
             Some(&tracker),
+            cancel_token,
         )
-        .await?;
+            .await?;
+
         tracker.next_file();
     }
+
+    check_cancelled(cancel_token)?;
 
     tracker.start_stage(DownloadStage::Done, 1);
     tracker.report("Finished", 0, 0);
 
     Ok(())
 }
-
 async fn download_assets(
     state: &State<'_, AppState>,
     value: &AssetIndex,
     mirror: &Mirror,
     _app_handle: &AppHandle,
     tracker: &mut PipelineProgressTracker,
+    cancel_token: Option<&CancellationToken>,
 ) -> Result<(), AppError> {
+    check_cancelled(cancel_token)?;
+
     let id = &value.id;
     let url = mirror.parse_url(&value.url);
     let total_size = value.total_size;
     let hash = value.sha1.as_str();
+
     let asset_index_path = get_assets_directory()
         .join("indexes")
         .join(format!("{id}.json"));
@@ -178,47 +255,76 @@ async fn download_assets(
         hash,
         total_size,
         Some(tracker),
+        cancel_token,
     )
-    .await?;
+        .await?;
 
     let content = fs::read_to_string(&asset_index_path)
-        .map_err(|e| AppError::FileReadFailed(format!("Failed to read asset index: {}", e)))?;
+        .map_err(|e| {
+            AppError::FileReadFailed(format!(
+                "Failed to read asset index: {}",
+                e
+            ))
+        })?;
 
-    let json: AssetObjects = serde_json::from_str(&content).map_err(|e| {
-        AppError::JsonParseFailed(format!("Asset index isn't well formatted: {}", e))
-    })?;
+    let json: AssetObjects =
+        serde_json::from_str(&content)
+            .map_err(|e| {
+                AppError::JsonParseFailed(format!(
+                    "Asset index isn't well formatted: {}",
+                    e
+                ))
+            })?;
 
-    let url_template = "https://resources.download.minecraft.net/{id}/{hash}";
-    tracker.start_stage(DownloadStage::Assets, json.objects.len());
+    let url_template =
+        "https://resources.download.minecraft.net/{id}/{hash}";
+
+    tracker.start_stage(
+        DownloadStage::Assets,
+        json.objects.len(),
+    );
 
     for (_name, asset_entry) in json.objects.iter() {
+        check_cancelled(cancel_token)?;
+
         let hash = &asset_entry.hash;
         let prefix_id = &hash[0..2];
         let size = asset_entry.size;
+
         let obj_url = mirror.parse_url(
             &url_template
                 .replace("{id}", prefix_id)
                 .replace("{hash}", hash),
         );
+
         let path = get_assets_directory()
             .join("objects")
             .join(prefix_id)
             .join(hash);
 
-        download_file_if_not_exists(state, &path, obj_url, hash.as_str(), size, Some(tracker))
+        download_file_if_not_exists(
+            state,
+            &path,
+            obj_url,
+            hash.as_str(),
+            size,
+            Some(tracker),
+            cancel_token,
+        )
             .await?;
+
         tracker.next_file();
     }
 
     Ok(())
 }
-
 async fn download_libraries(
     state: &State<'_, AppState>,
     libraries: &[Library],
     version: &String,
     mirror: &Mirror,
     tracker: &mut PipelineProgressTracker,
+    cancel_token: Option<&CancellationToken>
 ) -> Result<(), AppError> {
     let libraries_path = get_libraries_directory();
     let client = state.client.lock().await;
@@ -229,7 +335,7 @@ async fn download_libraries(
             if name.starts_with_lower_case("net/minecraft") {
                 let url = mirror.parse_url(&format!("https://libraries.minecraft.net/{path}"));
                 let full_path = libraries_path.join(&path);
-                download_file_if_not_exists(state, &full_path, url, "", 0, Some(tracker)).await?;
+                download_file_if_not_exists(state, &full_path, url, "", 0, Some(tracker), cancel_token).await?;
             } else {
                 let urls = fetch_unofficial_library_repos(&path);
                 for url in urls {
@@ -243,7 +349,7 @@ async fn download_libraries(
                         .status()
                         .is_success()
                     {
-                        download_file_if_not_exists(state, &full_path, url, "", 0, Some(tracker))
+                        download_file_if_not_exists(state, &full_path, url, "", 0, Some(tracker), cancel_token)
                             .await?;
                         break;
                     }
@@ -284,6 +390,7 @@ async fn download_libraries(
                 version,
                 mirror,
                 Some(tracker),
+                cancel_token
             )
             .await?;
 
@@ -297,6 +404,7 @@ async fn download_libraries(
                     hash.as_str(),
                     library_artifact.size.unwrap_or(0),
                     Some(tracker),
+                    cancel_token
                 )
                 .await?;
             }
@@ -309,6 +417,7 @@ async fn download_libraries(
                 version,
                 mirror,
                 Some(tracker),
+                cancel_token
             )
             .await?;
             tracker.next_file();
@@ -324,6 +433,7 @@ async fn download_client(
     version: &String,
     mirror: &Mirror,
     tracker: &PipelineProgressTracker,
+    cancel_token: Option<&CancellationToken>
 ) -> Result<(), AppError> {
     let size = value.size;
     let url = mirror.parse_url(&value.url);
@@ -332,7 +442,7 @@ async fn download_client(
         .join(format!("{version}.jar"));
     let hash = value.sha1.as_str();
 
-    download_file_if_not_exists(state, &path, url, hash, size, Some(tracker)).await
+    download_file_if_not_exists(state, &path, url, hash, size, Some(tracker),cancel_token).await
 }
 
 async fn download_classifiers(
@@ -341,6 +451,7 @@ async fn download_classifiers(
     version: &String,
     mirror: &Mirror,
     tracker: Option<&PipelineProgressTracker>,
+    cancel_token: Option<&CancellationToken>
 ) -> Result<(), AppError> {
     let classifiers_map = match classifiers {
         Some(c) => c,
@@ -373,6 +484,7 @@ async fn download_classifiers(
             hash.as_str(),
             size,
             tracker,
+            cancel_token
         )
         .await?;
 
@@ -400,67 +512,153 @@ pub async fn download_file_if_not_exists(
     hash: &str,
     size: u64,
     tracker: Option<&PipelineProgressTracker>,
+    cancel_token: Option<&CancellationToken>,
 ) -> Result<(), AppError> {
+    check_cancelled(cancel_token)?;
+
     if !hash.is_empty() {
         if !verify_file_existence_with_sha(path, hash)? {
-            download_file(state, url, path, tracker).await?;
+            download_file(
+                state,
+                url,
+                path,
+                tracker,
+                cancel_token,
+            )
+                .await?;
         }
+
         return Ok(());
     }
-    if !verify_file_existence_with_size(&path.to_string_lossy().to_string(), size)? {
-        download_file(state, url, path, tracker).await?;
+
+    if !verify_file_existence_with_size(
+        &path.to_string_lossy().to_string(),
+        size,
+    )? {
+        download_file(
+            state,
+            url,
+            path,
+            tracker,
+            cancel_token,
+        )
+            .await?;
     }
+
     Ok(())
 }
-
 pub async fn download_file(
     state: &State<'_, AppState>,
     url: String,
     dest: &PathBuf,
     tracker: Option<&PipelineProgressTracker>,
+    cancel_token: Option<&CancellationToken>,
 ) -> Result<(), AppError> {
+    check_cancelled(cancel_token)?;
+
     let file_name = dest
         .file_name()
         .map(|s| s.to_string_lossy().into_owned())
         .unwrap_or_else(|| "unknown".to_string());
+
     let client = state.client.lock().await;
-    let mut resp = client
-        .get(&url)
-        .timeout(Duration::from_secs(5))
-        .send()
-        .await
-        .map_err(|_| {
-            AppError::DownloadFailed(format!(
-                "Failed to download file {} from {url}",
-                dest.display().to_string()
-            ))
-        })?;
+
+
+    let mut resp = if let Some(token) = cancel_token {
+        tokio::select! {
+        _ = token.cancelled() => {
+            return Err(AppError::DownloadCancelled);
+        }
+
+        response = client
+            .get(&url)
+            .timeout(Duration::from_secs(5))
+            .send() => {
+                response.map_err(|_| {
+                    AppError::DownloadFailed(format!(
+                        "Failed to download file {} from {url}",
+                        dest.display()
+                    ))
+                })?
+            }
+    }
+    } else {
+        client
+            .get(&url)
+            .timeout(Duration::from_secs(5))
+            .send()
+            .await
+            .map_err(|_| {
+                AppError::DownloadFailed(format!(
+                    "Failed to download file {} from {url}",
+                    dest.display()
+                ))
+            })?
+    };
+
+    drop(client);
 
     let total_size = resp.content_length().unwrap_or(0);
 
     if let Some(parent) = dest.parent() {
         if !parent.exists() {
-            create_dir_all(parent).map_err(|e| AppError::DirCreateFailed(e.to_string()))?;
+            create_dir_all(parent)
+                .map_err(|e| AppError::DirCreateFailed(e.to_string()))?;
         }
     }
 
-    let mut out = tokio::fs::File::create(dest).await.map_err(|e| {
-        AppError::FileCreateFailed(format!("Unable to create file at {:?}: {}", dest, e))
-    })?;
+    let mut out = tokio::fs::File::create(dest)
+        .await
+        .map_err(|e| {
+            AppError::FileCreateFailed(format!(
+                "Unable to create file at {:?}: {}",
+                dest,
+                e
+            ))
+        })?;
 
     let mut downloaded: u64 = 0;
 
-    while let Some(chunk) = resp.chunk().await.map_err(|_| {
-        AppError::DownloadFailed(format!(
-            "Failed to download file {} from {url}",
-            dest.display().to_string()
-        ))
-    })? {
+    loop {
+        let chunk_result = if let Some(token) = cancel_token {
+            tokio::select! {
+                _ = token.cancelled() => {
+                    let _ = tokio::fs::remove_file(dest).await;
+                    return Err(AppError::DownloadCancelled);
+                }
+
+                chunk = resp.chunk() => {
+                    chunk
+                }
+            }
+        } else {
+            resp.chunk().await
+        };
+
+        let chunk = chunk_result.map_err(|_| {
+            AppError::DownloadFailed(format!(
+                "Failed to download file {} from {url}",
+                dest.display()
+            ))
+        })?;
+
+        let Some(chunk) = chunk else {
+            break;
+        };
+
+        if let Some(token) = cancel_token {
+            if token.is_cancelled() {
+                let _ = tokio::fs::remove_file(dest).await;
+                return Err(AppError::DownloadCancelled);
+            }
+        }
+
         out.write_all(&chunk)
             .await
             .map_err(|e| AppError::FileWriteFailed(e.to_string()))?;
 
         downloaded += chunk.len() as u64;
+
         if let Some(t) = tracker {
             t.report(&file_name, downloaded, total_size);
         }
@@ -469,22 +667,24 @@ pub async fn download_file(
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
+
         if let Ok(metadata) = std::fs::metadata(dest) {
             let mut permissions = metadata.permissions();
             permissions.set_mode(0o755);
+
             let _ = set_permissions(dest, permissions);
         }
     }
 
     Ok(())
 }
-
 pub async fn download_from_manifest(
     state: &State<'_, AppState>,
     id: &String,
     manifest: &Manifest,
     mir: &Mirror,
     tracker: Option<&PipelineProgressTracker>,
+    cancel_token: Option<&CancellationToken>,
 ) -> Result<(), AppError> {
     let version = manifest
         .versions
@@ -497,7 +697,7 @@ pub async fn download_from_manifest(
     let version_url = mir.parse_url(&version.url);
     let dest = get_version_directory(id).join(format!("{}.json", id));
 
-    download_file(state, version_url.to_string(), &dest, tracker).await
+    download_file(state, version_url.to_string(), &dest, tracker, cancel_token).await
 }
 
 pub async fn download_forge_version(
@@ -508,6 +708,7 @@ pub async fn download_forge_version(
     mirror: &Mirror,
     ver: &mut String,
     tracker: Option<&PipelineProgressTracker>,
+    cancel_token: Option<&CancellationToken>
 ) -> Result<(), AppError> {
     let url = format!("https://maven.minecraftforge.net/net/minecraftforge/forge/{version}/forge-{version}-installer.jar").parse_mirror(mirror);
     let launcher_dir = get_falcon_launcher_directory();
@@ -519,7 +720,7 @@ pub async fn download_forge_version(
 
     let installer_path = temp_dir.join(format!("forge-{version}-installer.jar"));
     let installer_path_str = installer_path.to_string_lossy().into_owned();
-    download_file(state, url, &installer_path, tracker).await?;
+    download_file(state, url, &installer_path, tracker,cancel_token).await?;
 
     let version_args = version.split('-').collect::<Vec<&str>>();
     let _mc_version = version_args
@@ -535,6 +736,7 @@ pub async fn download_forge_version(
             logger,
             mirror,
             None,
+            cancel_token
         )
         .await?;
         let jdk_8 = get_java("jre-legacy".to_string())?;
@@ -688,6 +890,7 @@ pub async fn download_forge_version(
                         hash.as_str(),
                         size,
                         tracker,
+                        cancel_token
                     )
                     .await?;
                 }
@@ -702,7 +905,7 @@ pub async fn download_forge_version(
                 get_libraries_directory().to_string_lossy().into_owned(),
                 &library.name,
             )?;
-            download_file_if_not_exists(state, &PathBuf::from(full_path), full_url, "", 0, tracker)
+            download_file_if_not_exists(state, &PathBuf::from(full_path), full_url, "", 0, tracker, cancel_token)
                 .await?;
         }
     }
@@ -717,6 +920,7 @@ pub async fn download_fabric(
     logger: &UnboundedSender<LogLine>,
     mirror: &Mirror,
     tracker: Option<&PipelineProgressTracker>,
+    cancel_token: Option<&CancellationToken>
 ) -> Result<(), AppError> {
     let loaders_url = "https://meta.fabricmc.net/v2/versions/loader";
     let installers_url = "https://meta.fabricmc.net/v2/versions/installer";
@@ -759,6 +963,7 @@ pub async fn download_fabric(
         stable_installer.url.to_string(),
         &PathBuf::from(&installer_path_download),
         tracker,
+        cancel_token
     )
     .await?;
 
@@ -769,6 +974,7 @@ pub async fn download_fabric(
         logger,
         mirror,
         None,
+        cancel_token
     )
     .await?;
     let jdk_8 = get_java("jre-legacy".to_string())?;
@@ -933,4 +1139,14 @@ fn spawn_thread(stderr: ChildStderr, task_name: String) {
             info!("[{task_name}][stderr] {}", line);
         }
     });
+}
+
+fn check_cancelled(token: Option<&CancellationToken>) -> Result<(), AppError> {
+    if let Some(token) = token {
+        if token.is_cancelled() {
+            return Err(AppError::DownloadCancelled);
+        }
+    }
+
+    Ok(())
 }

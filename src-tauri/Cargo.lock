@@ -1285,6 +1285,7 @@ dependencies = [
  "tauri-plugin-single-instance",
  "thiserror 2.0.20",
  "tokio",
+ "tokio-util",
  "toml 1.1.4+spec-1.1.0",
  "uuid",
  "zip 8.6.0",

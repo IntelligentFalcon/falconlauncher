@@ -13,6 +13,7 @@ use std::fs::create_dir_all;
 use std::time::Duration;
 use tauri::State;
 use tokio::sync::mpsc::UnboundedSender;
+use tokio_util::sync::CancellationToken;
 use crate::AppState;
 
 pub fn get_java(java: String) -> Result<Java, AppError> {
@@ -27,6 +28,8 @@ pub async fn download_java(
     _logger: &UnboundedSender<LogLine>,
     mirror: &Mirror,
     mut tracker: Option<&mut PipelineProgressTracker>,
+    cancel_token: Option<&CancellationToken>,
+
 ) -> Result<(), AppError> {
     let runtime_dir = get_java_dir().join(java);
     let url = mirror.parse_url(&"https://launchermeta.mojang.com/v1/products/java-runtime/2ec0cc96c44e5a76b9c8b7c39df7210883d12871/all.json".to_string());
@@ -86,8 +89,6 @@ pub async fn download_java(
                 "Missing 'files' object in Java runtime manifest".to_string(),
             )
         })?;
-
-    // Count actual files to accurately configure the tracker
     let total_download_files = files_map
         .values()
         .filter(|v| v.get("type").and_then(|t| t.as_str()) == Some("file"))
@@ -124,6 +125,7 @@ pub async fn download_java(
                 sha1,
                 size,
                 tracker.as_deref(),
+                cancel_token
             )
                 .await?;
 
