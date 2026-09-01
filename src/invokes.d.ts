@@ -1,4 +1,6 @@
 import type { app } from "@tauri-apps/api";
+import {useTranslation} from "react-i18next";
+import {useState} from "react";
 
 type AppHandle = typeof app;
 
@@ -6,7 +8,10 @@ interface InvokeError<T = unknown> {
   code: string;
   data?: T;
 }
-
+export interface NativeChoice {
+  mode: "version_associated" | "custom";
+  path: string;
+}
 type WithDefaultError<T> = T &
     Record<
         keyof T,
@@ -119,7 +124,42 @@ export type Invokes = WithDefaultError<{
   };
   cancel_download: {
     args?: Record<string, never> | undefined;
-    return: void;
+    returns: void;
+  };
+// Java native commands
+  get_java: {
+    args: Record<string, never>;
+    returns: NativeChoice;
+  };
+  set_java: {
+    args: {
+      java: NativeChoice;
+    };
+    returns: void;
+  };
+
+  // OpenAL native commands
+  get_openal: {
+    args: Record<string, never>;
+    returns: NativeChoice;
+  };
+  set_openal: {
+    args: {
+      openal: NativeChoice;
+    };
+    returns: void;
+  };
+
+  // GLFW native commands
+  get_glfw: {
+    args: Record<string, never>;
+    returns: NativeChoice;
+  };
+  set_glfw: {
+    args: {
+      glfw: NativeChoice;
+    };
+    returns: void;
   };
   reload_version_manifest: {
     args: undefined;

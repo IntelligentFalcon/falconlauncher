@@ -31,6 +31,7 @@
             "core:window:allow-minimize",
             "core:window:allow-toggle-maximize",
             "core:window:allow-start-dragging",
+            "dialog:default",
             "core:event:allow-listen",
             "core:event:default",
             "notification:default"
@@ -47,9 +48,6 @@
     }
   },
   "bundle": {
-      "resources": [
-        "scripts/**/*"
-      ],
     "active": true,
     "targets": "all",
     "icon": [

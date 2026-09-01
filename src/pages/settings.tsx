@@ -1,13 +1,15 @@
 import {
+    CpuIcon,
     Download02Icon,
     GameController01Icon,
     Settings01Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { useTranslation } from "react-i18next"; // <-- Import added
+import { useTranslation } from "react-i18next";
 import { GameOptions } from "@/components/blocks/settings/game-options";
 import { LauncherSettings } from "@/components/blocks/settings/launcher-settings";
 import { MirrorSettings } from "@/components/blocks/settings/mirror-settings";
+import { NativeSettings } from "@/components/blocks/settings/native-settings";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function Settings() {
@@ -18,9 +20,10 @@ export default function Settings() {
             {/* Horizontal Navigation Header Layout */}
             <TabsList>
                 {[
-                    { icon: Settings01Icon, id: "launcher", label: t("settingsLayout.launcherTab") },
-                    { icon: GameController01Icon, id: "game", label: t("settingsLayout.gameTab") },
-                    { icon: Download02Icon, id: "mirror", label: t("settingsLayout.mirrorTab") },
+                    { icon: Settings01Icon, id: "launcher", label: t("settingsLayout.launcherTab", "Launcher") },
+                    { icon: GameController01Icon, id: "game", label: t("settingsLayout.gameTab", "Game") },
+                    { icon: CpuIcon, id: "native", label: t("settingsLayout.nativeTab", "Natives") },
+                    { icon: Download02Icon, id: "mirror", label: t("settingsLayout.mirrorTab", "Mirrors") },
                 ].map((tab) => (
                     <TabsTrigger key={tab.id} value={tab.id}>
                         <HugeiconsIcon icon={tab.icon} size={16} strokeWidth={2} />
@@ -37,6 +40,10 @@ export default function Settings() {
 
                 <TabsContent value="game">
                     <GameOptions />
+                </TabsContent>
+
+                <TabsContent value="native">
+                    <NativeSettings />
                 </TabsContent>
 
                 <TabsContent value="mirror">

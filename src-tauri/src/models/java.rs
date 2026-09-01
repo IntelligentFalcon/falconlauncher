@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use crate::models::error::AppError;
 use crate::models::platform;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -9,19 +10,19 @@ pub struct Java {
 }
 
 impl Java {
-    pub fn new(path: PathBuf) -> Java {
+    pub fn new(path: PathBuf) -> Result<Java, AppError> {
         let release = path.join("release");
-        let reader = std::fs::read_to_string(release).unwrap();
+        let reader = std::fs::read_to_string(release).map_err(|e| AppError::JsonParseFailed(e.to_string()))?;
         let line = reader
             .lines()
             .find(|line| line.starts_with("JAVA_VERSION="))
-            .unwrap();
+            .ok_or(AppError::InvalidJavaVersion("JAVA_VERSION was not found at RELEASE maybe it doesnt exist?!".to_string()))?;
         let version = line
             .strip_prefix("JAVA_VERSION=")
-            .unwrap()
+            .ok_or(AppError::InvalidJavaVersion("JAVA_VERSION was not found at RELEASE maybe it doesnt exist?!".to_string()))?
             .replace("\"", "");
 
-        Java { path, version }
+        Ok(Java { path, version })
     }
     pub fn get_bin_file(&self) -> PathBuf {
         let os = platform::get_current_os();

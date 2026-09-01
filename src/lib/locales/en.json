@@ -97,6 +97,28 @@
     "cancelButton": "Cancel",
     "abortButton": "Abort"
   },
+  "nativeSettings": {
+    "loading": "Loading native library settings...",
+    "unknownError": "An unexpected error occurred.",
+    "versionAssociated": "Version Associated (Automatic)",
+    "versionAssociatedDesc": "Managed automatically according to the active Minecraft version.",
+    "custom": "Custom Directory",
+    "customDesc": "Provide a custom folder path containing the native binaries.",
+    "browse": "Browse",
+    "folderPlaceholder": "/path/to/folder",
+    "errorTitle": "Operation Failed",
+    "close": "Close",
+    "retry": "Retry",
+    "javaRuntimeTitle": "Java Runtime",
+    "javaRuntimeDescription": "Choose whether to use the launcher-managed Java runtime or specify a custom directory.",
+    "selectJavaFolder": "Select Java Directory",
+    "openalTitle": "OpenAL Library",
+    "openalDescription": "Choose whether to use the version's default OpenAL audio library or provide a custom folder.",
+    "selectOpenalFolder": "Select OpenAL Directory",
+    "glfwTitle": "GLFW Library",
+    "glfwDescription": "Choose whether to use the version's default GLFW windowing library or specify a custom folder.",
+    "selectGlfwFolder": "Select GLFW Directory"
+  },
   "consoleFilters": {
     "allLogs": "All Logs",
     "info": "Info",

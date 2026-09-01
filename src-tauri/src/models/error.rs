@@ -117,9 +117,10 @@ pub enum AppError {
     ProcessNotFound(String),
     #[error("Download was cancelled")]
     DownloadCancelled,
+    #[error("Invalid java version was detected.")]
+    InvalidJavaVersion(String)
 }
 
-// Since frontend expects `{ "code": "...", "data": "..." }`:
 impl Serialize for AppError {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -167,6 +168,7 @@ impl Serialize for AppError {
             AppError::ProcessFetchFailed(e) => ("ERROR_FETCH_PROCESSES", Some(e.to_string())),
             AppError::ProcessNotFound(proc) => ("ERROR_INVALID_PROCESS", Some(format!("{proc} was not found!"))),
             AppError::DownloadCancelled => ("DOWNLOAD_CANCELLED", Some("Download was cancelled by user.".to_string())),
+            AppError::InvalidJavaVersion(err) => ("ERROR_INVALID_JAVA", Some(format!("Invalid/Unsupported java version was deteted: {err}"))),
             AppError::UnknownError(e) => ("ERROR_UNKNOWN", Some(e.to_string())),
         };
 

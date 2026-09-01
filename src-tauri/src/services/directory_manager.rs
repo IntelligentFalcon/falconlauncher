@@ -114,7 +114,9 @@ pub fn auto_detect_javas() -> Result<Vec<Java>, AppError> {
         for entry in read_dir.filter_map(Result::ok) {
             let entry_path = entry.path();
             if validate_java(entry_path.clone()) {
-                paths.push(Java::new(entry_path));
+                if let Ok(java) = Java::new(entry_path) {
+                    paths.push(java);
+                }
             }
         }
     }

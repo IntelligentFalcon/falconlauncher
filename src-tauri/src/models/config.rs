@@ -6,24 +6,46 @@ use std::fs;
 use uuid::Uuid;
 use crate::models::config::Bool::FALSE;
 use crate::services::utils;
+use serde_with::with_prefix;
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct NativeLibraries {
-    pub use_custom_glfw: Bool,
-    pub glfw_path: String,
-    pub use_custom_openal: Bool,
-    pub openal_path: String,
-
+with_prefix!(prefix_java "java_");
+with_prefix!(prefix_openal "openal_");
+with_prefix!(prefix_glfw "glfw_");
+const NATIVE_CUSTOM: &str = "custom";
+const NATIVE_VERSION_ASSOCIATED: &str = "version_associated";
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct NativeChoice {
+    pub mode: String, /// "version_associated" | "custom"
+    #[serde(default)]
+    pub path: String,
 }
-impl Default for NativeLibraries {
+
+impl NativeChoice {
+    pub fn is_custom(&self) -> bool {
+        self.mode == NATIVE_CUSTOM
+    }
+
+    pub fn is_version_associated(&self) -> bool {
+        self.mode == NATIVE_VERSION_ASSOCIATED
+    }
+}
+impl Default for NativeChoice {
     fn default() -> Self {
         Self {
-            use_custom_glfw: FALSE,
-            glfw_path: "".to_string(),
-            use_custom_openal: FALSE,
-            openal_path: "".to_string(),
+            mode: "version_associated".to_string(),
+            path: String::new(),
         }
     }
+}
+
+#[derive(Serialize, Deserialize, Debug, Default)]
+pub struct NativeBinaries {
+    #[serde(flatten, with="prefix_glfw")]
+    pub glfw: NativeChoice,
+    #[serde(flatten, with="prefix_openal")]
+    pub openal: NativeChoice,
+    #[serde(flatten, with="prefix_java")]
+    pub java: NativeChoice,
 }
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LaunchOptions {
@@ -89,7 +111,7 @@ pub struct Config {
     pub launch_options: LaunchOptions,
     pub launcher_settings: LauncherSettings,
     pub download_settings: DownloadSettings,
-    pub native_libraries: NativeLibraries
+    pub native_libraries: NativeBinaries
 }
 
 #[derive(Debug, Deserialize, Serialize, Default)]

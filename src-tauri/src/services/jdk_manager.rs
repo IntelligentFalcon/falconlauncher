@@ -18,7 +18,7 @@ use crate::AppState;
 
 pub fn get_java(java: String) -> Result<Java, AppError> {
     let runtime_dir = get_java_dir().join(&java);
-    Ok(Java::new(runtime_dir))
+    Java::new(runtime_dir)
 }
 
 pub async fn download_java(

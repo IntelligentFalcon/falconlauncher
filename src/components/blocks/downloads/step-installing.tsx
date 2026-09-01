@@ -3,13 +3,13 @@ import {
     CheckmarkBadge01Icon,
     Settings01Icon,
 } from "@hugeicons/core-free-icons";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { listen } from "@tauri-apps/api/event";
-import { useEffect, useState } from "react";
-import { useTranslation } from "react-i18next";
-import { ActionButton } from "@/components/ui/action-button";
-import { useBackendMutation } from "@/hooks/use-backend";
-import type { VersionLoader } from "@/invokes";
+import {HugeiconsIcon} from "@hugeicons/react";
+import {listen} from "@tauri-apps/api/event";
+import {useEffect, useState} from "react";
+import {useTranslation} from "react-i18next";
+import {ActionButton} from "@/components/ui/action-button";
+import {useBackendMutation} from "@/hooks/use-backend";
+import type {VersionLoader} from "@/invokes";
 
 export interface DownloadProgress {
     stage: string;
@@ -38,12 +38,12 @@ export function StepInstalling({
                                    onReset,
                                    onRetry,
                                }: StepInstallingProps) {
-    const { t } = useTranslation();
+    const {t} = useTranslation();
 
     const [progress, setProgress] = useState<DownloadProgress | null>(null);
     const [isDone, setIsDone] = useState<boolean>(false);
 
-    const { mutateAsync: cancelDownloadMutation } = useBackendMutation({
+    const {mutateAsync: cancelDownloadMutation} = useBackendMutation({
         name: "cancel_download",
     });
 
@@ -165,12 +165,13 @@ export function StepInstalling({
             </p>
 
             <div className="mb-8 w-full max-w-md space-y-2">
-                <div className="h-3.5 w-full overflow-hidden rounded-full border border-border/60 bg-background p-0.5 shadow-inner">
+                <div
+                    className="h-3.5 w-full overflow-hidden rounded-full border border-border/60 bg-background p-0.5 shadow-inner">
                     <div
                         className={`h-full rounded-full transition-all duration-300 ease-out ${
                             isDone ? "bg-emerald-500" : "bg-primary"
                         }`}
-                        style={{ width: `${percentage}%` }}
+                        style={{width: `${percentage}%`}}
                     />
                 </div>
 

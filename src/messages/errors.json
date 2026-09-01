@@ -130,5 +130,9 @@
   "DOWNLOAD_CANCELLED": {
     "title": "Download Cancelled",
     "description": "Download process was cancelled by user."
+  },
+  "ERROR_INVALID_JAVA": {
+    "title": "Invalid Java",
+    "description": "Invalid or Unsupported java version was found during the process."
   }
 }

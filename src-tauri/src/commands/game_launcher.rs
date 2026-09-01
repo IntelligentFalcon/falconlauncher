@@ -20,6 +20,8 @@ use std::str::FromStr;
 use std::sync::Mutex;
 use tauri::{command, AppHandle, Manager, State};
 use uuid::Uuid;
+use crate::models::java::Java;
+
 #[command]
 pub async fn play(
     app_handle: AppHandle,
@@ -97,7 +99,12 @@ pub async fn play(
         .await?;
     }
     info!("Fetching the appropriate java version: {java_component}");
-    let java = services::jdk_manager::get_java(java_component.to_string())?;
+    let java_choice = &config.native_libraries.java;
+    let java = if java_choice.is_custom() {
+        Java::new(PathBuf::from(java_choice.path.clone()))?
+    } else {
+        services::jdk_manager::get_java(java_component.to_string())?
+    };
 
     let version_directory = PathBuf::from(&inherited_version.version_path);
     info!(
