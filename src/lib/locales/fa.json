@@ -185,6 +185,13 @@
     "mirrorTab": "مخزن ها",
     "nativeTab": "بومی‌ها"
   },
+  "stepConfigureInstance": {
+    "install": "شروع نصب",
+    "instanceName": "نام نمونه",
+    "instancePlaceholder": "مثلاً: PVP",
+    "selectVersion": "انتخاب نسخه",
+    "title": "پیکربندی نمونه"
+  },
   "stepInstalling": {
     "abortButton": "لغو",
     "cancelButton": "انصراف",

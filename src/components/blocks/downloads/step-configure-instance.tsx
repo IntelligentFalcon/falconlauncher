@@ -25,6 +25,7 @@ import { useBackend } from "@/hooks/use-backend";
 import type { VersionCategory, VersionLoader } from "@/invokes";
 import { errorText } from "@/messages";
 import type { LoaderType } from "@/pages/downloads";
+import {useTranslation} from "react-i18next";
 
 export function StepConfigureInstance({
   activeLoader,
@@ -35,6 +36,7 @@ export function StepConfigureInstance({
   onBack: () => void;
   onStartInstall: (version: VersionLoader, name: string) => void;
 }) {
+  const { t } = useTranslation();
   const [localActiveMajorVersion, setLocalActiveMajorVersion] =
     useState<string>("");
   const [localActiveVersion, setLocalActiveVersion] =
@@ -82,7 +84,7 @@ export function StepConfigureInstance({
           <HugeiconsIcon icon={ArrowLeft02Icon} size={20} />
         </button>
         <h2 className="ml-2 font-bold text-xl tracking-tight">
-          Configure Instance
+          {t("stepConfigureInstance.title")}
         </h2>
         <div className="ml-auto rounded-full bg-primary/10 px-3 py-1 font-bold text-primary text-xs uppercase tracking-wider">
           {activeLoader}
@@ -113,13 +115,13 @@ export function StepConfigureInstance({
                   className="font-bold text-muted-foreground text-xs uppercase tracking-wider"
                   htmlFor="instance-name"
                 >
-                  Instance Name
+                  {t("stepConfigureInstance.instanceName")}
                 </label>
                 <input
                   className="w-full rounded-xl border border-border/80 bg-background px-4 py-2.5 font-medium text-foreground text-sm transition-colors placeholder:text-muted-foreground/50 focus:border-primary/60 focus:outline-none"
                   id="instance-name"
                   onChange={(e) => setInstanceName(e.target.value)}
-                  placeholder={`e.g. My ${activeLoader.charAt(0).toUpperCase() + activeLoader.slice(1)} World`}
+                  placeholder={t("stepConfigureInstance.instancePlaceholder")}
                   type="text"
                   value={instanceName}
                 />
@@ -127,7 +129,7 @@ export function StepConfigureInstance({
 
               <div className="space-y-2">
                 <span className="font-bold text-muted-foreground text-xs uppercase tracking-wider">
-                  Major Version
+                  {t("stepConfigureInstance.majorVersion")}
                 </span>
                 <div className="flex flex-wrap gap-2">
                   {data
@@ -157,7 +159,7 @@ export function StepConfigureInstance({
 
               <div className="space-y-2">
                 <span className="font-bold text-muted-foreground text-xs uppercase tracking-wider">
-                  Specific Version
+                  {t("stepConfigureInstance.selectVersion")}
                 </span>
                 <Combobox
                   autoHighlight
@@ -199,7 +201,7 @@ export function StepConfigureInstance({
                 }
               >
                 <HugeiconsIcon icon={Download01Icon} size={18} />
-                Start Installation
+                {t("stepConfigureInstance.install")}
               </ActionButton>
             </div>
           </>

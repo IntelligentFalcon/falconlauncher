@@ -57,6 +57,15 @@
     "mirrorTab": "Mirrors",
     "nativeTab": "Natives"
   },
+  "stepConfigureInstance": {
+    "title": "Configure Instance",
+    "instanceName": "Instance Name",
+    "install": "Start Installation",
+    "selectVersion": "Select version",
+    "instancePlaceholder": "e.g: PVP",
+    "majorVersion": "Major Version"
+
+  },
   "modsHeader": {
     "selectVersionPlaceholder": "Select Game Version",
     "noVersionsFound": "No installed versions found.",
