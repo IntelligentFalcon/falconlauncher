@@ -98,11 +98,12 @@ pub async fn play(
         )
         .await?;
     }
-    info!("Fetching the appropriate java version: {java_component}");
     let java_choice = &config.native_libraries.java;
     let java = if java_choice.is_custom() {
+        info!("Selected java is: {}", java_choice.path.clone());
         Java::new(PathBuf::from(java_choice.path.clone()))?
     } else {
+        info!("Fetching the appropriate java version: {java_component}");
         services::jdk_manager::get_java(java_component.to_string())?
     };
 
@@ -261,11 +262,23 @@ pub async fn play(
             .arg("-cp")
             .arg(format!("{}{}{}", class_path, separator, libraries_str));
     };
+
+    if config.native_libraries.glfw.is_custom() {
+        child_cmd.arg(format!("-Dorg.lwjgl.glfw.libname={}", config.native_libraries.glfw.path.clone()));
+    }
+
+    if config.native_libraries.openal.is_custom() {
+        child_cmd.arg(format!("-Dorg.lwjgl.openal.libname={}", config.native_libraries.openal.path.clone()));
+    }
+
     info!("Applying main_class and run arguments.");
     child_cmd.arg(main_class).args(&run_args);
 
+
+
     let run_args_str = run_args.join(" ");
     let jvm_args_str = jvm_args.join(" ");
+
 
     let _ = tx_out.send(info(
         format!("Loaded libraries: {libraries_str}\n\n"),
