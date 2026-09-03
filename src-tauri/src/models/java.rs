@@ -12,7 +12,7 @@ pub struct Java {
 impl Java {
     pub fn new(path: PathBuf) -> Result<Java, AppError> {
         let release = path.join("release");
-        let reader = std::fs::read_to_string(release).map_err(|e| AppError::JsonParseFailed(e.to_string()))?;
+        let reader = std::fs::read_to_string(release).map_err(|e| AppError::FileReadFailed(e.to_string()))?;
         let line = reader
             .lines()
             .find(|line| line.starts_with("JAVA_VERSION="))

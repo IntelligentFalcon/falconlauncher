@@ -48,13 +48,13 @@
   },
   "mirrorSettings": {
     "description": "نقشه‌های ایندکسِ مشخص را انتخاب کنید یا اینجا رها کنید تا از سرورهای اصلی استفاده نشود.",
-    "dropzoneAriaLabel": "مانیفست پیکربندی JSON آینه را بکشید و رها کنید",
+    "dropzoneAriaLabel": "مانیفست پیکربندی JSON مخزن را بکشید و رها کنید",
     "dropzoneSubtitle": "فایل‌ها را مستقیماً به پیکربندی‌های ساختار سیستم‌فایل خود اضافه کنید",
-    "dropzoneTitle": "مانیفست پیکربندی JSON آینه را بکشید و رها کنید",
+    "dropzoneTitle": "مانیفست پیکربندی JSON مخزن را بکشید و رها کنید",
     "errorPrefix": "خطا",
     "invalidFileTypeError": "لطفاً یک فایل معتبر با پسوند .json رها کنید",
     "invalidJsonError": "قالب JSON نامعتبر است یا ویژگی‌های لازم وجود ندارند",
-    "title": "آینه‌های مخزن منابع"
+    "title": "مخزن‌های مخزن منابع"
   },
   "modrinthModal": {
     "aboutMod": "درباره این ماد",
@@ -182,7 +182,7 @@
   "settingsLayout": {
     "gameTab": "گزینه‌های بازی",
     "launcherTab": "تنظیمات لانچر",
-    "mirrorTab": "آینه‌ها"
+    "mirrorTab": "مخزن ها"
   },
   "stepInstalling": {
     "abortButton": "لغو",

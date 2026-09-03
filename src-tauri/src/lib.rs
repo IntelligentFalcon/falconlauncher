@@ -48,17 +48,12 @@ pub struct AppState {
 }
 pub struct ProcessManager {
     pub active_processes: Mutex<HashMap<String, Mutex<Child>>>,
-    pub tokens: Mutex<HashMap<String, CancellationToken>>,
-    pub handles: Mutex<HashMap<String, JoinHandle<()>>>,
 }
 
 impl ProcessManager {
     pub fn new() -> Self {
         Self {
             active_processes: Mutex::new(HashMap::new()),
-            tokens: Mutex::new(HashMap::new()),
-            handles: Mutex::new(HashMap::new()),
-
         }
     }
 }
