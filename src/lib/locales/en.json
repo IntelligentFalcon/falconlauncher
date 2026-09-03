@@ -112,8 +112,10 @@
     "unknownError": "An unexpected error occurred.",
     "versionAssociated": "Version Associated (Automatic)",
     "versionAssociatedDesc": "Managed automatically according to the active Minecraft version.",
-    "custom": "Custom Directory",
-    "customDesc": "Provide a custom folder path containing the native binaries.",
+    "customDir": "Custom Directory",
+    "customFile": "Custom Directory",
+    "customFileDesc": "Specify a custom native library file on your system",
+    "customDirDesc": "Provide a custom folder path containing the native binaries.",
     "browse": "Browse",
     "folderPlaceholder": "/path/to/folder",
     "errorTitle": "Operation Failed",
@@ -127,7 +129,8 @@
     "selectOpenalFolder": "Select OpenAL Directory",
     "glfwTitle": "GLFW Library",
     "glfwDescription": "Choose whether to use the version's default GLFW windowing library or specify a custom folder.",
-    "selectGlfwFolder": "Select GLFW Directory"
+    "selectGlfwFolder": "Select GLFW Directory",
+    "selectOpenFile": "Select a file"
   },
   "consoleFilters": {
     "allLogs": "All Logs",

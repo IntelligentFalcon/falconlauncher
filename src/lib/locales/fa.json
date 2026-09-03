@@ -118,8 +118,10 @@
   "nativeSettings": {
     "browse": "مرور",
     "close": "بستن",
-    "custom": "پوشهٔ سفارشی",
-    "customDesc": "مسیر پوشهٔ سفارشی حاوی فایل‌های باینری بومی را وارد کنید.",
+    "customDir": "پوشهٔ سفارشی",
+    "customDirDesc": "مسیر پوشهٔ سفارشیِ حاوی فایل‌های اجرایی بومی را وارد کنید.",
+    "customFile": "فایل سفارشی",
+    "customFileDesc": "فایل کتابخانهٔ بومی سفارشی را در سیستم خود مشخص کنید",
     "errorTitle": "عملیات ناموفق بود",
     "folderPlaceholder": "/path/to/folder",
     "glfwDescription": "انتخاب کنید از کتابخانهٔ پنجره‌سازی پیش‌فرض GLFW این نسخه استفاده شود یا پوشه‌ای سفارشی تعیین کنید.",
@@ -132,6 +134,7 @@
     "retry": "تلاش مجدد",
     "selectGlfwFolder": "انتخاب پوشهٔ GLFW",
     "selectJavaFolder": "انتخاب پوشهٔ Java",
+    "selectOpenFile": "یک فایل انتخاب کنید",
     "selectOpenalFolder": "انتخاب پوشهٔ OpenAL",
     "unknownError": "خطای غیرمنتظره‌ای رخ داد.",
     "versionAssociated": "وابسته به نسخه (خودکار)",
@@ -189,6 +192,7 @@
     "install": "شروع نصب",
     "instanceName": "نام نمونه",
     "instancePlaceholder": "مثلاً: PVP",
+    "majorVersion": "نسخهٔ اصلی",
     "selectVersion": "انتخاب نسخه",
     "title": "پیکربندی نمونه"
   },

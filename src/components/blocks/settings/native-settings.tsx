@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
-import { open } from "@tauri-apps/plugin-dialog";
+import { open, DialogFilter } from "@tauri-apps/plugin-dialog";
+import { platform as getPlatform } from "@tauri-apps/plugin-os";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
     Alert02Icon,
@@ -17,14 +18,59 @@ export type AppErrorPayload =
     | { code?: string; message?: string; data?: string }
     | Record<string, unknown>;
 
+type SettingKey = "java" | "openal" | "glfw";
+
 interface NativeOptionConfig {
-    key: "java" | "openal" | "glfw";
+    key: SettingKey;
     titleKey: string;
     descriptionKey: string;
     getCmd: string;
     setCmd: string;
     browseTitleKey: string;
     browseDirectoryOnly: boolean;
+}
+
+/**
+ * Returns dynamic library extension filters based on OS.
+ */
+async function getLibraryFilters(): Promise<DialogFilter[]> {
+    let currentPlatform = "";
+    try {
+        currentPlatform = await getPlatform();
+    } catch {
+        const ua = navigator.userAgent.toLowerCase();
+        if (ua.includes("win")) currentPlatform = "windows";
+        else if (ua.includes("mac")) currentPlatform = "macos";
+        else currentPlatform = "linux";
+    }
+
+    switch (currentPlatform) {
+        case "windows":
+            return [
+                {
+                    name: "Dynamic Link Library (*.dll)",
+                    extensions: ["dll"],
+                },
+                { name: "All Files (*.*)", extensions: ["*"] },
+            ];
+        case "macos":
+            return [
+                {
+                    name: "Mach-O Dynamic Library (*.dylib)",
+                    extensions: ["dylib"],
+                },
+                { name: "All Files (*.*)", extensions: ["*"] },
+            ];
+        case "linux":
+        default:
+            return [
+                {
+                    name: "Shared Object (*.so)",
+                    extensions: ["so"],
+                },
+                { name: "All Files (*.*)", extensions: ["*"] },
+            ];
+    }
 }
 
 export function NativeSettings() {
@@ -101,7 +147,7 @@ export function NativeSettings() {
     }, [fetchAllSettings]);
 
     const saveSetting = async (
-        key: "java" | "openal" | "glfw",
+        key: SettingKey,
         updated: NativeChoice
     ) => {
         const execute = async () => {
@@ -129,14 +175,17 @@ export function NativeSettings() {
     };
 
     const handleBrowse = async (
-        key: "java" | "openal" | "glfw",
+        key: SettingKey,
         browseTitleKey: string,
         directoryOnly: boolean
     ) => {
         try {
+            const filters = !directoryOnly ? await getLibraryFilters() : undefined;
+
             const selected = await open({
                 multiple: false,
                 directory: directoryOnly,
+                filters,
                 title: t(browseTitleKey),
             });
 
@@ -167,8 +216,8 @@ export function NativeSettings() {
             descriptionKey: "nativeSettings.openalDescription",
             getCmd: "get_openal",
             setCmd: "set_openal",
-            browseTitleKey: "nativeSettings.selectOpenalFolder",
-            browseDirectoryOnly: true,
+            browseTitleKey: "nativeSettings.selectOpenalFile",
+            browseDirectoryOnly: false,
         },
         {
             key: "glfw",
@@ -176,12 +225,12 @@ export function NativeSettings() {
             descriptionKey: "nativeSettings.glfwDescription",
             getCmd: "get_glfw",
             setCmd: "set_glfw",
-            browseTitleKey: "nativeSettings.selectGlfwFolder",
-            browseDirectoryOnly: true,
+            browseTitleKey: "nativeSettings.selectGlfwFile",
+            browseDirectoryOnly: false,
         },
     ];
 
-    const getStateByKey = (key: "java" | "openal" | "glfw"): NativeChoice => {
+    const getStateByKey = (key: SettingKey): NativeChoice => {
         if (key === "java") return java;
         if (key === "openal") return openal;
         return glfw;
@@ -200,6 +249,23 @@ export function NativeSettings() {
             {sections.map((sec) => {
                 const current = getStateByKey(sec.key);
                 const isCustom = current.mode === "custom";
+
+                // Resolve label and description based on directory vs file mode
+                const customLabelKey = sec.browseDirectoryOnly
+                    ? "nativeSettings.customDir"
+                    : "nativeSettings.customFile";
+                const customDescKey = sec.browseDirectoryOnly
+                    ? "nativeSettings.customDirDesc"
+                    : "nativeSettings.customFileDesc";
+
+                const customLabel =
+                    t(customLabelKey, {
+                        defaultValue: t("nativeSettings.custom"),
+                    });
+                const customDesc =
+                    t(customDescKey, {
+                        defaultValue: t("nativeSettings.customDesc"),
+                    });
 
                 return (
                     <div
@@ -255,10 +321,10 @@ export function NativeSettings() {
                                 <div className="w-full space-y-3">
                                     <div>
                                         <p className="font-medium text-sm text-foreground">
-                                            {t("nativeSettings.custom")}
+                                            {customLabel}
                                         </p>
                                         <p className="text-muted-foreground text-xs">
-                                            {t("nativeSettings.customDesc")}
+                                            {customDesc}
                                         </p>
                                     </div>
 
@@ -273,7 +339,11 @@ export function NativeSettings() {
                                                         path: e.target.value,
                                                     })
                                                 }
-                                                placeholder={t("nativeSettings.folderPlaceholder")}
+                                                placeholder={
+                                                    sec.browseDirectoryOnly
+                                                        ? t("nativeSettings.folderPlaceholder")
+                                                        : t("nativeSettings.filePlaceholder")
+                                                }
                                                 className="h-9 flex-1 rounded-md border border-border/80 bg-background px-3 font-mono text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                                             />
                                             <button
