@@ -43,7 +43,7 @@
     "sonner": "^2.0.8",
     "tailwind-merge": "^3.6.0",
     "tailwindcss": "^4.3.3",
-    "tauri": "^0.15.0",
+    "@tauri-apps/cli": "^2.11.4",
     "zustand": "^5.0.15"
   },
   "devDependencies": {
