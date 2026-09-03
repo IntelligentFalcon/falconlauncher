@@ -182,7 +182,8 @@
   "settingsLayout": {
     "gameTab": "گزینه‌های بازی",
     "launcherTab": "تنظیمات لانچر",
-    "mirrorTab": "مخزن ها"
+    "mirrorTab": "مخزن ها",
+    "nativeTab": "بومی‌ها"
   },
   "stepInstalling": {
     "abortButton": "لغو",

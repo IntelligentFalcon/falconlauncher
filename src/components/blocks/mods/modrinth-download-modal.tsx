@@ -307,18 +307,19 @@ export function ModrinthDownloadModal({
                             Modrinth
                         </button>
 
-                        <button
-                            onClick={() => handleProviderSwitch("curseforge")}
-                            disabled={isDownloading}
-                            className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${
-                                provider === "curseforge"
-                                    ? "bg-primary text-primary-foreground shadow-sm"
-                                    : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
-                            }`}
-                        >
-                            <Layers size={18} className={provider === "curseforge" ? "text-primary-foreground" : "text-muted-foreground"} />
-                            CurseForge
-                        </button>
+                        {/* Removing Curseforge due to sanctions applied to Iran. */}
+                        {/*<button*/}
+                        {/*    onClick={() => handleProviderSwitch("curseforge")}*/}
+                        {/*    disabled={isDownloading}*/}
+                        {/*    className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${*/}
+                        {/*        provider === "curseforge"*/}
+                        {/*            ? "bg-primary text-primary-foreground shadow-sm"*/}
+                        {/*            : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"*/}
+                        {/*    }`}*/}
+                        {/*>*/}
+                        {/*    <Layers size={18} className={provider === "curseforge" ? "text-primary-foreground" : "text-muted-foreground"} />*/}
+                        {/*    CurseForge*/}
+                        {/*</button>*/}
                     </div>
 
                     {/* MAIN CONTENT AREA */}

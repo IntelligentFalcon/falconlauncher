@@ -54,7 +54,8 @@
   "settingsLayout": {
     "launcherTab": "Launcher Settings",
     "gameTab": "Game Options",
-    "mirrorTab": "Mirrors"
+    "mirrorTab": "Mirrors",
+    "nativeTab": "Natives"
   },
   "modsHeader": {
     "selectVersionPlaceholder": "Select Game Version",
