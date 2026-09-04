@@ -9,12 +9,14 @@ use std::fs;
 use std::fs::File;
 use std::path::PathBuf;
 use std::sync::Mutex;
-use tauri::{command, AppHandle};
+use tauri::{command, AppHandle, State};
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_opener::OpenerExt;
 use tokio::fs::copy;
 use zip::ZipArchive;
+use crate::AppState;
 use crate::models::error::AppError::InvalidPath;
+use crate::models::versions::VersionNameBase;
 
 #[command]
 pub async fn toggle_mod(mod_info: ModInfo, toggle: bool) -> Result<(), AppError> {

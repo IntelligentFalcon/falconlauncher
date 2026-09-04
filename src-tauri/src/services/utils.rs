@@ -10,10 +10,7 @@ use std::io::Read;
 use std::path::Path;
 use std::time::Duration;
 use log::info;
-use reqwest::{Client, Proxy};
-use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
-use reqwest_retry::policies::ExponentialBackoff;
-use reqwest_retry::RetryTransientMiddleware;
+use reqwest::{Client, ClientBuilder, Proxy};
 use sha1::{Digest, Sha1};
 use sha1::digest::FixedOutput;
 use tauri::{AppHandle, Emitter};
@@ -312,17 +309,11 @@ pub(crate) fn is_wayland() -> bool {
 
     wayland_display || session_type
 }
-pub fn create_reqwest_client(cfg: &Config) -> Result<ClientWithMiddleware, AppError> {
-    let retry_policy = ExponentialBackoff::builder().build_with_total_retry_duration_and_max_retries(Duration::from_secs(1),3);
-
-    let client =
+pub fn create_reqwest_client(cfg: &Config) -> Result<Client, AppError> {
     if cfg.download_settings.proxy != "" {
         let proxy = cfg.download_settings.proxy.clone();
         Client::builder().proxy(Proxy::all(proxy).map_err(|x| AppError::Reqwest(x))?).build().map_err(|x| AppError::Reqwest(x))
     } else {
         Client::builder().build().map_err(|x| AppError::Reqwest(x))
-    };
-    Ok(ClientBuilder::new(client?)
-        .with(RetryTransientMiddleware::new_with_policy(retry_policy))
-        .build())
+    }
 }

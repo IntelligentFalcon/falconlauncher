@@ -5,7 +5,7 @@ use crate::models::logger::LogLine;
 use crate::models::mirror::Mirror;
 use crate::models::platform::get_current_os_with_architecture;
 use crate::services::directory_manager::get_java_dir;
-use crate::services::game_downloader::download_file_if_not_exists;
+use crate::services::downloader_utils::download_file_if_not_exists;
 use log::info;
 use serde_json::Value;
 use std::fs;
@@ -35,7 +35,7 @@ pub async fn download_java(
     let url = mirror.parse_url(&"https://launchermeta.mojang.com/v1/products/java-runtime/2ec0cc96c44e5a76b9c8b7c39df7210883d12871/all.json".to_string());
     let current_os = get_current_os_with_architecture();
     info!("Detected os and architecture is: {current_os}");
-    let client = state.client.lock().await;
+    let client = state.client.load_full();
     let json = client.get(&url).timeout(Duration::from_secs(5)).send()
         .await
         .map_err(|e| AppError::NetworkRequestFailed(format!("Launcher Meta API request failed: {}", e)))?

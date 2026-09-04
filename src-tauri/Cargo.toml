@@ -44,8 +44,8 @@ hex = "0.4.3"
 md5 = "*"
 thiserror = "2.0.19"
 anyhow = "1.0.104"
-reqwest-middleware = "*"
-reqwest-retry = "*"
 serde_with = "3.22.0"
+discord-rich-presence = "*"
+arc-swap = "*"
 [target."cfg(any(target_os = \"macos\", windows, target_os = \"linux\"))".dependencies]
 tauri-plugin-single-instance = { version = "2.0.0", features = ["deep-link"] }

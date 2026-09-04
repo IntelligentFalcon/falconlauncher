@@ -2,7 +2,7 @@ use std::time::Duration;
 use crate::models::error::{AppError, Void};
 use crate::models::modrinth::{DependencyType, ModrinthMod, ModrinthSearchResult, ModrinthVersion};
 use crate::services::directory_manager::get_mods_directory;
-use crate::services::game_downloader::download_file_if_not_exists;
+use crate::services::downloader_utils::download_file_if_not_exists;
 use log::info;
 use serde::{Deserialize, Serialize};
 use tauri::{command, AppHandle, State};
@@ -22,7 +22,7 @@ pub async fn search_for_modrinth_project(
 ) -> Result<ModrinthSearchResult, AppError> {
     /// https://docs.modrinth.com/api/operations/searchprojects/ for more details
     let api = format!("https://api.modrinth.com/v2/search?query={name}&facets={facets}&offset={offset}&limit={limit}&index={index}");
-    let client = state.client.lock().await;
+    let client = state.client.load_full();
     client.get(&api).timeout(Duration::from_secs(5)).send()
         .await
         .map_err(|e| AppError::NetworkRequestFailed(format!("Modrinth API request failed: {}", e)))?
@@ -36,7 +36,7 @@ pub async fn search_for_modrinth_project(
 pub async fn get_modrinth_projects(state: State<'_, AppState>,project_id: String) -> Result<ModrinthMod, AppError> {
     /// https://docs.modrinth.com/api/operations/getproject/ for more details.
     let api = format!("https://api.modrinth.com/v2/project/{project_id}");
-    let client = state.client.lock().await;
+    let client = state.client.load_full();
     client.get(&api).timeout(Duration::from_secs(5)).send()
         .await
         .map_err(|e| AppError::NetworkRequestFailed(format!("Modrinth API request failed: {}", e)))?
@@ -48,7 +48,7 @@ pub async fn get_modrinth_projects(state: State<'_, AppState>,project_id: String
 pub async fn list_modrinth_mod_versions(state: State<'_, AppState>, project_id: String) -> Result<Vec<ModrinthVersion>, AppError> {
     /// https://docs.modrinth.com/api/operations/getprojectversions/ for more details.
     let api = format!("https://api.modrinth.com/v2/project/{project_id}/version");
-    let client = state.client.lock().await;
+    let client = state.client.load_full();
     client.get(&api).timeout(Duration::from_secs(5)).send()
         .await
         .map_err(|e| AppError::NetworkRequestFailed(format!("Modrinth API request failed: {}", e)))?
@@ -77,7 +77,7 @@ pub async fn get_modrinth_mod_version_by_id(state: State<'_, AppState>, version_
 
 pub async fn _get_modrinth_mod_version_by_id(state: &State<'_, AppState>, version_id: String) -> Result<ModrinthVersion, AppError> {
     let api = format!("https://api.modrinth.com/v2/version/{version_id}");
-    let client = state.client.lock().await;
+    let client = state.client.load_full();
     client.get(&api).send()
         .await
         .map_err(|e| AppError::NetworkRequestFailed(format!("Modrinth API request failed: {}", e)))?

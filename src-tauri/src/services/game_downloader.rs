@@ -39,6 +39,7 @@ use tokio::sync::mpsc::UnboundedSender;
 use tokio_util::sync::CancellationToken;
 use zip::ZipArchive;
 use zip_extract::extract;
+use crate::services::downloader_utils::{check_cancelled, download_file, download_file_if_not_exists};
 
 pub async fn download_version(
     state: &State<'_, AppState>,
@@ -327,7 +328,7 @@ async fn download_libraries(
     cancel_token: Option<&CancellationToken>
 ) -> Result<(), AppError> {
     let libraries_path = get_libraries_directory();
-    let client = state.client.lock().await;
+    let client = state.client.load_full();
     for library in libraries {
         if library.downloads.is_none() {
             let name = library.name.replace(':', "/");
@@ -505,179 +506,8 @@ async fn download_classifiers(
     Ok(())
 }
 
-pub async fn download_file_if_not_exists(
-    state: &State<'_, AppState>,
-    path: &PathBuf,
-    url: String,
-    hash: &str,
-    size: u64,
-    tracker: Option<&PipelineProgressTracker>,
-    cancel_token: Option<&CancellationToken>,
-) -> Result<(), AppError> {
-    check_cancelled(cancel_token)?;
-
-    if !hash.is_empty() {
-        if !verify_file_existence_with_sha(path, hash)? {
-            download_file(
-                state,
-                url,
-                path,
-                tracker,
-                cancel_token,
-            )
-                .await?;
-        }
-
-        return Ok(());
-    }
-
-    if !verify_file_existence_with_size(
-        &path.to_string_lossy().to_string(),
-        size,
-    )? {
-        download_file(
-            state,
-            url,
-            path,
-            tracker,
-            cancel_token,
-        )
-            .await?;
-    }
-
-    Ok(())
-}
-pub async fn download_file(
-    state: &State<'_, AppState>,
-    url: String,
-    dest: &PathBuf,
-    tracker: Option<&PipelineProgressTracker>,
-    cancel_token: Option<&CancellationToken>,
-) -> Result<(), AppError> {
-    check_cancelled(cancel_token)?;
-
-    let file_name = dest
-        .file_name()
-        .map(|s| s.to_string_lossy().into_owned())
-        .unwrap_or_else(|| "unknown".to_string());
-
-    let client = state.client.lock().await;
 
 
-    let mut resp = if let Some(token) = cancel_token {
-        tokio::select! {
-        _ = token.cancelled() => {
-            return Err(AppError::DownloadCancelled);
-        }
-
-        response = client
-            .get(&url)
-            .timeout(Duration::from_secs(5))
-            .send() => {
-                response.map_err(|_| {
-                    AppError::DownloadFailed(format!(
-                        "Failed to download file {} from {url}",
-                        dest.display()
-                    ))
-                })?
-            }
-    }
-    } else {
-        client
-            .get(&url)
-            .timeout(Duration::from_secs(5))
-            .send()
-            .await
-            .map_err(|_| {
-                AppError::DownloadFailed(format!(
-                    "Failed to download file {} from {url}",
-                    dest.display()
-                ))
-            })?
-    };
-
-    drop(client);
-
-    let total_size = resp.content_length().unwrap_or(0);
-
-    if let Some(parent) = dest.parent() {
-        if !parent.exists() {
-            create_dir_all(parent)
-                .map_err(|e| AppError::DirCreateFailed(e.to_string()))?;
-        }
-    }
-
-    let mut out = tokio::fs::File::create(dest)
-        .await
-        .map_err(|e| {
-            AppError::FileCreateFailed(format!(
-                "Unable to create file at {:?}: {}",
-                dest,
-                e
-            ))
-        })?;
-
-    let mut downloaded: u64 = 0;
-
-    loop {
-        let chunk_result = if let Some(token) = cancel_token {
-            tokio::select! {
-                _ = token.cancelled() => {
-                    let _ = tokio::fs::remove_file(dest).await;
-                    return Err(AppError::DownloadCancelled);
-                }
-
-                chunk = resp.chunk() => {
-                    chunk
-                }
-            }
-        } else {
-            resp.chunk().await
-        };
-
-        let chunk = chunk_result.map_err(|_| {
-            AppError::DownloadFailed(format!(
-                "Failed to download file {} from {url}",
-                dest.display()
-            ))
-        })?;
-
-        let Some(chunk) = chunk else {
-            break;
-        };
-
-        if let Some(token) = cancel_token {
-            if token.is_cancelled() {
-                let _ = tokio::fs::remove_file(dest).await;
-                return Err(AppError::DownloadCancelled);
-            }
-        }
-
-        out.write_all(&chunk)
-            .await
-            .map_err(|e| AppError::FileWriteFailed(e.to_string()))?;
-
-        downloaded += chunk.len() as u64;
-
-        if let Some(t) = tracker {
-            t.report(&file_name, downloaded, total_size);
-        }
-    }
-
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-
-        if let Ok(metadata) = std::fs::metadata(dest) {
-            let mut permissions = metadata.permissions();
-            permissions.set_mode(0o755);
-
-            let _ = set_permissions(dest, permissions);
-        }
-    }
-    info!("Download has been completed successfully!");
-    Ok(())
-}
 pub async fn download_from_manifest(
     state: &State<'_, AppState>,
     id: &String,
@@ -799,7 +629,7 @@ pub async fn download_forge_version(
         ));
 
         let mirror_list = mirror.parse_url(&install_data.mirror_list);
-        let client = state.client.lock().await;
+        let client = state.client.load_full();
         if let Ok(resp) = client.get(mirror_list).send().await {
             if let Ok(text) = resp.text().await {
                 let _mirrors = fetch_forge_mirrors(text).await;
@@ -924,7 +754,7 @@ pub async fn download_fabric(
 ) -> Result<(), AppError> {
     let loaders_url = "https://meta.fabricmc.net/v2/versions/loader";
     let installers_url = "https://meta.fabricmc.net/v2/versions/installer";
-    let client = state.client.lock().await;
+    let client = state.client.load_full();
     let loaders = client
         .get(loaders_url)
         .send()
@@ -1032,7 +862,7 @@ pub async fn get_available_fabric_versions(
     version_id: &String,
 ) -> Result<Vec<String>, AppError> {
     let mut global_cache = GLOBAL_CACHE.lock().await;
-    let client = state.client.lock().await;
+    let client = state.client.load_full();
     if global_cache.fabric_mc_versions.is_none() {
         let url = "https://meta.fabricmc.net/v2/versions/game";
         let map: Vec<FabricMinecraftVersion> = client
@@ -1094,7 +924,7 @@ pub async fn get_available_forge_versions(
 ) -> Result<Vec<String>, AppError> {
     let mut global_cache = GLOBAL_CACHE.lock().await;
     let mirror = &state.config.read().await.download_settings.mirror;
-    let client = state.client.lock().await;
+    let client = state.client.load_full();
     if global_cache.forge.is_none() {
         let url = "https://files.minecraftforge.net/net/minecraftforge/forge/maven-metadata.json"
             .parse_mirror(mirror);
@@ -1139,14 +969,4 @@ fn spawn_thread(stderr: ChildStderr, task_name: String) {
             info!("[{task_name}][stderr] {}", line);
         }
     });
-}
-
-fn check_cancelled(token: Option<&CancellationToken>) -> Result<(), AppError> {
-    if let Some(token) = token {
-        if token.is_cancelled() {
-            return Err(AppError::DownloadCancelled);
-        }
-    }
-
-    Ok(())
 }

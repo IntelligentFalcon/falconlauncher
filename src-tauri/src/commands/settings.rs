@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use crate::models::config::{Bool, Config, NativeChoice};
 use crate::models::error::AppError;
 use crate::models::java::Java;
@@ -89,8 +90,7 @@ pub async fn get_proxy(state: State<'_, AppState>) -> Result<String, AppError> {
 pub async fn set_proxy(state: State<'_, AppState>, proxy: String) -> Result<(), AppError> {
     let mut config = state.config.write().await;
     config.download_settings.proxy = proxy;
-    let mut client = state.client.lock().await;
-    *client = create_reqwest_client(&config)?;
+    state.client.store(Arc::new(create_reqwest_client(&config)?));
     Ok(())
 }
 

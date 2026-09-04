@@ -4,7 +4,7 @@ use crate::models::error::{AppError, Void};
 use crate::models::mirror::Mirror;
 use crate::models::versions::MinecraftVersion;
 use crate::services::directory_manager::{get_versions_directory, version_manifest_directory};
-use crate::services::game_downloader::download_file;
+use crate::services::downloader_utils::download_file;
 use crate::{AppState, GLOBAL_CACHE};
 use log::debug;
 use tauri::State;

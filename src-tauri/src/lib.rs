@@ -3,7 +3,6 @@ pub mod models;
 pub mod services;
 
 use crate::models::config::Config;
-use crate::models::error::AppError;
 use crate::models::fabric::{FabricInstaller, FabricLoader, FabricMinecraftVersion};
 use crate::models::logger::{init_log_bridge, LogLine};
 use crate::services::config::load;
@@ -18,15 +17,15 @@ use std::env;
 use std::process::Child;
 use std::string::ToString;
 use std::sync::{Arc, LazyLock, Mutex};
+use arc_swap::ArcSwap;
+use discord_rich_presence::{activity, DiscordIpc, DiscordIpcClient};
 use reqwest::Client;
-use reqwest_middleware::ClientWithMiddleware;
 use tauri::async_runtime::{block_on, spawn};
 use tauri::{command, AppHandle, Manager, State};
 use tauri_plugin_deep_link::DeepLinkExt;
 use tauri_plugin_log::{Target, TargetKind, TimezoneStrategy};
 use tokio::sync;
 use tokio::sync::{mpsc, RwLock};
-use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
 use crate::services::utils::create_reqwest_client;
 
@@ -43,7 +42,7 @@ pub struct AppState {
     pub log_tx: mpsc::UnboundedSender<LogLine>,
     pub log_history: Arc<Mutex<VecDeque<LogLine>>>,
     pub process_manager: ProcessManager,
-    pub client: sync::Mutex<ClientWithMiddleware>,
+    pub client: ArcSwap<Client>,
     pub download_manager: DownloadManager,
 }
 pub struct ProcessManager {
@@ -81,6 +80,13 @@ pub const LAUNCHER_VERSION: &str = "BETA-0.1";
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     dotenvy::dotenv().ok();
+    let mut client = DiscordIpcClient::new("1404037939305910465");
+
+    client.connect();
+    client.set_activity(activity::Activity::new()
+        .state("A Minecraft Launcher.")
+    );
+
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|_app, _argv, _cwd| {
             let _ = _app
@@ -128,7 +134,7 @@ pub fn run() {
             let cfg = load();
             let client = create_reqwest_client(&cfg).unwrap_or_else(|x| {
                 error!("failed to create a normal client. attempting to create a default client: {}",x);
-                return ClientWithMiddleware::default();
+                return Client::new();
             });
             app.manage(AppState {
                 config: Arc::new(RwLock::new(load())),
@@ -139,7 +145,7 @@ pub fn run() {
                 log_tx,
                 log_history: shared_history,
                 process_manager: ProcessManager::new(),
-                client: tokio::sync::Mutex::from(client),
+                client: ArcSwap::new(Arc::new(client)),
                 download_manager: DownloadManager {
                     cancellation_token: sync::Mutex::new(None),
                 },
@@ -227,6 +233,7 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+    client.close();
 }
 
 
