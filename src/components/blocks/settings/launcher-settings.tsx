@@ -16,6 +16,7 @@ import {
   ComboboxList,
 } from "@/components/ui/combobox";
 import { useLocale } from "@/stores/locale.ts";
+import i18n from "i18next";
 
 const LANGUAGES = {
   en: "English (US)",
@@ -57,10 +58,9 @@ export function LauncherSettings() {
   const isQueriesLoading = exitOnLaunchQuery.isLoading || getProxyQuery.isLoading;
 
   // Language resolution
-  const backendLanguage = localLanguage as string | undefined;
-  const rawLang = localLanguage ?? backendLanguage ?? "en";
-  const language: LanguageKey = LANGUAGE_KEYS.includes(rawLang as LanguageKey)
-      ? (rawLang as LanguageKey)
+  const activeLanguage = (localLanguage ?? i18n.resolvedLanguage ?? i18n.language ?? "en").split("-")[0];
+  const language: LanguageKey = LANGUAGE_KEYS.includes(activeLanguage as LanguageKey)
+      ? (activeLanguage as LanguageKey)
       : "en";
 
   // Exit on launch resolution
