@@ -85,18 +85,18 @@ pub async fn play(
             &"".to_string(),
             &app_handle,
             &state.log_tx,
-            None
+            None,
         )
-        .await?;
+            .await?;
         download_version(
             &state,
             &version,
             &"".to_string(),
             &app_handle,
             &state.log_tx,
-            None
+            None,
         )
-        .await?;
+            .await?;
     }
     let java_choice = &config.native_libraries.java;
     let java = if java_choice.is_custom() {
@@ -227,6 +227,13 @@ pub async fn play(
         .arg(format!("-Xms{xms}"))
         .arg(format!("-Xmx{xmx}"));
 
+    #[cfg(target_os = "windows")]
+    {
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+
+        child_cmd.creation_flags(crate::commands::game_launcher::CREATE_NO_WINDOW);
+    }
+
     if utils::is_wayland() {
         info!("Wayland session detected. adding required arguments");
         child_cmd
@@ -248,12 +255,12 @@ pub async fn play(
                     "${natives_directory}",
                     &get_natives_directory(&version_id.to_string()).to_string_lossy(),
                 )
-                .replace("${launcher_name}", &state.launcher_details.name)
-                .replace("${launcher_version}", &state.launcher_details.version)
-                .replace(
-                    "${classpath}",
-                    &format!("{}{}{}", class_path, separator, libraries_str),
-                ),
+                    .replace("${launcher_name}", &state.launcher_details.name)
+                    .replace("${launcher_version}", &state.launcher_details.version)
+                    .replace(
+                        "${classpath}",
+                        &format!("{}{}{}", class_path, separator, libraries_str),
+                    ),
             );
         }
     } else {
@@ -273,7 +280,6 @@ pub async fn play(
 
     info!("Applying main_class and run arguments.");
     child_cmd.arg(main_class).args(&run_args);
-
 
 
     let run_args_str = run_args.join(" ");

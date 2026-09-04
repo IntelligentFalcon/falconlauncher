@@ -104,8 +104,6 @@ pub struct MinecraftManifestVersion {
     pub id: String,
 }
 
-
-
 #[derive(Debug, Deserialize, Clone)]
 pub struct JavaVersion {
     pub component: String,
