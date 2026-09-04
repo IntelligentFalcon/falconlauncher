@@ -9,9 +9,11 @@ import {
     Cancel01Icon,
     Folder01Icon,
     RefreshIcon,
+    Search01Icon,
 } from "@hugeicons/core-free-icons";
+import { Loader2 } from "lucide-react";
 import { useBackendMutation } from "@/hooks/use-backend";
-import { NativeChoice } from "@/invokes";
+import { Java, NativeChoice } from "@/invokes";
 
 export type AppErrorPayload =
     | string
@@ -30,9 +32,6 @@ interface NativeOptionConfig {
     browseDirectoryOnly: boolean;
 }
 
-/**
- * Returns dynamic library extension filters based on OS.
- */
 async function getLibraryFilters(): Promise<DialogFilter[]> {
     let currentPlatform = "";
     try {
@@ -95,6 +94,11 @@ export function NativeSettings() {
         error: AppErrorPayload;
         retryAction: () => Promise<void>;
     } | null>(null);
+
+    // Auto-detected Java state
+    const [isDetectingJava, setIsDetectingJava] = useState(false);
+    const [detectedJavas, setDetectedJavas] = useState<Java[]>([]);
+    const [isJavaModalOpen, setIsJavaModalOpen] = useState(false);
 
     const { mutateAsync: setJavaMutation } = useBackendMutation({ name: "set_java" });
     const { mutateAsync: setOpenalMutation } = useBackendMutation({ name: "set_openal" });
@@ -200,6 +204,28 @@ export function NativeSettings() {
         }
     };
 
+    const handleDetectJava = async () => {
+        setIsDetectingJava(true);
+        setIsJavaModalOpen(true);
+        try {
+            const result = await invoke<Java[]>("get_auto_detected_java_versions");
+            setDetectedJavas(result || []);
+        } catch (err) {
+            setIsJavaModalOpen(false);
+            setActiveError({
+                error: err as AppErrorPayload,
+                retryAction: handleDetectJava,
+            });
+        } finally {
+            setIsDetectingJava(false);
+        }
+    };
+
+    const handleSelectDetectedJava = async (selectedPath: string) => {
+        setIsJavaModalOpen(false);
+        await saveSetting("java", { mode: "custom", path: selectedPath });
+    };
+
     const sections: NativeOptionConfig[] = [
         {
             key: "java",
@@ -250,7 +276,6 @@ export function NativeSettings() {
                 const current = getStateByKey(sec.key);
                 const isCustom = current.mode === "custom";
 
-                // Resolve label and description based on directory vs file mode
                 const customLabelKey = sec.browseDirectoryOnly
                     ? "nativeSettings.customDir"
                     : "nativeSettings.customFile";
@@ -258,14 +283,12 @@ export function NativeSettings() {
                     ? "nativeSettings.customDirDesc"
                     : "nativeSettings.customFileDesc";
 
-                const customLabel =
-                    t(customLabelKey, {
-                        defaultValue: t("nativeSettings.custom"),
-                    });
-                const customDesc =
-                    t(customDescKey, {
-                        defaultValue: t("nativeSettings.customDesc"),
-                    });
+                const customLabel = t(customLabelKey, {
+                    defaultValue: t("nativeSettings.custom"),
+                });
+                const customDesc = t(customDescKey, {
+                    defaultValue: t("nativeSettings.customDesc"),
+                });
 
                 return (
                     <div
@@ -346,6 +369,20 @@ export function NativeSettings() {
                                                 }
                                                 className="h-9 flex-1 rounded-md border border-border/80 bg-background px-3 font-mono text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                                             />
+
+                                            {/* Auto-detect button for Java */}
+                                            {sec.key === "java" && (
+                                                <button
+                                                    type="button"
+                                                    onClick={handleDetectJava}
+                                                    title={t("nativeSettings.detectJava")}
+                                                    className="flex h-9 items-center gap-1.5 rounded-md border border-border bg-secondary px-3 text-xs text-secondary-foreground transition-colors hover:bg-secondary/80 shrink-0"
+                                                >
+                                                    <HugeiconsIcon icon={Search01Icon} size={14} />
+                                                    <span>{t("nativeSettings.detectJava")}</span>
+                                                </button>
+                                            )}
+
                                             <button
                                                 type="button"
                                                 onClick={() =>
@@ -355,7 +392,7 @@ export function NativeSettings() {
                                                         sec.browseDirectoryOnly
                                                     )
                                                 }
-                                                className="flex h-9 items-center gap-1.5 rounded-md border border-border bg-secondary px-3 text-xs text-secondary-foreground transition-colors hover:bg-secondary/80"
+                                                className="flex h-9 items-center gap-1.5 rounded-md border border-border bg-secondary px-3 text-xs text-secondary-foreground transition-colors hover:bg-secondary/80 shrink-0"
                                             >
                                                 <HugeiconsIcon icon={Folder01Icon} size={14} />
                                                 <span>{t("nativeSettings.browse")}</span>
@@ -368,6 +405,88 @@ export function NativeSettings() {
                     </div>
                 );
             })}
+
+            {/* Auto Detected Java Modal */}
+            {isJavaModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-4 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="flex max-h-[80vh] w-full max-w-lg flex-col rounded-xl border border-border/60 bg-card shadow-2xl overflow-hidden">
+                        <div className="flex items-center justify-between border-b border-border/40 p-4">
+                            <div>
+                                <h3 className="font-semibold text-sm text-foreground">
+                                    {t("nativeSettings.detectedJavaTitle")}
+                                </h3>
+                                <p className="text-muted-foreground text-xs mt-0.5">
+                                    {t("nativeSettings.detectedJavaDesc")}
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setIsJavaModalOpen(false)}
+                                className="rounded-md p-1 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+                            >
+                                <HugeiconsIcon icon={Cancel01Icon} size={16} />
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                            {isDetectingJava ? (
+                                <div className="flex flex-col items-center justify-center py-10 gap-3 text-muted-foreground text-xs">
+                                    <Loader2 className="animate-spin" size={24} />
+                                    <span>{t("nativeSettings.detectingJava")}</span>
+                                </div>
+                            ) : detectedJavas.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center py-10 text-muted-foreground text-xs text-center">
+                                    <p className="font-medium text-foreground">
+                                        {t("nativeSettings.noJavaDetected")}
+                                    </p>
+                                    <p className="text-[11px] mt-1">
+                                        {t("nativeSettings.noJavaDetectedDesc")}
+                                    </p>
+                                </div>
+                            ) : (
+                                detectedJavas.map((j) => (
+                                    <div
+                                        key={j.path}
+                                        onClick={() => handleSelectDetectedJava(j.path)}
+                                        className="group flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-border/50 bg-secondary/10 p-3 transition-all hover:border-primary/40 hover:bg-secondary/30"
+                                    >
+                                        <div className="min-w-0 flex-1">
+                                            <div className="flex items-center gap-2">
+                                                <span className="rounded bg-primary/10 px-2 py-0.5 font-mono text-[11px] font-semibold text-primary">
+                                                    Java {j.version}
+                                                </span>
+                                            </div>
+                                            <p className="mt-1 truncate font-mono text-[11px] text-muted-foreground group-hover:text-foreground">
+                                                {j.path}
+                                            </p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleSelectDetectedJava(j.path);
+                                            }}
+                                            className="shrink-0 rounded-md bg-primary/10 px-3 py-1.5 font-medium text-primary text-xs transition-colors hover:bg-primary hover:text-primary-foreground"
+                                        >
+                                            {t("nativeSettings.select")}
+                                        </button>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+
+                        <div className="flex justify-end border-t border-border/40 bg-secondary/10 p-3">
+                            <button
+                                type="button"
+                                onClick={() => setIsJavaModalOpen(false)}
+                                className="rounded-md border border-border bg-secondary px-4 py-1.5 text-xs font-medium text-secondary-foreground hover:bg-secondary/80 transition-colors"
+                            >
+                                {t("nativeSettings.close")}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Error Modal */}
             {activeError && (

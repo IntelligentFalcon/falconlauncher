@@ -133,6 +133,10 @@ export type Invokes = WithDefaultError<{
   };
 
   // Java native commands
+  get_auto_detected_java_versions: {
+    args: undefined;
+    returns: Java[];
+  };
   get_java: {
     args: Record<string, never>;
     returns: NativeChoice;
@@ -368,7 +372,10 @@ export interface Config {
 export interface DownloadSettings {
   mirror: string;
 }
-
+export interface Java {
+  path: string;
+  version: string;
+}
 export interface LauncherSettings {
   language: string;
 }

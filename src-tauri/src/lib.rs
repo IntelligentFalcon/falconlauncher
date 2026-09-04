@@ -184,6 +184,7 @@ pub fn run() {
             commands::settings::get_total_ram,
             commands::settings::get_proxy,
             commands::settings::set_proxy,
+            commands::settings::get_auto_detected_java_versions,
             commands::settings::get_java,
             commands::settings::set_java,
             commands::settings::get_openal,

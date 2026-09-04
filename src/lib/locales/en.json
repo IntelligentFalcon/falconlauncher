@@ -108,6 +108,13 @@
     "abortButton": "Abort"
   },
   "nativeSettings": {
+    "detectJava": "Auto Detect",
+    "detectingJava": "Scanning system for Java installations...",
+    "detectedJavaTitle": "Auto-detected Java Versions",
+    "detectedJavaDesc": "Select an installation to use as your custom Java runtime",
+    "noJavaDetected": "No Java installations found",
+    "noJavaDetectedDesc": "Could not locate standard Java runtimes automatically. Please specify the path manually using Browse.",
+    "select": "Select",
     "loading": "Loading native library settings...",
     "unknownError": "An unexpected error occurred.",
     "versionAssociated": "Version Associated (Automatic)",
