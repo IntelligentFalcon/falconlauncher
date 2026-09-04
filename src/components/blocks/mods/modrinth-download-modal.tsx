@@ -26,6 +26,11 @@ import type {
     DependencyTuple
 } from "@/invokes";
 
+export interface VersionNameBase {
+    name: string;
+    base: string;
+}
+
 export interface ModDownloadProgress {
     stage?: string;
     stage_name?: string;
@@ -71,7 +76,17 @@ export function ModrinthDownloadModal({
     onClose: () => void;
 }) {
     const { t } = useTranslation();
-    const { selectedVersion: gameVersion } = useModsState();
+    const { selectedVersion, installedVersions } = useModsState();
+
+    // Find the base vanilla Minecraft version for Modrinth searching & compatibility
+    const currentVersionObj = installedVersions?.find(
+        (v: VersionNameBase ) =>
+            v === selectedVersion
+    );
+    const baseVersion =
+        (currentVersionObj?.base)
+            ? currentVersionObj.base
+            : currentVersionObj?.name;
 
     const [provider, setProvider] = useState<"modrinth" | "curseforge">("modrinth");
     const [step, setStep] = useState<"search" | "details" | "dependencies">("search");
@@ -111,10 +126,11 @@ export function ModrinthDownloadModal({
     }, [isOpen]);
 
     const executeSearch = async (currentQuery: string, currentIndexDisplay: string) => {
-        if (provider !== "modrinth" || !gameVersion) return;
+        if (provider !== "modrinth" || !baseVersion) return;
 
+        // Modrinth API facets filter by vanilla base version (e.g., 1.20.1)
         const facets = JSON.stringify([
-            [`versions:${gameVersion}`],
+            [`versions:${baseVersion}`],
             ["project_type:mod"],
         ]);
 
@@ -141,10 +157,10 @@ export function ModrinthDownloadModal({
     };
 
     useEffect(() => {
-        if (isOpen && step === "search" && gameVersion && provider === "modrinth") {
+        if (isOpen && step === "search" && baseVersion && provider === "modrinth") {
             executeSearch(query, searchIndex);
         }
-    }, [isOpen, searchIndex, gameVersion, provider]);
+    }, [isOpen, searchIndex, baseVersion, provider]);
 
     const handleProviderSwitch = (newProvider: "modrinth" | "curseforge") => {
         if (newProvider === provider || isDownloadingState) return;
@@ -167,7 +183,10 @@ export function ModrinthDownloadModal({
                 fetchProject({ projectId: mod.project_id }) as Promise<ModrinthMod>
             ]);
 
-            const compatibleVersions = versionsRes.filter((v) => v.game_versions?.includes(gameVersion ?? ""));
+            // Filter compatible releases using base Minecraft version
+            const compatibleVersions = versionsRes.filter((v) =>
+                v.game_versions?.includes(baseVersion ?? "")
+            );
             setVersions(compatibleVersions);
             setFullProject(projectRes);
         } catch (err) {
@@ -200,19 +219,19 @@ export function ModrinthDownloadModal({
     };
 
     const handleDownload = async () => {
-        if (!selectedModVersion || !gameVersion || isDownloadingState) return;
+        if (!selectedModVersion || !selectedVersion || isDownloadingState) return;
 
         setIsDownloadingState(true);
         setDownloadProgress(null);
 
         try {
-            // Main mod
-            await downloadVersion({ version: selectedModVersion, name: gameVersion });
+            // Save mod to the profile/instance name on disk
+            await downloadVersion({ version: selectedModVersion, name: selectedVersion.name });
 
-            // Selected dependencies
+            // Download selected dependencies
             const selectedDeps = dependencies.filter((d) => d.selected);
             for (const dep of selectedDeps) {
-                await downloadVersion({ version: dep.version, name: gameVersion });
+                await downloadVersion({ version: dep.version, name: selectedVersion.name });
             }
 
             handleClose();
@@ -306,20 +325,6 @@ export function ModrinthDownloadModal({
                             <Package size={18} className={provider === "modrinth" ? "text-primary-foreground" : "text-muted-foreground"} />
                             Modrinth
                         </button>
-
-                        {/* Removing Curseforge due to sanctions applied to Iran. */}
-                        {/*<button*/}
-                        {/*    onClick={() => handleProviderSwitch("curseforge")}*/}
-                        {/*    disabled={isDownloading}*/}
-                        {/*    className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${*/}
-                        {/*        provider === "curseforge"*/}
-                        {/*            ? "bg-primary text-primary-foreground shadow-sm"*/}
-                        {/*            : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"*/}
-                        {/*    }`}*/}
-                        {/*>*/}
-                        {/*    <Layers size={18} className={provider === "curseforge" ? "text-primary-foreground" : "text-muted-foreground"} />*/}
-                        {/*    CurseForge*/}
-                        {/*</button>*/}
                     </div>
 
                     {/* MAIN CONTENT AREA */}
@@ -374,7 +379,7 @@ export function ModrinthDownloadModal({
                                             <input
                                                 autoFocus
                                                 className="h-11 w-full rounded-xl border border-border/50 bg-secondary/10 py-2.5 pl-9 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-                                                placeholder={t("modrinthModal.searchPlaceholder", { version: gameVersion })}
+                                                placeholder={t("modrinthModal.searchPlaceholder", { version: baseVersion })}
                                                 value={query}
                                                 onChange={(e) => setQuery(e.target.value)}
                                             />
@@ -540,7 +545,7 @@ export function ModrinthDownloadModal({
                                     </LoadingSwap>
 
                                     <div className="select-none mt-4">
-                                        <h3 className="mb-3 font-semibold text-sm">{t("modrinthModal.availableVersions", { version: gameVersion })}</h3>
+                                        <h3 className="mb-3 font-semibold text-sm">{t("modrinthModal.availableVersions", { version: baseVersion })}</h3>
                                         <LoadingSwap isLoading={isLoadingVersions}>
                                             <div className="flex flex-col gap-2">
                                                 {versions.map((ver) => (
@@ -562,7 +567,7 @@ export function ModrinthDownloadModal({
                                                 {versions.length === 0 && (
                                                     <div className="flex items-center gap-2 text-destructive bg-destructive/10 p-4 rounded-xl text-sm">
                                                         <AlertCircle size={16} />
-                                                        {t("modrinthModal.noVersionsFound", { version: gameVersion })}
+                                                        {t("modrinthModal.noVersionsFound", { version: baseVersion })}
                                                     </div>
                                                 )}
                                             </div>

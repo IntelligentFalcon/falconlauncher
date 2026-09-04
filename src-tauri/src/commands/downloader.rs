@@ -2,7 +2,7 @@ use crate::models::downloader::{Manifest, VersionInfo, VersionLoader};
 use crate::models::error::{AppError, Void};
 use crate::models::mirror::Mirror;
 use crate::models::versions::VersionBase::{FABRIC, FORGE};
-use crate::models::versions::{MinecraftVersion, VersionBase, VersionCategory, VersionType};
+use crate::models::versions::{MinecraftVersion, VersionBase, VersionCategory, VersionNameBase, VersionType};
 use crate::services::game_downloader;
 use crate::services::game_downloader::{
     download_fabric, download_forge_version, download_from_manifest, get_available_fabric_versions,
@@ -341,10 +341,15 @@ pub async fn download_task(
     }
     Ok(())
 }
+
 #[command]
-pub async fn get_versions() -> Result<Vec<String>, AppError> {
+pub async fn get_versions() -> Result<Vec<VersionNameBase>, AppError> {
     let global = GLOBAL_CACHE.lock().await;
-    Ok(global.versions.iter().map(|x| x.id.to_string()).collect())
+
+    Ok(global.versions.iter().map(|x| VersionNameBase {
+        name: x.id.to_string(),
+        base: x.load_json().get("inheritsFrom").map(|v| v.as_str().unwrap_or(x.id.as_str())).unwrap_or(x.id.as_str()).to_string(),
+    }).collect())
 }
 
 #[command]

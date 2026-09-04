@@ -15,6 +15,7 @@ import {
 import { useModsActions, useModsState } from "@/context/mods-context";
 import { errorText } from "@/messages";
 import { ModrinthDownloadModal } from "@/components/blocks/mods/modrinth-download-modal.tsx";
+import type { VersionNameBase } from "@/invokes";
 
 export function ModsHeader() {
   const { t } = useTranslation();
@@ -36,6 +37,9 @@ export function ModsHeader() {
     handleCloseDownloadModal,
   } = useModsActions();
 
+  // Extract names list for combobox item keys/matching
+  const selectedVersionName = selectedVersion?.name ?? "";
+
   return (
       <>
         <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-border/40 bg-secondary/30 p-3 shadow-sm backdrop-blur-md">
@@ -56,20 +60,38 @@ export function ModsHeader() {
                   <Combobox
                       autoHighlight
                       items={installedVersions}
-                      onValueChange={(val) => setSelectedVersion(val ?? "")}
-                      value={selectedVersion}
+                      onValueChange={(val: VersionNameBase | string | null) => {
+                        if (!val) {
+                          setSelectedVersion(null);
+                          return;
+                        }
+                        if (typeof val === "string") {
+                          const found = installedVersions.find((v) => v.name === val);
+                          setSelectedVersion(found ?? { name: val, base: val });
+                        } else {
+                          setSelectedVersion(val);
+                        }
+                      }}
+                      value={selectedVersionName}
                   >
                     <ComboboxInput
                         className="select-text"
                         placeholder={t("modsHeader.selectVersionPlaceholder")}
-                        value={selectedVersion}
+                        value={selectedVersionName}
                     />
                     <ComboboxContent>
                       <ComboboxEmpty>{t("modsHeader.noVersionsFound")}</ComboboxEmpty>
                       <ComboboxList>
-                        {(ver) => (
-                            <ComboboxItem key={ver} value={ver}>
-                              {ver}
+                        {(ver: VersionNameBase) => (
+                            <ComboboxItem key={ver.name} value={ver.name}>
+                              <div className="flex w-full items-center justify-between gap-2">
+                                <span className="truncate">{ver.name}</span>
+                                {ver.base && ver.base !== ver.name && (
+                                    <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
+                              ({ver.base})
+                            </span>
+                                )}
+                              </div>
                             </ComboboxItem>
                         )}
                       </ComboboxList>
@@ -106,7 +128,11 @@ export function ModsHeader() {
                       isImporting ? "animate-pulse" : ""
                   }`}
               />
-              <span>{isImporting ? t("modsHeader.importingLabel") : t("modsHeader.importModLabel")}</span>
+              <span>
+              {isImporting
+                  ? t("modsHeader.importingLabel")
+                  : t("modsHeader.importModLabel")}
+            </span>
             </button>
 
             <ActionButton

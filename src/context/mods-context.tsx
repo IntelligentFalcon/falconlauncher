@@ -7,28 +7,28 @@ import {
 } from "react";
 import type { ModItem } from "@/components/blocks/mods/mod-item";
 import { useBackend, useBackendMutation } from "@/hooks/use-backend";
-import type { InvokeError, Invokes, ModInfo } from "@/invokes";
+import type { InvokeError, Invokes, ModInfo, VersionNameBase } from "@/invokes";
 
 interface ModsState {
-    installedVersions: string[];
+    installedVersions: VersionNameBase[];
     isImporting: boolean;
     isLoadingMods: boolean;
     isLoadingVersions: boolean;
     modsError: InvokeError<Invokes["get_mods"]["custom_error"]> | null;
     modsList: ModItem[];
-    selectedVersion: string;
+    selectedVersion: VersionNameBase | null;
     versionsError: InvokeError<Invokes["get_versions"]["custom_error"]> | null;
-    isDownloadModalOpen: boolean; // <-- Kept as State
+    isDownloadModalOpen: boolean;
 }
 
 interface ModsActions {
     onDeleteMod: (mod: ModItem) => Promise<void>;
     onImportMod: () => Promise<void>;
     onOpenDownloadModal: () => void;
-    handleCloseDownloadModal: () => void; // <-- Added as Action exactly as you named it
+    handleCloseDownloadModal: () => void;
     onOpenFolder: () => void;
     onToggleMod: (mod: ModItem) => Promise<void>;
-    setSelectedVersion: (val: string) => void;
+    setSelectedVersion: (val: VersionNameBase | string | null) => void;
 }
 
 export const ModsStateContext = createContext<ModsState | null>(null);
@@ -51,19 +51,33 @@ export function useModsActions() {
 }
 
 export function ModsProvider({ children }: { children: React.ReactNode }) {
-    const [localSelectedVersion, setLocalSelectedVersion] = useState<
-        string | null
-    >(null);
+    const [localSelectedVersion, setLocalSelectedVersion] =
+        useState<VersionNameBase | null>(null);
 
     const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
 
     const {
-        data: installedVersions,
+        data: installedVersionsData,
         isLoading: isLoadingVersions,
         error: versionsError,
     } = useBackend({ name: "get_versions" });
 
-    const selectedVersion = localSelectedVersion ?? installedVersions?.[0] ?? "";
+    const installedVersions = useMemo(
+        () => installedVersionsData ?? [],
+        [installedVersionsData]
+    );
+
+    // Fall back to first available version if no explicit selection has been made
+    const selectedVersion: VersionNameBase | null = useMemo(() => {
+        if (localSelectedVersion) {
+            // Keep local object synced if the list updates
+            const matched = installedVersions.find(
+                (v) => v.name === localSelectedVersion.name
+            );
+            return matched ?? localSelectedVersion;
+        }
+        return installedVersions[0] ?? null;
+    }, [localSelectedVersion, installedVersions]);
 
     const {
         data: fetchedMods,
@@ -71,9 +85,9 @@ export function ModsProvider({ children }: { children: React.ReactNode }) {
         refetch: refreshMods,
         error: modsError,
     } = useBackend({
-        enabled: !!selectedVersion,
+        enabled: !!selectedVersion?.name,
         name: "get_mods",
-        queryKey: ["get_mods", selectedVersion],
+        queryKey: ["get_mods", selectedVersion?.name],
     });
 
     const modsList = useMemo(
@@ -158,13 +172,14 @@ export function ModsProvider({ children }: { children: React.ReactNode }) {
             await importModBackend();
             refreshMods();
         } catch {
-            // handled globally
+            // Handled globally
         }
     }, [importModBackend, refreshMods]);
 
     const handleOpenFolder = useCallback(async () => {
+        if (!selectedVersion?.name) return;
         try {
-            await openModsFolderBackend({ version: selectedVersion });
+            await openModsFolderBackend({ version: selectedVersion.name });
         } catch (e) {
             console.error("Failed to open mods folder:", e);
         }
@@ -180,29 +195,46 @@ export function ModsProvider({ children }: { children: React.ReactNode }) {
         []
     );
 
+    const handleSetSelectedVersion = useCallback(
+        (val: VersionNameBase | string | null) => {
+            if (!val) {
+                setLocalSelectedVersion(null);
+                return;
+            }
+            if (typeof val === "string") {
+                const found = installedVersions.find((v) => v.name === val);
+                setLocalSelectedVersion(found ?? { name: val, base: val });
+            } else {
+                setLocalSelectedVersion(val);
+            }
+        },
+        [installedVersions]
+    );
+
     const actions = useMemo(
         () => ({
             onDeleteMod: handleDeleteMod,
             onImportMod: handleImportMod,
             onOpenDownloadModal: handleOpenDownloadModal,
-            handleCloseDownloadModal, // <-- Correctly exported as an action here
+            handleCloseDownloadModal,
             onOpenFolder: handleOpenFolder,
             onToggleMod: handleToggleMod,
-            setSelectedVersion: setLocalSelectedVersion,
+            setSelectedVersion: handleSetSelectedVersion,
         }),
         [
             handleDeleteMod,
             handleImportMod,
             handleOpenDownloadModal,
-            handleCloseDownloadModal, // <-- Added to dependency array
+            handleCloseDownloadModal,
             handleOpenFolder,
             handleToggleMod,
+            handleSetSelectedVersion,
         ]
     );
 
     const state = useMemo(
         () => ({
-            installedVersions: installedVersions ?? [],
+            installedVersions,
             isImporting,
             isLoadingMods,
             isLoadingVersions,

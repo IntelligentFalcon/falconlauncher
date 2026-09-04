@@ -17,6 +17,9 @@ impl PartialEq for VersionType {
     }
 }
 
+
+
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum VersionType {
@@ -250,4 +253,10 @@ pub enum VersionBase {
     NEOFORGE,
     FABRIC,
     LITELOADER,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct VersionNameBase {
+    pub name: String,
+    pub base: String
 }

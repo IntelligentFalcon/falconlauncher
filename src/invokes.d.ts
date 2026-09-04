@@ -1,17 +1,22 @@
 import type { app } from "@tauri-apps/api";
-import {useTranslation} from "react-i18next";
-import {useState} from "react";
 
-type AppHandle = typeof app;
+export type AppHandle = typeof app;
 
-interface InvokeError<T = unknown> {
+export interface InvokeError<T = unknown> {
   code: string;
   data?: T;
 }
+
 export interface NativeChoice {
   mode: "version_associated" | "custom";
   path: string;
 }
+
+export interface VersionNameBase {
+  name: string;
+  base: string;
+}
+
 type WithDefaultError<T> = T &
     Record<
         keyof T,
@@ -35,7 +40,7 @@ export type Invokes = WithDefaultError<{
   };
   get_versions: {
     args: undefined;
-    returns: string[];
+    returns: VersionNameBase[];
   };
   get_mods: {
     args: undefined;
@@ -126,7 +131,8 @@ export type Invokes = WithDefaultError<{
     args?: Record<string, never> | undefined;
     returns: void;
   };
-// Java native commands
+
+  // Java native commands
   get_java: {
     args: Record<string, never>;
     returns: NativeChoice;
@@ -161,6 +167,7 @@ export type Invokes = WithDefaultError<{
     };
     returns: void;
   };
+
   reload_version_manifest: {
     args: undefined;
     returns: void;
@@ -257,7 +264,7 @@ export type Invokes = WithDefaultError<{
     returns: Mirror[];
   };
 
-  // --- PROXY COMMANDS ---
+  // Proxy commands
   get_proxy: {
     args: undefined;
     returns: string;
@@ -269,6 +276,7 @@ export type Invokes = WithDefaultError<{
     returns: void;
   };
 
+  // Modrinth commands
   search_for_modrinth_project: {
     args: {
       name: string;
@@ -379,7 +387,6 @@ export interface ModInfo {
   version: string;
 }
 
-
 export interface ModrinthSearchResultMod {
   project_id: string;
   project_type: string;
@@ -399,7 +406,7 @@ export interface ModrinthSearchResultMod {
   license: string;
   environment: string[];
   disclosure_types: string[];
-  gallery: string[];
+  gallery: ModrinthGalleryImage[];
   slug: string | null;
   author_id: string | null;
   organization: string | null;
@@ -478,6 +485,20 @@ export interface ModrinthSearchResult {
   total_hits: number;
 }
 
+export interface ModrinthVersionFileHashes {
+  sha1?: string;
+  sha512?: string;
+}
+
+export interface ModrinthVersionFile {
+  hashes: ModrinthVersionFileHashes;
+  url: string;
+  filename: string;
+  primary: boolean;
+  size: number;
+  file_type?: string | null;
+}
+
 export interface ModrinthVersion {
   id: string;
   name: string | null;
@@ -486,7 +507,7 @@ export interface ModrinthVersion {
   date_published: string;
   game_versions?: string[];
   loaders: string[];
-  files: any[];
+  files: ModrinthVersionFile[];
 }
 
 export type DependencyTuple = [ModrinthVersion, string];

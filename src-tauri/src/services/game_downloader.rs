@@ -675,7 +675,7 @@ pub async fn download_file(
             let _ = set_permissions(dest, permissions);
         }
     }
-
+    info!("Download has been completed successfully!");
     Ok(())
 }
 pub async fn download_from_manifest(
