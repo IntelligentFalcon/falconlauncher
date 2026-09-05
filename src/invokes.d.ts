@@ -15,6 +15,7 @@ export interface NativeChoice {
 export interface VersionNameBase {
   name: string;
   base: string;
+  loader: string;
 }
 
 type WithDefaultError<T> = T &

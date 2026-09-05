@@ -117,7 +117,7 @@ pub async fn download_java(
 
             create_dir_all(&runtime_dir).map_err(|e| AppError::DirCreateFailed(e.to_string()))?;
 
-            info!("Downloading {} ({} bytes)", file_url, size);
+            info!("Downloading {} ({} bytes) to {}", file_url, size,runtime_dir.join(k).to_string_lossy());
             download_file_if_not_exists(
                 state,
                 &runtime_dir.join(k),

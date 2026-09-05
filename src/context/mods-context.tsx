@@ -203,7 +203,8 @@ export function ModsProvider({ children }: { children: React.ReactNode }) {
             }
             if (typeof val === "string") {
                 const found = installedVersions.find((v) => v.name === val);
-                setLocalSelectedVersion(found ?? { name: val, base: val });
+                // Added loader: "vanilla" fallback here to match the updated Rust struct requirement
+                setLocalSelectedVersion(found ?? { name: val, base: val, loader: "vanilla" });
             } else {
                 setLocalSelectedVersion(val);
             }

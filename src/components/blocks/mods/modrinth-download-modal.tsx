@@ -29,6 +29,7 @@ import type {
 export interface VersionNameBase {
     name: string;
     base: string;
+    loader: string; // <-- Added loader property
 }
 
 export interface ModDownloadProgress {
@@ -78,7 +79,7 @@ export function ModrinthDownloadModal({
     const { t } = useTranslation();
     const { selectedVersion, installedVersions } = useModsState();
 
-    // Find the base vanilla Minecraft version for Modrinth searching & compatibility
+    // Find the base vanilla Minecraft version & loader for Modrinth searching & compatibility
     const currentVersionObj = installedVersions?.find(
         (v: VersionNameBase ) =>
             v === selectedVersion
@@ -87,6 +88,8 @@ export function ModrinthDownloadModal({
         (currentVersionObj?.base)
             ? currentVersionObj.base
             : currentVersionObj?.name;
+
+    const currentLoader = currentVersionObj?.loader || "vanilla"; // <-- Extract loader from the updated rust struct
 
     const [provider, setProvider] = useState<"modrinth" | "curseforge">("modrinth");
     const [step, setStep] = useState<"search" | "details" | "dependencies">("search");
@@ -128,12 +131,18 @@ export function ModrinthDownloadModal({
     const executeSearch = async (currentQuery: string, currentIndexDisplay: string) => {
         if (provider !== "modrinth" || !baseVersion) return;
 
-        // Modrinth API facets filter by vanilla base version (e.g., 1.20.1)
-        const facets = JSON.stringify([
+        // Modrinth API facets filter by vanilla base version (e.g., 1.20.1) and loader
+        const facetList = [
             [`versions:${baseVersion}`],
             ["project_type:mod"],
-        ]);
+        ];
 
+        // Add loader facet if it's not vanilla
+        if (currentLoader !== "vanilla") {
+            facetList.push([`categories:${currentLoader}`]);
+        }
+
+        const facets = JSON.stringify(facetList);
         const apiIndex = currentIndexDisplay.toLowerCase();
 
         try {
@@ -183,10 +192,13 @@ export function ModrinthDownloadModal({
                 fetchProject({ projectId: mod.project_id }) as Promise<ModrinthMod>
             ]);
 
-            // Filter compatible releases using base Minecraft version
-            const compatibleVersions = versionsRes.filter((v) =>
-                v.game_versions?.includes(baseVersion ?? "")
-            );
+            // Filter compatible releases using base Minecraft version & loader
+            const compatibleVersions = versionsRes.filter((v) => {
+                const matchesVersion = v.game_versions?.includes(baseVersion ?? "");
+                const matchesLoader = currentLoader === "vanilla" || v.loaders?.includes(currentLoader);
+                return matchesVersion && matchesLoader;
+            });
+
             setVersions(compatibleVersions);
             setFullProject(projectRes);
         } catch (err) {

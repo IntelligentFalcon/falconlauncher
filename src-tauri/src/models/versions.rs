@@ -258,5 +258,6 @@ pub enum VersionBase {
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct VersionNameBase {
     pub name: String,
-    pub base: String
+    pub base: String,
+    pub loader: String
 }

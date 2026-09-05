@@ -67,7 +67,7 @@ export function ModsHeader() {
                         }
                         if (typeof val === "string") {
                           const found = installedVersions.find((v) => v.name === val);
-                          setSelectedVersion(found ?? { name: val, base: val });
+                          setSelectedVersion(found ?? { name: val, base: val, loader: "vanilla" });
                         } else {
                           setSelectedVersion(val);
                         }

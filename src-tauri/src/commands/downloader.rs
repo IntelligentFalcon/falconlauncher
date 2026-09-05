@@ -2,7 +2,9 @@ use crate::models::downloader::{Manifest, VersionInfo, VersionLoader};
 use crate::models::error::{AppError, Void};
 use crate::models::mirror::Mirror;
 use crate::models::versions::VersionBase::{FABRIC, FORGE};
-use crate::models::versions::{MinecraftVersion, VersionBase, VersionCategory, VersionNameBase, VersionType};
+use crate::models::versions::{
+    MinecraftVersion, VersionBase, VersionCategory, VersionNameBase, VersionType,
+};
 use crate::services::game_downloader;
 use crate::services::game_downloader::{
     download_fabric, download_forge_version, download_from_manifest, get_available_fabric_versions,
@@ -214,13 +216,8 @@ pub async fn get_fabric_versions(
 }
 
 #[tauri::command]
-pub async fn cancel_download(
-    state: State<'_, AppState>,
-) -> Result<(), AppError> {
-    let token = state
-        .download_manager
-        .cancellation_token
-        .lock().await;
+pub async fn cancel_download(state: State<'_, AppState>) -> Result<(), AppError> {
+    let token = state.download_manager.cancellation_token.lock().await;
 
     if let Some(token) = token.as_ref() {
         token.cancel();
@@ -239,8 +236,7 @@ pub async fn download_version(
     let token = CancellationToken::new();
     info!("Started downloading process");
     {
-        let mut current_token =
-            state.download_manager.cancellation_token.lock().await;
+        let mut current_token = state.download_manager.cancellation_token.lock().await;
 
         if let Some(old_token) = current_token.take() {
             old_token.cancel();
@@ -284,7 +280,7 @@ pub async fn download_task(
             mir,
             &mut version_id,
             None,
-            token
+            token,
         )
         .await;
 
@@ -298,14 +294,14 @@ pub async fn download_task(
             "DEBUG: Fabric version detected! {} installing now!",
             version_loader.id
         );
-        download_fabric(&state, &version_loader, logger, mir, None,token).await?;
+        download_fabric(&state, &version_loader, logger, mir, None, token).await?;
     }
 
     info!("Downloading {version_id}.json");
 
     let manifest = load_version_manifest(&state).await?;
     if version_loader.base == VersionBase::VANILLA {
-        download_from_manifest(&state, &version_id, &manifest, mir, None,token).await?;
+        download_from_manifest(&state, &version_id, &manifest, mir, None, token).await?;
     }
 
     let version = MinecraftVersion::from_id(version_id);
@@ -320,11 +316,19 @@ pub async fn download_task(
         &inherited_version
     };
 
-    game_downloader::download_version(&state, downloadable_version, &name, &app_handle, logger,token)
-        .await?;
+    game_downloader::download_version(
+        &state,
+        downloadable_version,
+        &name,
+        &app_handle,
+        logger,
+        token,
+    )
+    .await?;
 
     if inherited_version.id != version.id {
-        game_downloader::download_version(&state, &version, &name, &app_handle, logger,token).await?;
+        game_downloader::download_version(&state, &version, &name, &app_handle, logger, token)
+            .await?;
     }
 
     update_download_status("", &app_handle);
@@ -346,10 +350,26 @@ pub async fn download_task(
 pub async fn get_versions() -> Result<Vec<VersionNameBase>, AppError> {
     let global = GLOBAL_CACHE.lock().await;
 
-    Ok(global.versions.iter().map(|x| VersionNameBase {
-        name: x.id.to_string(),
-        base: x.load_json().get("inheritsFrom").map(|v| v.as_str().unwrap_or(x.id.as_str())).unwrap_or(x.id.as_str()).to_string(),
-    }).collect())
+    Ok(global
+        .versions
+        .iter()
+        .map(|x| VersionNameBase {
+            name: x.id.to_string(),
+            base: x
+                .load_json()
+                .get("inheritsFrom")
+                .map(|v| v.as_str().unwrap_or(x.id.as_str()))
+                .unwrap_or(x.id.as_str())
+                .to_string(),
+            loader: if x.id.to_lowercase().contains("fabric") {
+                "fabric".to_string()
+            } else if x.id.to_lowercase().contains("forge") {
+                "forge".to_string()
+            } else {
+                "vanilla".to_string()
+            },
+        })
+        .collect())
 }
 
 #[command]
