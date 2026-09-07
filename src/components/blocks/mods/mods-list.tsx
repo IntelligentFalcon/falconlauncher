@@ -23,13 +23,13 @@ export function ModsList() {
     const renderModsContent = () => {
         if (modsError) {
             return (
-                <div className="flex flex-1 items-center justify-center">
-                    <Empty>
+                <div className="flex w-full min-h-[60vh] flex-col items-center justify-center text-center">
+                    <Empty className="flex flex-col items-center justify-center">
                         <EmptyMedia variant="icon">
                             <HugeiconsIcon className="pointer-events-none shrink-0" icon={Alert01Icon} size={24} />
                         </EmptyMedia>
-                        <EmptyTitle>{errorText(modsError.code).title}</EmptyTitle>
-                        <EmptyDescription>
+                        <EmptyTitle className="mt-4">{errorText(modsError.code).title}</EmptyTitle>
+                        <EmptyDescription className="max-w-md">
                             {errorText(modsError.code).description}
                         </EmptyDescription>
                     </Empty>

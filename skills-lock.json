@@ -1,6 +1,12 @@
 {
   "version": 1,
   "skills": {
+    "pick-ui-library": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/pick-ui-library/SKILL.md",
+      "computedHash": "f8d4d2cf4677bf54b14f35f62a741add93541bfcb67863315a40164365161b49"
+    },
     "shadcn": {
       "source": "shadcn/ui",
       "sourceType": "github",

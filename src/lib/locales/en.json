@@ -18,8 +18,6 @@
     "interfaceLanguageDesc": "Select the display language for the launcher.",
     "exitOnLaunch": "Exit Launcher on Launch",
     "exitOnLaunchDesc": "Closes the launcher window after the game starts.",
-    "useProxy": "Enable Proxy",
-    "useProxyDesc": "Route launcher downloads and network traffic through a proxy server.",
     "proxySettings": "Proxy Settings",
     "proxySettingsDesc": "Configure network proxy protocol and connection details",
     "proxyAddress": "Address / Host",
@@ -78,7 +76,7 @@
   },
   "modsList": {
     "emptyTitle": "No mods installed",
-    "emptyDescription": "No mods installed for {{version}}. Click \"Get Mods\" or \"Import Mod\" to add some!",
+    "emptyDescription": "No mods installed for {{version.name}}. Click \"Get Mods\" or \"Import Mod\" to add some!",
     "thisVersion": "this version",
     "noDescription": "No description provided.",
     "disableMod": "Disable Mod",
