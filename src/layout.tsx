@@ -19,7 +19,7 @@ export default function Layout() {
       <QueryClientProvider client={queryClient}>
         <SidebarProvider className="bg-sidebar">
           <AppSidebar />
-          <div className="antaliased h-screen w-full">
+          <div className="antaliased h-screen w-full select-none">
             <div className="flex items-center justify-between pr-1 pl-4">
               <Menubar
                 className="flex-1 rounded-none border-0"

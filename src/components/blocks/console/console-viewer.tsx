@@ -82,7 +82,7 @@ export function ConsoleViewer() {
       <div className="relative min-h-0 flex-1">
         <LoadingSwap className="absolute inset-0" isLoading={isLoading}>
           <div
-              className="h-full w-full space-y-1 overflow-y-auto rounded-2xl border border-border bg-black p-2 font-mono text-[11px] text-zinc-200 selection:bg-primary/50 selection:text-white sm:p-4 sm:text-xs"
+              className="h-full w-full space-y-1 overflow-y-auto rounded-2xl border border-border bg-black p-2 font-mono text-[11px] text-zinc-200 selection:bg-primary/50 selection:text-white sm:p-4 sm:text-xs select-text"
               ref={logContainerRef}
               onContextMenu={handleContextMenu}
           >
