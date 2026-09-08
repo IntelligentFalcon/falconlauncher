@@ -19,6 +19,7 @@ use std::process::{Command, Stdio};
 use std::str::FromStr;
 use std::sync::Mutex;
 use tauri::{command, AppHandle, Manager, State};
+use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 use crate::models::java::Java;
 
@@ -79,13 +80,25 @@ pub async fn play(
 
     if repair_mode {
         info!("Repair mode is enabled. attempting to download/check version files");
+        let token = CancellationToken::new();
+
+        {
+            let mut current_token = state.download_manager.cancellation_token.lock().await;
+
+            if let Some(old_token) = current_token.take() {
+                old_token.cancel();
+            }
+
+            *current_token = Some(token.clone());
+        }
+
         download_version(
             &state,
             &inherited_version,
             &"".to_string(),
             &app_handle,
             &state.log_tx,
-            None,
+            Some(&token),
         )
             .await?;
         download_version(
@@ -94,7 +107,7 @@ pub async fn play(
             &"".to_string(),
             &app_handle,
             &state.log_tx,
-            None,
+            Some(&token),
         )
             .await?;
     }
