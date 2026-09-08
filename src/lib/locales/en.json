@@ -41,13 +41,10 @@
   },
   "mirrorSettings": {
     "title": "Asset Repository Mirrors",
-    "description": "Select or drop explicit index maps to bypass primary servers.",
-    "dropzoneTitle": "Drag & Drop Mirror JSON configuration manifest",
-    "dropzoneSubtitle": "Inject files directly into your filesystem architecture configurations",
-    "dropzoneAriaLabel": "Drag & drop mirror JSON configuration manifest",
+    "description": "Select a mirror or import a custom one from a JSON configuration file.",
+    "importButton": "Import Mirror",
     "errorPrefix": "Error",
-    "invalidJsonError": "Invalid JSON format or missing required properties",
-    "invalidFileTypeError": "Please drop a valid file ending in .json format"
+    "invalidJsonError": "Invalid JSON format or missing required properties"
   },
   "settingsLayout": {
     "launcherTab": "Launcher Settings",
@@ -62,7 +59,6 @@
     "selectVersion": "Select version",
     "instancePlaceholder": "e.g: PVP",
     "majorVersion": "Major Version"
-
   },
   "modsHeader": {
     "selectVersionPlaceholder": "Select Game Version",
