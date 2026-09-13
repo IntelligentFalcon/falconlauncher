@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 export function ActionButton({
   action,
   disabled,
+  noLoadingIndicator = false,
   requireAreYouSure = false,
   areYouSureDescription = "این عمل غیرقابل بازگشت است.",
   areYouSureButton = "باشه.",
@@ -28,6 +29,7 @@ export function ActionButton({
     | Promise<{ error: boolean; message?: string }>
     | Promise<void>
     | void;
+  noLoadingIndicator?: boolean;
   requireAreYouSure?: boolean;
   areYouSureDescription?: ReactNode;
   areYouSureButton?: ReactNode;
@@ -85,12 +87,16 @@ export function ActionButton({
         props.onClick?.(e);
       }}
     >
-      <LoadingSwap
-        className="inline-flex items-center gap-2"
-        isLoading={isLoading}
-      >
-        {props.children}
-      </LoadingSwap>
+      {noLoadingIndicator ? (
+        props.children
+      ) : (
+        <LoadingSwap
+          className="inline-flex items-center gap-2"
+          isLoading={isLoading}
+        >
+          {props.children}
+        </LoadingSwap>
+      )}
     </Button>
   );
 }

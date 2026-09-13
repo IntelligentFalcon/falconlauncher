@@ -256,7 +256,13 @@ function PlayButton({ runningProcesses }: { runningProcesses: string[] }) {
         <>
             {isRepairing && (
                 <div className="absolute bottom-full left-0 w-full px-8 pb-4">
-                    <div className="mb-2 flex items-center justify-between text-xs">
+                    <div className="h-3.5 w-full overflow-hidden rounded-full border border-border/60 bg-background p-0.5 shadow-inner">
+                        <div
+                            className="h-full rounded-full transition-all duration-300 ease-out bg-primary"
+                            style={{ width: `${percentage}%` }}
+                        />
+                    </div>
+                    <div className="mt-1.5 flex items-center justify-between text-xs">
                         <span className="max-w-[70%] truncate font-mono text-muted-foreground/80">
                             {progress?.stage_name || t("stepInstalling.initializing")}
                             {progress && progress.total_files > 1 && (
@@ -268,12 +274,6 @@ function PlayButton({ runningProcesses }: { runningProcesses: string[] }) {
                         <span className="font-bold text-muted-foreground">
                             {percentage.toFixed(0)}%
                         </span>
-                    </div>
-                    <div className="h-3.5 w-full overflow-hidden rounded-full border border-border/60 bg-background p-0.5 shadow-inner">
-                        <div
-                            className="h-full rounded-full transition-all duration-300 ease-out bg-primary"
-                            style={{ width: `${percentage}%` }}
-                        />
                     </div>
                 </div>
             )}
@@ -308,6 +308,7 @@ function PlayButton({ runningProcesses }: { runningProcesses: string[] }) {
                             : ""
                     }`}
                     disabled={version === null || profile === null}
+                    noLoadingIndicator={isRepairing}
                 >
                     {isRepairing ? t("stepInstalling.abortButton") : isRunning ? t("index.stop") : t("index.play")}
                 </ActionButton>
