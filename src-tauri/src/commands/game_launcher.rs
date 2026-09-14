@@ -101,15 +101,17 @@ pub async fn play(
             Some(&token),
         )
             .await?;
-        download_version(
-            &state,
-            &version,
-            &"".to_string(),
-            &app_handle,
-            &state.log_tx,
-            Some(&token),
-        )
-            .await?;
+        if inherited_version.id != version.id {
+            download_version(
+                &state,
+                &version,
+                &"".to_string(),
+                &app_handle,
+                &state.log_tx,
+                Some(&token),
+            )
+                .await?;
+        }
     }
     let java_choice = &config.native_libraries.java;
     let java = if java_choice.is_custom() {
