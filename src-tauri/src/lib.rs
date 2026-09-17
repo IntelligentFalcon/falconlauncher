@@ -14,6 +14,7 @@ use services::directory_manager::{
 use services::version_manager::{load_installed_versions};
 use std::collections::{HashMap, VecDeque};
 use std::env;
+use std::fs::remove_dir;
 use std::process::Child;
 use std::string::ToString;
 use std::sync::{Arc, LazyLock, Mutex};
@@ -86,7 +87,7 @@ pub fn run() {
     client.set_activity(activity::Activity::new()
         .state("A Minecraft Launcher.")
     );
-
+    remove_dir(get_falcon_launcher_directory().join("latest.log"));
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|_app, _argv, _cwd| {
             let _ = _app
@@ -112,6 +113,7 @@ pub fn run() {
                 .build(),
         )
         .setup(move |app| {
+
             info!("Launcher's initialization has started...");
             #[cfg(debug_assertions)]
             {
