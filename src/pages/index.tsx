@@ -56,11 +56,40 @@ export default function IndexPage() {
     const version = useConfig((state) => state.version);
     const { t } = useTranslation();
 
+    const [progress, setProgress] = useState<DownloadProgress | null>(null);
+    const [isDone, setIsDone] = useState<boolean>(false);
+
+    useEffect(() => {
+        const unlistenPromise = listen<DownloadProgress>(
+            "download-progress",
+            (event) => {
+                const payload = event.payload;
+                setProgress(payload);
+                if (payload.global_percentage >= 100 || payload.stage === "done") {
+                    setIsDone(true);
+                    setTimeout(() => {
+                        setProgress(null);
+                        setIsDone(false);
+                    }, 500);
+                }
+            }
+        );
+        return () => {
+            unlistenPromise.then((unlisten) => unlisten());
+        };
+    }, []);
+
     // Poll the backend every 1.5 seconds to get the latest list of running processes
     const { data: runningProcesses = [] } = useBackend({
         name: "get_processes",
         refetchInterval: 1500,
     });
+
+    const isRepairing = progress !== null && !isDone;
+    const percentage = Math.min(
+        Math.max(Number(progress?.global_percentage) || 0, 0),
+        100
+    );
 
     return (
         <div className="h-full select-none">
@@ -86,8 +115,8 @@ export default function IndexPage() {
                 <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-[#2a2a2a]/60 to-[#111]/90" />
 
                 {/* Content */}
-                <div className="relative z-10 flex flex-1 flex-col justify-end p-8">
-                    <div className="max-w-2xl">
+                <div className="relative z-10 flex flex-1 flex-col justify-end p-8 pb-4">
+                    <div className="max-w-2xl mb-4">
                         <h2 className="mb-4 font-black text-5xl drop-shadow-lg">
                             {t("index.welcome")}
                         </h2>
@@ -95,8 +124,32 @@ export default function IndexPage() {
                             {t("index.subtitle")}
                         </p>
                     </div>
-                </div>
 
+                    {/* Full-width Progress Bar */}
+                    {isRepairing && (
+                        <div className="w-full">
+                            <div className="h-3.5 w-full overflow-hidden rounded-full border border-border/60 bg-background/40 backdrop-blur-sm p-0.5 shadow-inner">
+                                <div
+                                    className="h-full rounded-full transition-all duration-300 ease-out bg-primary"
+                                    style={{ width: `${percentage}%` }}
+                                />
+                            </div>
+                            <div className="mt-1.5 flex items-center justify-between text-xs">
+                                <span className="max-w-[70%] truncate font-mono text-gray-300 drop-shadow">
+                                    {progress?.stage_name || t("stepInstalling.initializing")}
+                                    {progress && progress.total_files > 1 && (
+                                        <span className="ml-1.5 opacity-70">
+                                            ({progress.current_file}/{progress.total_files})
+                                        </span>
+                                    )}
+                                </span>
+                                <span className="font-bold text-gray-300 drop-shadow">
+                                    {percentage.toFixed(0)}%
+                                </span>
+                            </div>
+                        </div>
+                    )}
+                </div>
                 {/* Bottom Action Bar */}
                 <div className="relative z-10 flex flex-col border-[#333] border-t bg-[#232323] px-8 py-4 shadow-[0_-10px_30px_rgba(0,0,0,0.5)]">
                     <div className="flex min-h-24 flex-wrap items-center justify-between gap-4">
@@ -105,7 +158,12 @@ export default function IndexPage() {
                         </div>
 
                         <div className="w-full sm:w-96">
-                            <PlayButton runningProcesses={runningProcesses} />
+                            <PlayButton
+                                runningProcesses={runningProcesses}
+                                isRepairing={isRepairing}
+                                setProgress={setProgress}
+                                setIsDone={setIsDone}
+                            />
                         </div>
                     </div>
                 </div>
@@ -180,37 +238,20 @@ function VersionSelect({ runningProcesses }: { runningProcesses: string[] }) {
     );
 }
 
-function PlayButton({ runningProcesses }: { runningProcesses: string[] }) {
+interface PlayButtonProps {
+    runningProcesses: string[];
+    isRepairing: boolean;
+    setProgress: (progress: DownloadProgress | null) => void;
+    setIsDone: (isDone: boolean) => void;
+}
+
+function PlayButton({ runningProcesses, isRepairing, setProgress, setIsDone }: PlayButtonProps) {
     const version = useConfig((state) => state.version);
     const profile = useConfig((state) => state.profile);
     const [repairMode, setRepairMode] = useState(false);
     const { t } = useTranslation();
 
-    const [progress, setProgress] = useState<DownloadProgress | null>(null);
-    const [isDone, setIsDone] = useState<boolean>(false);
-
-    useEffect(() => {
-        const unlistenPromise = listen<DownloadProgress>(
-            "download-progress",
-            (event) => {
-                const payload = event.payload;
-                setProgress(payload);
-                if (payload.global_percentage >= 100 || payload.stage === "done") {
-                    setIsDone(true);
-                    setTimeout(() => {
-                        setProgress(null);
-                        setIsDone(false);
-                    }, 500);
-                }
-            }
-        );
-        return () => {
-            unlistenPromise.then((unlisten) => unlisten());
-        };
-    }, []);
-
     const isRunning = version ? runningProcesses.includes(version) : false;
-    const isRepairing = progress !== null && !isDone;
 
     // Play mutation
     const { mutateAsync: playMutate } = useBackendMutation({
@@ -247,72 +288,41 @@ function PlayButton({ runningProcesses }: { runningProcesses: string[] }) {
         }
     };
 
-    const percentage = Math.min(
-        Math.max(Number(progress?.global_percentage) || 0, 0),
-        100
-    );
-
     return (
-        <>
-            {isRepairing && (
-                <div className="absolute bottom-full left-0 w-full px-8 pb-4">
-                    <div className="h-3.5 w-full overflow-hidden rounded-full border border-border/60 bg-background p-0.5 shadow-inner">
-                        <div
-                            className="h-full rounded-full transition-all duration-300 ease-out bg-primary"
-                            style={{ width: `${percentage}%` }}
-                        />
-                    </div>
-                    <div className="mt-1.5 flex items-center justify-between text-xs">
-                        <span className="max-w-[70%] truncate font-mono text-muted-foreground/80">
-                            {progress?.stage_name || t("stepInstalling.initializing")}
-                            {progress && progress.total_files > 1 && (
-                                <span className="ml-1.5 opacity-70">
-                                    ({progress.current_file}/{progress.total_files})
-                                </span>
-                            )}
-                        </span>
-                        <span className="font-bold text-muted-foreground">
-                            {percentage.toFixed(0)}%
-                        </span>
-                    </div>
-                </div>
-            )}
-            
-            <div className="flex w-full flex-wrap items-center gap-3">
-                <button
-                    type="button"
-                    disabled={isRunning || isRepairing}
-                    aria-hidden={isRunning || isRepairing}
-                    title={t("index.repairTooltip")}
-                    onClick={() => setRepairMode((prev) => !prev)}
-                    className={`flex h-14 w-14 sm:flex-none items-center justify-center rounded-xl border transition-all duration-300 ease-in-out ${
-                        isRunning || isRepairing
-                            ? "opacity-0 scale-95 pointer-events-none hidden"
-                            : "opacity-100 scale-100"
-                    } ${
-                        repairMode
-                            ? "border-amber-500 bg-amber-500/10 text-amber-500"
-                            : "border-[#333] bg-[#1a1a1a] text-gray-400 hover:bg-[#333] hover:text-white"
-                    }`}
-                >
-                    <HugeiconsIcon icon={RepairIcon} size={24} />
-                </button>
+        <div className="flex w-full flex-wrap items-center gap-3">
+            <button
+                type="button"
+                disabled={isRunning || isRepairing}
+                aria-hidden={isRunning || isRepairing}
+                title={t("index.repairTooltip")}
+                onClick={() => setRepairMode((prev) => !prev)}
+                className={`flex h-14 w-14 sm:flex-none items-center justify-center rounded-xl border transition-all duration-300 ease-in-out ${
+                    isRunning || isRepairing
+                        ? "opacity-0 scale-95 pointer-events-none hidden"
+                        : "opacity-100 scale-100"
+                } ${
+                    repairMode
+                        ? "border-amber-500 bg-amber-500/10 text-amber-500"
+                        : "border-[#333] bg-[#1a1a1a] text-gray-400 hover:bg-[#333] hover:text-white"
+                }`}
+            >
+                <HugeiconsIcon icon={RepairIcon} size={24} />
+            </button>
 
-                <ActionButton
-                    action={handleAction}
-                    className={`h-14 flex-1 font-bold text-2xl transition-all duration-300 ${
-                        isRepairing
-                            ? "bg-amber-500/20 text-amber-500 border border-amber-500/50 hover:bg-amber-600 hover:text-white hover:border-amber-600"
-                            : isRunning
+            <ActionButton
+                action={handleAction}
+                className={`h-14 flex-1 font-bold text-2xl transition-all duration-300 ${
+                    isRepairing
+                        ? "bg-amber-500/20 text-amber-500 border border-amber-500/50 hover:bg-amber-600 hover:text-white hover:border-amber-600"
+                        : isRunning
                             ? "bg-red-600/20 text-red-500 border border-red-500/50 hover:bg-red-600 hover:text-white hover:border-red-600"
                             : ""
-                    }`}
-                    disabled={version === null || profile === null}
-                    noLoadingIndicator={isRepairing}
-                >
-                    {isRepairing ? t("stepInstalling.abortButton") : isRunning ? t("index.stop") : t("index.play")}
-                </ActionButton>
-            </div>
-        </>
+                }`}
+                disabled={version === null || profile === null}
+                noLoadingIndicator={isRepairing}
+            >
+                {isRepairing ? t("stepInstalling.abortButton") : isRunning ? t("index.stop") : t("index.play")}
+            </ActionButton>
+        </div>
     );
 }
