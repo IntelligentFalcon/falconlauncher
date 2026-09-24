@@ -14,7 +14,7 @@ use services::directory_manager::{
 use services::version_manager::{load_installed_versions};
 use std::collections::{HashMap, VecDeque};
 use std::env;
-use std::fs::remove_dir;
+use std::fs::{remove_dir, remove_file};
 use std::process::Child;
 use std::string::ToString;
 use std::sync::{Arc, LazyLock, Mutex};
@@ -80,6 +80,8 @@ pub const LAUNCHER_NAME: &str = "FalconLauncher";
 pub const LAUNCHER_VERSION: &str = "BETA-0.1";
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    remove_file(get_falcon_launcher_directory().join("latest.log"));
+
     dotenvy::dotenv().ok();
     let mut client = DiscordIpcClient::new("1404037939305910465");
 
@@ -87,7 +89,7 @@ pub fn run() {
     client.set_activity(activity::Activity::new()
         .state("A Minecraft Launcher.")
     );
-    remove_dir(get_falcon_launcher_directory().join("latest.log"));
+
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|_app, _argv, _cwd| {
             let _ = _app
@@ -113,6 +115,31 @@ pub fn run() {
                 .build(),
         )
         .setup(move |app| {
+            info!("======================= Beginning of System Details =======================");
+            if let Ok(os_type) = sys_info::os_type() {
+                info!("OS Type: {}", os_type);
+            }
+
+            if let Ok(os_release) = sys_info::os_release() {
+                info!("OS Release: {}", os_release);
+            }
+
+            if let Ok(linux_os_release) = sys_info::linux_os_release() {
+                info!("Linux OS Release: {:?}", linux_os_release);
+            }
+
+            if let Ok(mem_info) = sys_info::mem_info() {
+                info!("Memory Info: {:?}", mem_info);
+            }
+
+            if let Ok(cpu_num) = sys_info::cpu_num() {
+                info!("CPU Num: {}", cpu_num);
+            }
+
+            if let Ok(cpu_speed) = sys_info::cpu_speed() {
+                info!("CPU Spedd: {} MHz", cpu_speed);
+            }
+        info!("======================= End of System Details =======================");
 
             info!("Launcher's initialization has started...");
             #[cfg(debug_assertions)]

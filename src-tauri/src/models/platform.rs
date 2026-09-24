@@ -1,3 +1,6 @@
+use std::fmt::{Display, Formatter};
+use sys_info::LinuxOSReleaseInfo;
+
 pub enum OperatingSystem {
     Windows,
     Linux,
