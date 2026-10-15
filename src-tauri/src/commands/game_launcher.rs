@@ -1,15 +1,17 @@
 use crate::models::error::AppError::ProfileNotFound;
 use crate::models::error::{AppError, Void};
+use crate::models::java::Java;
 use crate::models::logger::{error, info};
 use crate::models::platform::get_current_os;
 use crate::models::profiles::get_profile;
 use crate::services::directory_manager::{
     get_assets_directory, get_minecraft_directory, get_natives_directory,
 };
-use crate::services::game_downloader::download_version;
+use crate::services::game_downloader::{download_from_manifest, download_version};
 use crate::services::game_launcher::{get_jvm_args, get_launch_args};
 use crate::services::utils;
 use crate::services::utils::{extend_once, patch_java_permission_linux, vec_to_string};
+use crate::services::version_manager::{load_version_manifest, load_version_manifest_local, refresh_version_manifest};
 use crate::{services, AppState, GLOBAL_CACHE};
 use log::info;
 use serde_json::Value;
@@ -21,7 +23,6 @@ use std::sync::Mutex;
 use tauri::{command, AppHandle, Manager, State};
 use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
-use crate::models::java::Java;
 
 #[command]
 pub async fn play(
@@ -32,6 +33,9 @@ pub async fn play(
     profile: &str,
 ) -> Void {
     log::info!("Launching minecraft {selected_version} ");
+
+    let mirror = &state.config.read().await.download_settings.mirror;
+
     let global_cache = &*GLOBAL_CACHE.lock().await;
 
     let tx_err = state.log_tx.clone();
@@ -64,17 +68,23 @@ pub async fn play(
     let json: Value = version.load_json();
 
     let inherited_version = version.get_inherited();
-    let inherited_json = inherited_version.load_json();
+    let mut inherited_json = inherited_version.load_json();
     let inherited_id = &inherited_version.id;
     info!("detected inherited version is {inherited_id} (Might be the version id itself)");
+
+    if inherited_json.pointer("/javaVersion/component").is_none() {
+        info!("javaVersion component not found. trying to redownload the version's index file.");
+        let manifest = load_version_manifest_local()?;
+        download_from_manifest(&state, inherited_id, &manifest, &mirror, None, None).await;
+        inherited_json = inherited_version.load_json();
+    }
 
     let java_component = inherited_json
         .pointer("/javaVersion/component")
         .and_then(|v| v.as_str())
         .ok_or_else(|| {
             AppError::ManifestParseFailed(
-                "Missing '/javaVersion/component' in manifest. The JSON might be corrupted."
-                    .to_string(),
+                "Missing '/javaVersion/component' in manifest. The JSON might be corrupted.".to_string(),
             )
         })?;
 
@@ -92,6 +102,20 @@ pub async fn play(
             *current_token = Some(token.clone());
         }
 
+        info!("Downloading {}.json file.", inherited_version.id);
+        let manifest = load_version_manifest(&state).await?;
+
+
+
+        download_from_manifest(
+            &state,
+            &inherited_version.id,
+            &manifest,
+            &state.config.read().await.download_settings.mirror,
+            None,
+            Some(&token),
+        )
+            .await?;
         download_version(
             &state,
             &inherited_version,
@@ -100,7 +124,7 @@ pub async fn play(
             &state.log_tx,
             Some(&token),
         )
-            .await?;
+        .await?;
         if inherited_version.id != version.id {
             download_version(
                 &state,
@@ -110,7 +134,7 @@ pub async fn play(
                 &state.log_tx,
                 Some(&token),
             )
-                .await?;
+            .await?;
         }
     }
     let java_choice = &config.native_libraries.java;
@@ -271,12 +295,12 @@ pub async fn play(
                     "${natives_directory}",
                     &get_natives_directory(&version_id.to_string()).to_string_lossy(),
                 )
-                    .replace("${launcher_name}", &state.launcher_details.name)
-                    .replace("${launcher_version}", &state.launcher_details.version)
-                    .replace(
-                        "${classpath}",
-                        &format!("{}{}{}", class_path, separator, libraries_str),
-                    ),
+                .replace("${launcher_name}", &state.launcher_details.name)
+                .replace("${launcher_version}", &state.launcher_details.version)
+                .replace(
+                    "${classpath}",
+                    &format!("{}{}{}", class_path, separator, libraries_str),
+                ),
             );
         }
     } else {
@@ -287,20 +311,24 @@ pub async fn play(
     };
 
     if config.native_libraries.glfw.is_custom() {
-        child_cmd.arg(format!("-Dorg.lwjgl.glfw.libname={}", config.native_libraries.glfw.path.clone()));
+        child_cmd.arg(format!(
+            "-Dorg.lwjgl.glfw.libname={}",
+            config.native_libraries.glfw.path.clone()
+        ));
     }
 
     if config.native_libraries.openal.is_custom() {
-        child_cmd.arg(format!("-Dorg.lwjgl.openal.libname={}", config.native_libraries.openal.path.clone()));
+        child_cmd.arg(format!(
+            "-Dorg.lwjgl.openal.libname={}",
+            config.native_libraries.openal.path.clone()
+        ));
     }
 
     info!("Applying main_class and run arguments.");
     child_cmd.arg(main_class).args(&run_args);
 
-
     let run_args_str = run_args.join(" ");
     let jvm_args_str = jvm_args.join(" ");
-
 
     let _ = tx_out.send(info(
         format!("Loaded libraries: {libraries_str}\n\n"),
