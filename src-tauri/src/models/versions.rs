@@ -261,3 +261,12 @@ pub struct VersionNameBase {
     pub base: String,
     pub loader: String
 }
+
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct VersionMetaData {
+    pub name: String,
+    pub base: VersionBase,
+    pub id: String,
+}
+

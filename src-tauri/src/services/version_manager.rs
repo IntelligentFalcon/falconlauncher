@@ -1,8 +1,9 @@
+use std::path::PathBuf;
 use crate::models::downloader::Manifest;
 use crate::models::error::AppError::{FileReadFailed, Internal};
 use crate::models::error::{AppError, Void};
 use crate::models::mirror::Mirror;
-use crate::models::versions::MinecraftVersion;
+use crate::models::versions::{MinecraftVersion, VersionBase, VersionMetaData};
 use crate::services::directory_manager::{get_versions_directory, version_manifest_directory};
 use crate::services::downloader_utils::download_file;
 use crate::{AppState, GLOBAL_CACHE};
@@ -75,4 +76,19 @@ pub async fn download_version_manifest(state: &State<'_, AppState>) -> Result<()
         None
     )
         .await
+}
+
+// TODO: Automatically detect version base of the specified version
+fn auto_detect_version_base(version_id: String, path: PathBuf) -> Result<VersionBase, AppError> {
+    Ok(VersionBase::VANILLA)
+}
+
+// TODO: Generate version meta data on specified version.
+pub fn generate_version_meta_data(version_id: String, path: PathBuf) -> Void {
+    Ok(())
+}
+
+
+pub fn read_version_meta_data(path: PathBuf) -> Result<VersionMetaData, AppError> {
+    todo!("Reading the existing meta data on the selected path.")
 }
