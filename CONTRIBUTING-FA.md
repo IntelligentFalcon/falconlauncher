@@ -1,3 +1,6 @@
+For the English version, see [CONTRIBUTING.md](https://github.com/IntelligentFalcon/falconlauncher/blob/master/CONTRIBUTING.md).
+
+
 # راهنمای مشارکت در Falcon Launcher
 
 در ابتدا از علاقه‌مندی شما به مشارکت در توسعه‌ی **Falcon Launcher** سپاسگزاریم.
