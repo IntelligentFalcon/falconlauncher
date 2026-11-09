@@ -1,4 +1,4 @@
-For the Persian version, see [CONTRIBUTING-FA.md](https://github.com/IntelligentFalcon/falconlauncher/CONTRIBUTING-FA.md).
+For the Persian version, see [CONTRIBUTING-FA.md](https://github.com/IntelligentFalcon/falconlauncher/blob/master/CONTRIBUTING-FA.md).
 
 # Contributing to Falcon Launcher
 
