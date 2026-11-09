@@ -1,3 +1,5 @@
+For the Persian version, see [CONTRIBUTING-FA.md](https://github.com/IntelligentFalcon/falconlauncher/blob/main/CONTRIBUTING-FA.md).
+
 # Contributing to Falcon Launcher
 
 First of all, thank you for considering contributing to **Falcon Launcher**! Every contribution, whether it's a bug fix, a new feature, an improvement, or documentation, is appreciated.
